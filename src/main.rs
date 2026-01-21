@@ -241,6 +241,14 @@ enum DeviceCommands {
     Join {
         /// QR data from existing device
         qr_data: String,
+
+        /// Device name (skips interactive prompt)
+        #[arg(long)]
+        device_name: Option<String>,
+
+        /// Skip confirmation prompts
+        #[arg(long, short = 'y')]
+        yes: bool,
     },
 
     /// Complete device linking (on existing device)
@@ -468,7 +476,9 @@ async fn main() -> Result<()> {
             DeviceCommands::List => commands::device::list(&config)?,
             DeviceCommands::Info => commands::device::info(&config)?,
             DeviceCommands::Link => commands::device::link(&config)?,
-            DeviceCommands::Join { qr_data } => commands::device::join(&config, &qr_data)?,
+            DeviceCommands::Join { qr_data, device_name, yes } => {
+                commands::device::join(&config, &qr_data, device_name.as_deref(), yes)?
+            }
             DeviceCommands::Complete { request } => commands::device::complete(&config, &request)?,
             DeviceCommands::Finish { response } => commands::device::finish(&config, &response)?,
             DeviceCommands::Revoke { device_id } => commands::device::revoke(&config, &device_id)?,

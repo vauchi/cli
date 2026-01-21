@@ -143,18 +143,20 @@ pub fn link(config: &CliConfig) -> Result<()> {
 }
 
 /// Joins an existing identity by scanning/pasting the link QR data.
-pub fn join(config: &CliConfig, qr_data: &str) -> Result<()> {
+pub fn join(config: &CliConfig, qr_data: &str, device_name_arg: Option<&str>, yes: bool) -> Result<()> {
     // Check if already initialized
     if config.is_initialized() {
         display::warning("Vauchi is already initialized on this device.");
 
-        let confirm: String = Input::new()
-            .with_prompt("This will replace your existing identity. Type 'yes' to continue")
-            .interact_text()?;
+        if !yes {
+            let confirm: String = Input::new()
+                .with_prompt("This will replace your existing identity. Type 'yes' to continue")
+                .interact_text()?;
 
-        if confirm.to_lowercase() != "yes" {
-            display::info("Join cancelled.");
-            return Ok(());
+            if confirm.to_lowercase() != "yes" {
+                display::info("Join cancelled.");
+                return Ok(());
+            }
         }
     }
 
@@ -168,10 +170,14 @@ pub fn join(config: &CliConfig, qr_data: &str) -> Result<()> {
     display::success("QR code verified.");
 
     // Get device name for this device
-    let device_name: String = Input::new()
-        .with_prompt("Enter a name for this device")
-        .default("New Device".to_string())
-        .interact_text()?;
+    let device_name: String = if let Some(name) = device_name_arg {
+        name.to_string()
+    } else {
+        Input::new()
+            .with_prompt("Enter a name for this device")
+            .default("New Device".to_string())
+            .interact_text()?
+    };
 
     // Create responder
     let responder = DeviceLinkResponder::from_qr(qr, device_name.clone())?;
