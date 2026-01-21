@@ -26,6 +26,9 @@ pub enum MessagePayload {
     EncryptedUpdate(EncryptedUpdate),
     Acknowledgment(Acknowledgment),
     Handshake(Handshake),
+    // Device sync operations (inter-device synchronization)
+    DeviceSyncMessage(DeviceSyncMessage),
+    DeviceSyncAck(DeviceSyncAck),
     #[serde(other)]
     Unknown,
 }
@@ -57,6 +60,9 @@ pub enum AckStatus {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Handshake {
     pub client_id: String,
+    /// Optional device ID for inter-device sync (hex-encoded, 64 chars).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub device_id: Option<String>,
 }
 
 /// Exchange message sent when completing contact exchange.
@@ -161,5 +167,54 @@ pub fn create_ack(message_id: &str, status: AckStatus) -> MessageEnvelope {
     create_envelope(MessagePayload::Acknowledgment(Acknowledgment {
         message_id: message_id.to_string(),
         status,
+    }))
+}
+
+/// Inter-device sync message for syncing changes between devices of the same identity.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DeviceSyncMessage {
+    /// User's public identity ID (for routing).
+    pub identity_id: String,
+    /// Target device ID (hex-encoded, 64 chars = 32 bytes).
+    pub target_device_id: String,
+    /// Sender device ID (hex-encoded, 64 chars = 32 bytes).
+    pub sender_device_id: String,
+    /// ECDH-encrypted payload containing SyncItems.
+    pub encrypted_payload: Vec<u8>,
+    /// Version number for ordering and deduplication.
+    pub version: u64,
+}
+
+/// Acknowledgment for device sync messages.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DeviceSyncAck {
+    /// The message_id being acknowledged.
+    pub message_id: String,
+    /// Version that was synced to.
+    pub synced_version: u64,
+}
+
+/// Creates a device sync message envelope.
+pub fn create_device_sync_message(
+    identity_id: &str,
+    target_device_id: &str,
+    sender_device_id: &str,
+    encrypted_payload: Vec<u8>,
+    version: u64,
+) -> MessageEnvelope {
+    create_envelope(MessagePayload::DeviceSyncMessage(DeviceSyncMessage {
+        identity_id: identity_id.to_string(),
+        target_device_id: target_device_id.to_string(),
+        sender_device_id: sender_device_id.to_string(),
+        encrypted_payload,
+        version,
+    }))
+}
+
+/// Creates a device sync acknowledgment envelope.
+pub fn create_device_sync_ack(message_id: &str, synced_version: u64) -> MessageEnvelope {
+    create_envelope(MessagePayload::DeviceSyncAck(DeviceSyncAck {
+        message_id: message_id.to_string(),
+        synced_version,
     }))
 }

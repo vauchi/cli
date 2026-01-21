@@ -9,7 +9,7 @@ use base64::{engine::general_purpose::STANDARD as BASE64, Engine as _};
 use dialoguer::Input;
 use vauchi_core::exchange::{DeviceLinkQR, DeviceLinkResponder, DeviceLinkResponse};
 use vauchi_core::network::MockTransport;
-use vauchi_core::sync::DeviceSyncPayload;
+use vauchi_core::sync::{DeviceSyncOrchestrator, DeviceSyncPayload};
 use vauchi_core::{Identity, IdentityBackup, Vauchi, VauchiConfig};
 
 use crate::config::CliConfig;
@@ -240,14 +240,25 @@ pub fn complete(config: &CliConfig, request_data: &str) -> Result<()> {
         .unwrap_or_else(|| identity.initial_device_registry());
 
     // Restore the initiator with the saved QR
-    let initiator = identity.restore_device_link_initiator(registry, saved_qr);
+    let initiator = identity.restore_device_link_initiator(registry.clone(), saved_qr);
+
+    // Create sync payload with all existing contacts and own card
+    let sync_orchestrator = DeviceSyncOrchestrator::new(
+        wb.storage(),
+        identity.create_device_info(),
+        registry,
+    );
+    let sync_payload = sync_orchestrator
+        .create_full_sync_payload()
+        .map_err(|e| anyhow::anyhow!("Failed to create sync payload: {}", e))?;
+    let sync_json = serde_json::to_string(&sync_payload)?;
 
     // Decode the request
     let encrypted_request = BASE64.decode(request_data)?;
 
-    // Process the request
+    // Process the request with sync payload
     let (encrypted_response, updated_registry, new_device) =
-        initiator.process_request(&encrypted_request)?;
+        initiator.process_request_with_sync(&encrypted_request, &sync_json)?;
 
     // Save the updated registry
     wb.storage().save_device_registry(&updated_registry)?;
@@ -327,13 +338,27 @@ pub fn finish(config: &CliConfig, response_data: &str) -> Result<()> {
     let _ = fs::remove_file(&link_key_path);
     let _ = fs::remove_file(&device_name_path);
 
-    // Check for sync payload
+    // Apply sync payload if present
     if !response.sync_payload_json().is_empty() {
         if let Ok(payload) = DeviceSyncPayload::from_json(response.sync_payload_json()) {
-            display::info(&format!(
-                "Received {} contacts from existing device.",
-                payload.contact_count()
-            ));
+            let contact_count = payload.contact_count();
+
+            // Create orchestrator to apply the sync payload
+            let mut orchestrator = DeviceSyncOrchestrator::new(
+                wb.storage(),
+                identity.create_device_info(),
+                response.registry().clone(),
+            );
+
+            // Apply the sync payload to save contacts to storage
+            if let Err(e) = orchestrator.apply_full_sync(payload) {
+                display::warning(&format!("Failed to sync contacts: {}", e));
+            } else if contact_count > 0 {
+                display::success(&format!(
+                    "Synced {} contacts from existing device.",
+                    contact_count
+                ));
+            }
         }
     }
 

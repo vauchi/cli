@@ -11,13 +11,15 @@ use tungstenite::stream::MaybeTlsStream;
 use tungstenite::{connect, Message, WebSocket};
 use vauchi_core::exchange::X3DH;
 use vauchi_core::network::WebSocketTransport;
+use vauchi_core::sync::{DeviceSyncOrchestrator, SyncItem};
 use vauchi_core::{Contact, Identity, IdentityBackup, Vauchi, VauchiConfig};
 
 use crate::config::CliConfig;
 use crate::display;
 use crate::protocol::{
-    create_ack, create_envelope, decode_message, encode_message, AckStatus, EncryptedUpdate,
-    ExchangeMessage, Handshake, MessagePayload,
+    create_ack, create_device_sync_ack, create_device_sync_message, create_envelope,
+    decode_message, encode_message, AckStatus, DeviceSyncMessage, EncryptedUpdate, ExchangeMessage,
+    Handshake, MessagePayload,
 };
 
 /// Internal password for local identity storage.
@@ -48,9 +50,11 @@ fn open_vauchi(config: &CliConfig) -> Result<Vauchi<WebSocketTransport>> {
 fn send_handshake(
     socket: &mut WebSocket<MaybeTlsStream<TcpStream>>,
     client_id: &str,
+    device_id: Option<&str>,
 ) -> Result<()> {
     let handshake = Handshake {
         client_id: client_id.to_string(),
+        device_id: device_id.map(|s| s.to_string()),
     };
     let envelope = create_envelope(MessagePayload::Handshake(handshake));
     let data = encode_message(&envelope).map_err(|e| anyhow::anyhow!(e))?;
@@ -67,9 +71,9 @@ fn send_exchange_response(
     // Connect to relay
     let (mut socket, _) = connect(&config.relay_url)?;
 
-    // Send handshake
+    // Send handshake (no device_id needed for exchange response)
     let our_id = our_identity.public_id();
-    send_handshake(&mut socket, &our_id)?;
+    send_handshake(&mut socket, &our_id, None)?;
 
     // Get our exchange key for the message
     let exchange_key_slice = our_identity.exchange_public_key();
@@ -105,15 +109,21 @@ fn send_exchange_response(
 }
 
 /// Receives and processes pending messages from relay.
-/// Returns: (total_received, exchange_messages, encrypted_card_updates)
+/// Returns: (total_received, exchange_messages, encrypted_card_updates, device_sync_messages)
 #[allow(clippy::type_complexity)]
 fn receive_pending(
     socket: &mut WebSocket<MaybeTlsStream<TcpStream>>,
     _wb: &Vauchi<WebSocketTransport>,
-) -> Result<(usize, Vec<ExchangeMessage>, Vec<(String, Vec<u8>)>)> {
+) -> Result<(
+    usize,
+    Vec<ExchangeMessage>,
+    Vec<(String, Vec<u8>)>,
+    Vec<DeviceSyncMessage>,
+)> {
     let mut received = 0;
     let mut exchange_messages = Vec::new();
     let mut card_updates = Vec::new(); // (sender_id, ciphertext)
+    let mut device_sync_messages = Vec::new();
 
     // Set a read timeout so we don't block forever
     // The relay sends pending messages immediately after handshake
@@ -162,6 +172,27 @@ fn receive_pending(
                                     &ack.message_id[..8]
                                 ));
                             }
+                            MessagePayload::DeviceSyncMessage(sync_msg) => {
+                                received += 1;
+                                display::info(&format!(
+                                    "Received device sync from device {}...",
+                                    &sync_msg.sender_device_id[..16]
+                                ));
+                                device_sync_messages.push(sync_msg);
+
+                                // Send acknowledgment
+                                let ack = create_device_sync_ack(&envelope.message_id, 0);
+                                if let Ok(ack_data) = encode_message(&ack) {
+                                    let _ = socket.send(Message::Binary(ack_data));
+                                }
+                            }
+                            MessagePayload::DeviceSyncAck(ack) => {
+                                display::info(&format!(
+                                    "Device sync {} acknowledged (version {})",
+                                    &ack.message_id[..8],
+                                    ack.synced_version
+                                ));
+                            }
                             _ => {}
                         }
                     }
@@ -191,7 +222,7 @@ fn receive_pending(
         }
     }
 
-    Ok((received, exchange_messages, card_updates))
+    Ok((received, exchange_messages, card_updates, device_sync_messages))
 }
 
 /// Processes exchange messages and creates contacts.
@@ -413,6 +444,283 @@ fn send_pending_updates(
     Ok(sent)
 }
 
+/// Sends pending device sync items to other linked devices.
+fn send_device_sync(
+    wb: &Vauchi<WebSocketTransport>,
+    socket: &mut WebSocket<MaybeTlsStream<TcpStream>>,
+    identity: &Identity,
+) -> Result<usize> {
+    // Try to load device registry
+    let registry = match wb.storage().load_device_registry()? {
+        Some(r) => r,
+        None => {
+            // No device registry - single device, nothing to sync
+            return Ok(0);
+        }
+    };
+
+    // Check if we have more than one device
+    if registry.device_count() <= 1 {
+        return Ok(0);
+    }
+
+    // Create orchestrator
+    let orchestrator = DeviceSyncOrchestrator::new(
+        wb.storage(),
+        identity.create_device_info(),
+        registry.clone(),
+    );
+
+    let client_id = identity.public_id();
+    let our_device_id = identity.device_id();
+    let our_device_id_hex = hex::encode(our_device_id);
+
+    let mut sent = 0;
+
+    // Get pending items for each other device
+    for device in registry.all_devices() {
+        if device.device_id == *our_device_id {
+            continue; // Skip self
+        }
+
+        if !device.is_active() {
+            continue; // Skip revoked devices
+        }
+
+        let pending = orchestrator.pending_for_device(&device.device_id);
+        if pending.is_empty() {
+            continue;
+        }
+
+        // Serialize the pending items
+        let payload = match serde_json::to_vec(&pending) {
+            Ok(p) => p,
+            Err(e) => {
+                display::warning(&format!("Failed to serialize sync items: {}", e));
+                continue;
+            }
+        };
+
+        // Encrypt for the target device
+        let encrypted = match orchestrator.encrypt_for_device(&device.exchange_public_key, &payload)
+        {
+            Ok(e) => e,
+            Err(e) => {
+                display::warning(&format!("Failed to encrypt for device: {:?}", e));
+                continue;
+            }
+        };
+
+        // Get version
+        let version = orchestrator.version_vector().get(our_device_id);
+
+        // Create and send message
+        let target_device_id_hex = hex::encode(&device.device_id);
+        let envelope = create_device_sync_message(
+            &client_id,
+            &target_device_id_hex,
+            &our_device_id_hex,
+            encrypted,
+            version,
+        );
+
+        match encode_message(&envelope) {
+            Ok(data) => {
+                if socket.send(Message::Binary(data)).is_ok() {
+                    sent += 1;
+                    display::info(&format!(
+                        "Sent {} sync items to device {}",
+                        pending.len(),
+                        &device.device_name
+                    ));
+                }
+            }
+            Err(e) => {
+                display::warning(&format!("Failed to encode device sync: {}", e));
+            }
+        }
+    }
+
+    Ok(sent)
+}
+
+/// Processes received device sync messages from other devices.
+fn process_device_sync_messages(
+    wb: &Vauchi<WebSocketTransport>,
+    messages: Vec<DeviceSyncMessage>,
+    identity: &Identity,
+) -> Result<usize> {
+    if messages.is_empty() {
+        return Ok(0);
+    }
+
+    // Load device registry
+    let registry = match wb.storage().load_device_registry()? {
+        Some(r) => r,
+        None => {
+            display::warning("Received device sync but no registry found");
+            return Ok(0);
+        }
+    };
+
+    // Create orchestrator
+    let mut orchestrator = DeviceSyncOrchestrator::new(
+        wb.storage(),
+        identity.create_device_info(),
+        registry.clone(),
+    );
+
+    let mut processed = 0;
+
+    for msg in messages {
+        // Find sender device in registry
+        let sender_device_id = match hex::decode(&msg.sender_device_id) {
+            Ok(bytes) if bytes.len() == 32 => {
+                let mut arr = [0u8; 32];
+                arr.copy_from_slice(&bytes);
+                arr
+            }
+            _ => {
+                display::warning("Invalid sender device ID in sync message");
+                continue;
+            }
+        };
+
+        let sender = match registry.find_device(&sender_device_id) {
+            Some(d) => d,
+            None => {
+                display::warning(&format!(
+                    "Sync from unknown device: {}...",
+                    &msg.sender_device_id[..16]
+                ));
+                continue;
+            }
+        };
+
+        // Decrypt the payload
+        let payload = match orchestrator.decrypt_from_device(
+            &sender.exchange_public_key,
+            &msg.encrypted_payload,
+        ) {
+            Ok(p) => p,
+            Err(e) => {
+                display::warning(&format!(
+                    "Failed to decrypt sync from {}: {:?}",
+                    sender.device_name, e
+                ));
+                continue;
+            }
+        };
+
+        // Parse sync items
+        let items: Vec<SyncItem> = match serde_json::from_slice(&payload) {
+            Ok(i) => i,
+            Err(e) => {
+                display::warning(&format!(
+                    "Failed to parse sync items from {}: {}",
+                    sender.device_name, e
+                ));
+                continue;
+            }
+        };
+
+        // Process the items
+        match orchestrator.process_incoming(items.clone()) {
+            Ok(applied) => {
+                if !applied.is_empty() {
+                    display::info(&format!(
+                        "Applied {} sync changes from {}",
+                        applied.len(),
+                        sender.device_name
+                    ));
+
+                    // Apply the changes to storage
+                    for item in &applied {
+                        if let Err(e) = apply_sync_item(wb, item) {
+                            display::warning(&format!("Failed to apply sync item: {}", e));
+                        }
+                    }
+                }
+                processed += 1;
+            }
+            Err(e) => {
+                display::warning(&format!(
+                    "Failed to process sync from {}: {:?}",
+                    sender.device_name, e
+                ));
+            }
+        }
+
+        // Mark as synced
+        if let Err(e) = orchestrator.mark_synced(&sender_device_id, msg.version) {
+            display::warning(&format!("Failed to mark sync complete: {:?}", e));
+        }
+    }
+
+    Ok(processed)
+}
+
+/// Applies a single sync item to storage.
+fn apply_sync_item(wb: &Vauchi<WebSocketTransport>, item: &SyncItem) -> Result<()> {
+    match item {
+        SyncItem::ContactAdded { contact_data, .. } => {
+            // Check if contact already exists
+            if wb.get_contact(&contact_data.id)?.is_none() {
+                // Reconstruct contact from sync data
+                let card: vauchi_core::ContactCard =
+                    serde_json::from_str(&contact_data.card_json).unwrap_or_else(|_| {
+                        vauchi_core::ContactCard::new(&contact_data.display_name)
+                    });
+                let shared_key =
+                    vauchi_core::crypto::SymmetricKey::from_bytes(contact_data.shared_key);
+                let contact = Contact::from_exchange(contact_data.public_key, card, shared_key);
+                wb.add_contact(contact)?;
+                display::success(&format!(
+                    "Synced new contact: {}",
+                    contact_data.display_name
+                ));
+            }
+        }
+        SyncItem::ContactRemoved { contact_id, .. } => {
+            if wb.get_contact(contact_id)?.is_some() {
+                wb.remove_contact(contact_id)?;
+                display::info(&format!("Removed contact: {}...", &contact_id[..8]));
+            }
+        }
+        SyncItem::CardUpdated {
+            field_label,
+            new_value,
+            ..
+        } => {
+            // Update own card field
+            if let Some(mut card) = wb.storage().load_own_card()? {
+                // Find and update the field, or add it
+                if card.update_field_value(field_label, new_value).is_ok() {
+                    wb.storage().save_own_card(&card)?;
+                    display::info(&format!("Synced card field: {}", field_label));
+                }
+            }
+        }
+        SyncItem::VisibilityChanged {
+            contact_id,
+            field_label,
+            is_visible,
+            ..
+        } => {
+            // Update visibility for a specific field to a contact
+            display::info(&format!(
+                "Synced visibility for contact {}... field {} = {}",
+                &contact_id[..8],
+                field_label,
+                is_visible
+            ));
+            // Note: Visibility is per-field per-contact, handled by labels system
+            // This requires label management which is a more complex operation
+        }
+    }
+    Ok(())
+}
+
 /// Runs the sync command.
 pub async fn run(config: &CliConfig) -> Result<()> {
     let wb = open_vauchi(config)?;
@@ -421,6 +729,7 @@ pub async fn run(config: &CliConfig) -> Result<()> {
         .identity()
         .ok_or_else(|| anyhow::anyhow!("No identity found"))?;
     let client_id = identity.public_id();
+    let device_id_hex = hex::encode(identity.device_id());
 
     // Create a spinner for connection progress
     let spinner = ProgressBar::new_spinner();
@@ -445,8 +754,8 @@ pub async fn run(config: &CliConfig) -> Result<()> {
         stream.set_read_timeout(Some(std::time::Duration::from_millis(1000)))?;
     }
 
-    // Send handshake
-    send_handshake(&mut socket, &client_id)?;
+    // Send handshake with device_id for inter-device sync
+    send_handshake(&mut socket, &client_id, Some(&device_id_hex))?;
 
     // Small delay to let server send pending messages
     std::thread::sleep(std::time::Duration::from_millis(500));
@@ -461,8 +770,9 @@ pub async fn run(config: &CliConfig) -> Result<()> {
     recv_spinner.set_message("Receiving pending messages...");
     recv_spinner.enable_steady_tick(std::time::Duration::from_millis(80));
 
-    // Receive pending messages
-    let (received, exchange_messages, card_updates) = receive_pending(&mut socket, &wb)?;
+    // Receive pending messages (including device sync messages)
+    let (received, exchange_messages, card_updates, device_sync_messages) =
+        receive_pending(&mut socket, &wb)?;
     recv_spinner.finish_and_clear();
 
     // Process exchange messages
@@ -472,15 +782,27 @@ pub async fn run(config: &CliConfig) -> Result<()> {
     // Process encrypted card updates
     let cards_updated = process_card_updates(&wb, card_updates)?;
 
-    // Send pending outbound updates
+    // Process device sync messages from other devices
+    let device_syncs_processed = process_device_sync_messages(&wb, device_sync_messages, identity)?;
+
+    // Send pending outbound updates to contacts
     let updates_sent = send_pending_updates(&wb, &mut socket, &client_id)?;
+
+    // Send pending device sync to other linked devices
+    let device_syncs_sent = send_device_sync(&wb, &mut socket, identity)?;
 
     // Close connection
     let _ = socket.close(None);
 
     // Display results
     println!();
-    let total_changes = received + contacts_added + contacts_updated + cards_updated + updates_sent;
+    let total_changes = received
+        + contacts_added
+        + contacts_updated
+        + cards_updated
+        + updates_sent
+        + device_syncs_processed
+        + device_syncs_sent;
     if total_changes > 0 {
         let mut summary = format!("Sync complete: {} received", received);
         if contacts_added > 0 {
@@ -494,6 +816,12 @@ pub async fn run(config: &CliConfig) -> Result<()> {
         }
         if updates_sent > 0 {
             summary.push_str(&format!(", {} sent", updates_sent));
+        }
+        if device_syncs_processed > 0 {
+            summary.push_str(&format!(", {} device syncs received", device_syncs_processed));
+        }
+        if device_syncs_sent > 0 {
+            summary.push_str(&format!(", {} device syncs sent", device_syncs_sent));
         }
         display::success(&summary);
     } else {

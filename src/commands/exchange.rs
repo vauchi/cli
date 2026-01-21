@@ -10,6 +10,7 @@ use tungstenite::stream::MaybeTlsStream;
 use tungstenite::{connect, Message, WebSocket};
 use vauchi_core::exchange::{ExchangeQR, X3DH};
 use vauchi_core::network::MockTransport;
+use vauchi_core::sync::{ContactSyncData, DeviceSyncOrchestrator, SyncItem};
 use vauchi_core::{Contact, Identity, IdentityBackup, Vauchi, VauchiConfig};
 
 use crate::config::CliConfig;
@@ -49,6 +50,7 @@ fn send_handshake(
 ) -> Result<()> {
     let handshake = Handshake {
         client_id: client_id.to_string(),
+        device_id: None, // No device sync needed for exchange
     };
     let envelope = create_envelope(MessagePayload::Handshake(handshake));
     let data = encode_message(&envelope).map_err(|e| anyhow::anyhow!(e))?;
@@ -93,6 +95,44 @@ fn send_exchange_message(
 
     // Close connection
     let _ = socket.close(None);
+
+    Ok(())
+}
+
+/// Records a new contact addition for inter-device sync.
+fn record_contact_added(wb: &Vauchi<MockTransport>, contact: &Contact) -> Result<()> {
+    // Try to load device registry - if none exists, skip (single device)
+    let registry = match wb.storage().load_device_registry()? {
+        Some(r) if r.device_count() > 1 => r,
+        _ => return Ok(()), // No other devices to sync to
+    };
+
+    let identity = wb
+        .identity()
+        .ok_or_else(|| anyhow::anyhow!("No identity found"))?;
+
+    // Create orchestrator
+    let mut orchestrator = DeviceSyncOrchestrator::new(
+        wb.storage(),
+        identity.create_device_info(),
+        registry,
+    );
+
+    // Create ContactSyncData from the contact
+    let contact_data = ContactSyncData::from_contact(contact);
+
+    // Record the sync item
+    let item = SyncItem::ContactAdded {
+        contact_data,
+        timestamp: std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_secs(),
+    };
+
+    if let Err(e) = orchestrator.record_local_change(item) {
+        display::warning(&format!("Could not record sync item: {:?}", e));
+    }
 
     Ok(())
 }
@@ -166,7 +206,13 @@ pub fn complete(config: &CliConfig, data: &str) -> Result<()> {
     let contact_id = contact.id().to_string();
 
     // Add the contact
+    let contact_clone = contact.clone();
     wb.add_contact(contact)?;
+
+    // Record for inter-device sync (if multiple devices)
+    if let Err(e) = record_contact_added(&wb, &contact_clone) {
+        display::warning(&format!("Could not record for device sync: {}", e));
+    }
 
     // Initialize Double Ratchet as initiator for forward secrecy
     wb.create_ratchet_as_initiator(&contact_id, &shared_secret, *their_exchange_key)?;
