@@ -10,8 +10,10 @@ name = "vauchi"
 path = "src/main.rs"
 
 [dependencies]
-# Core library (git dependency with strict version pinning)
-vauchi-core = { git = "https://gitlab.com/vauchi/core.git", tag = "v0.1.0" }
+# Core library - path dependency for local development
+# Switch to git dependency after repos are created on GitLab:
+# vauchi-core = { git = "https://gitlab.com/vauchi/core.git", tag = "v0.1.0" }
+vauchi-core = { path = "../core/vauchi-core" }
 
 # CLI framework
 clap = { version = "4", features = ["derive", "env"] }
