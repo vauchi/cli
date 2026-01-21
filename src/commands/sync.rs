@@ -11,7 +11,7 @@ use tungstenite::stream::MaybeTlsStream;
 use tungstenite::{connect, Message, WebSocket};
 use vauchi_core::exchange::X3DH;
 use vauchi_core::network::WebSocketTransport;
-use vauchi_core::sync::{DeviceSyncOrchestrator, SyncItem};
+use vauchi_core::sync::{ContactSyncData, DeviceSyncOrchestrator, SyncItem};
 use vauchi_core::{Contact, Identity, IdentityBackup, Vauchi, VauchiConfig};
 
 use crate::config::CliConfig;
@@ -326,7 +326,13 @@ fn process_exchange_messages(
         // Create contact
         let contact = Contact::from_exchange(identity_key, card, shared_secret.clone());
         let contact_id = contact.id().to_string();
+        let contact_clone = contact.clone();
         wb.add_contact(contact)?;
+
+        // Record for inter-device sync (if multiple devices)
+        if let Err(e) = record_contact_for_device_sync(wb, &contact_clone) {
+            display::warning(&format!("Could not record for device sync: {}", e));
+        }
 
         // Initialize Double Ratchet as responder for forward secrecy
         // Recreate the X3DH keypair since we can't clone it
@@ -464,12 +470,18 @@ fn send_device_sync(
         return Ok(0);
     }
 
-    // Create orchestrator
-    let orchestrator = DeviceSyncOrchestrator::new(
+    // Load orchestrator with persisted sync state
+    let orchestrator = match DeviceSyncOrchestrator::load(
         wb.storage(),
         identity.create_device_info(),
         registry.clone(),
-    );
+    ) {
+        Ok(o) => o,
+        Err(e) => {
+            display::warning(&format!("Failed to load device sync state: {}", e));
+            return Ok(0);
+        }
+    };
 
     let client_id = identity.public_id();
     let our_device_id = identity.device_id();
@@ -658,6 +670,42 @@ fn process_device_sync_messages(
     }
 
     Ok(processed)
+}
+
+/// Records a contact addition for inter-device sync.
+fn record_contact_for_device_sync(wb: &Vauchi<WebSocketTransport>, contact: &Contact) -> Result<()> {
+    // Try to load device registry - if none exists or only one device, skip
+    let registry = match wb.storage().load_device_registry()? {
+        Some(r) if r.device_count() > 1 => r,
+        _ => return Ok(()), // No other devices to sync to
+    };
+
+    let identity = wb
+        .identity()
+        .ok_or_else(|| anyhow::anyhow!("No identity found"))?;
+
+    // Create orchestrator
+    let mut orchestrator = DeviceSyncOrchestrator::new(
+        wb.storage(),
+        identity.create_device_info(),
+        registry,
+    );
+
+    // Create ContactSyncData from the contact
+    let contact_data = ContactSyncData::from_contact(contact);
+
+    // Record the sync item
+    let item = SyncItem::ContactAdded {
+        contact_data,
+        timestamp: std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_secs(),
+    };
+
+    orchestrator.record_local_change(item)?;
+
+    Ok(())
 }
 
 /// Applies a single sync item to storage.
