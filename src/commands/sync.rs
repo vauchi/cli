@@ -684,12 +684,16 @@ fn record_contact_for_device_sync(wb: &Vauchi<WebSocketTransport>, contact: &Con
         .identity()
         .ok_or_else(|| anyhow::anyhow!("No identity found"))?;
 
-    // Create orchestrator
-    let mut orchestrator = DeviceSyncOrchestrator::new(
+    // Load orchestrator with existing state (not new(), which would overwrite previous items)
+    let mut orchestrator = DeviceSyncOrchestrator::load(
         wb.storage(),
         identity.create_device_info(),
         registry,
-    );
+    ).unwrap_or_else(|_| DeviceSyncOrchestrator::new(
+        wb.storage(),
+        identity.create_device_info(),
+        identity.initial_device_registry(),
+    ));
 
     // Create ContactSyncData from the contact
     let contact_data = ContactSyncData::from_contact(contact);
