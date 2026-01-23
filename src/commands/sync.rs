@@ -527,7 +527,7 @@ fn send_device_sync(
         let version = orchestrator.version_vector().get(our_device_id);
 
         // Create and send message
-        let target_device_id_hex = hex::encode(&device.device_id);
+        let target_device_id_hex = hex::encode(device.device_id);
         let envelope = create_device_sync_message(
             &client_id,
             &target_device_id_hex,
