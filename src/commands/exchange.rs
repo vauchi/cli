@@ -8,8 +8,10 @@ use std::net::TcpStream;
 use anyhow::{bail, Result};
 use tungstenite::stream::MaybeTlsStream;
 use tungstenite::{connect, Message, WebSocket};
+use vauchi_core::contact_card::ContactCard;
 use vauchi_core::exchange::{ExchangeQR, X3DH};
 use vauchi_core::network::MockTransport;
+use vauchi_core::sync::delta::CardDelta;
 use vauchi_core::sync::{ContactSyncData, DeviceSyncOrchestrator, SyncItem};
 use vauchi_core::{Contact, Identity, IdentityBackup, Vauchi, VauchiConfig};
 
@@ -84,6 +86,76 @@ fn send_exchange_message(
         recipient_id: recipient_id.to_string(),
         sender_id: our_id.clone(),
         ciphertext: exchange_msg.to_bytes(),
+    };
+
+    let envelope = create_envelope(MessagePayload::EncryptedUpdate(update));
+    let data = encode_message(&envelope).map_err(|e| anyhow::anyhow!(e))?;
+    socket.send(Message::Binary(data))?;
+
+    // Wait briefly for acknowledgment
+    std::thread::sleep(std::time::Duration::from_millis(100));
+
+    // Close connection
+    let _ = socket.close(None);
+
+    Ok(())
+}
+
+/// Sends an initial encrypted card update to establish the responder's send chain.
+///
+/// This is critical for the Double Ratchet protocol: the responder cannot send
+/// messages until they receive at least one message from the initiator. By sending
+/// our card immediately after the exchange, we ensure both parties can send.
+fn send_initial_card_update(
+    config: &CliConfig,
+    wb: &Vauchi<MockTransport>,
+    identity: &Identity,
+    contact_id: &str,
+    recipient_id: &str,
+) -> Result<()> {
+    // Load our own card
+    let our_card = wb
+        .storage()
+        .load_own_card()?
+        .ok_or_else(|| anyhow::anyhow!("No own card found"))?;
+
+    // Create a delta from empty card to our current card
+    let empty_card = ContactCard::new(identity.display_name());
+    let mut delta = CardDelta::compute(&empty_card, &our_card);
+    delta.sign(identity);
+
+    // Serialize delta
+    let delta_bytes =
+        serde_json::to_vec(&delta).map_err(|e| anyhow::anyhow!("Serialization error: {}", e))?;
+
+    // Load ratchet and encrypt
+    let (mut ratchet, is_initiator) = wb
+        .storage()
+        .load_ratchet_state(contact_id)?
+        .ok_or_else(|| anyhow::anyhow!("Ratchet not found for contact"))?;
+
+    let ratchet_msg = ratchet
+        .encrypt(&delta_bytes)
+        .map_err(|e| anyhow::anyhow!("Encryption error: {:?}", e))?;
+    let encrypted = serde_json::to_vec(&ratchet_msg)
+        .map_err(|e| anyhow::anyhow!("Serialization error: {}", e))?;
+
+    // Save updated ratchet state
+    wb.storage()
+        .save_ratchet_state(contact_id, &ratchet, is_initiator)?;
+
+    // Connect to relay and send
+    let (mut socket, _) = connect(&config.relay_url)?;
+
+    // Send handshake
+    let our_id = identity.public_id();
+    send_handshake(&mut socket, &our_id)?;
+
+    // Create encrypted update message
+    let update = EncryptedUpdate {
+        recipient_id: recipient_id.to_string(),
+        sender_id: our_id,
+        ciphertext: encrypted,
     };
 
     let envelope = create_envelope(MessagePayload::EncryptedUpdate(update));
@@ -216,6 +288,18 @@ pub fn complete(config: &CliConfig, data: &str) -> Result<()> {
 
     // Initialize Double Ratchet as initiator for forward secrecy
     wb.create_ratchet_as_initiator(&contact_id, &shared_secret, *their_exchange_key)?;
+
+    // Send initial encrypted card update to establish responder's send chain
+    // This is critical: the responder cannot send until they receive a message from us
+    match send_initial_card_update(config, &wb, identity, &contact_id, &their_public_id) {
+        Ok(()) => {
+            display::info("Sent initial card to enable bidirectional messaging");
+        }
+        Err(e) => {
+            display::warning(&format!("Could not send initial card update: {}", e));
+            display::info("The responder may not be able to send updates until you sync again.");
+        }
+    }
 
     // Send exchange message via relay with our ephemeral key
     println!("Sending exchange request via relay...");
