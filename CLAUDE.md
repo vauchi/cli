@@ -1,8 +1,10 @@
 # CLAUDE.md - vauchi-cli
 
+> **Inherits**: See [/CLAUDE.md](/CLAUDE.md) for project-wide rules.
+
 Command-line interface for testing and development.
 
-## Rules
+## Component-Specific Rules
 
 - CLI is for testing/dev, not end-user facing
 - Depends on `vauchi-core`
