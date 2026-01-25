@@ -36,6 +36,10 @@ struct Cli {
         default_value = "wss://relay.vauchi.app"
     )]
     relay: String,
+
+    /// Locale for output messages (en, de, fr, es)
+    #[arg(long, global = true, env = "VAUCHI_LOCALE", default_value = "en")]
+    locale: String,
 }
 
 #[derive(Subcommand)]
@@ -94,6 +98,28 @@ enum Commands {
         /// Shell type
         #[arg(value_enum)]
         shell: Shell,
+    },
+
+    /// Display FAQ and help information
+    #[command(subcommand)]
+    Faq(FaqCommands),
+}
+
+#[derive(Subcommand)]
+enum FaqCommands {
+    /// List all FAQ items (optionally filter by search query)
+    List {
+        /// Search query to filter FAQs
+        query: Option<String>,
+    },
+
+    /// Show FAQ categories
+    Categories,
+
+    /// Show FAQs in a specific category
+    Category {
+        /// Category: getting-started, privacy, recovery, contacts, updates, features
+        name: String,
     },
 }
 
@@ -569,6 +595,17 @@ async fn main() -> Result<()> {
             let mut cmd = Cli::command();
             generate(shell, &mut cmd, "vauchi", &mut io::stdout());
         }
+        Commands::Faq(cmd) => match cmd {
+            FaqCommands::List { query } => {
+                display::display_faqs(query.as_deref(), &cli.locale);
+            }
+            FaqCommands::Categories => {
+                display::display_faq_categories(&cli.locale);
+            }
+            FaqCommands::Category { name } => {
+                display::display_faqs_by_category(&name, &cli.locale);
+            }
+        },
     }
 
     Ok(())

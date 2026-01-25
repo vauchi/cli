@@ -275,3 +275,165 @@ pub fn display_contacts_table(contacts: &[Contact]) {
 
     println!("{}", table);
 }
+
+// ============================================================
+// FAQ Display Functions
+// ============================================================
+
+use vauchi_core::help::{get_faqs, get_faqs_by_category, search_faqs, HelpCategory};
+use vauchi_core::i18n::{get_string, Locale};
+
+/// Parse locale code to Locale enum
+fn parse_locale(code: &str) -> Locale {
+    Locale::from_code(code).unwrap_or(Locale::English)
+}
+
+/// Get localized string
+fn t(key: &str, locale: &str) -> String {
+    get_string(parse_locale(locale), key)
+}
+
+/// Displays FAQ items, optionally filtered by search query.
+pub fn display_faqs(query: Option<&str>, locale: &str) {
+    let faqs = if let Some(q) = query {
+        search_faqs(q)
+    } else {
+        get_faqs()
+    };
+
+    if faqs.is_empty() {
+        if let Some(q) = query {
+            println!("No FAQs matching '{}'", q);
+        } else {
+            println!("No FAQs available");
+        }
+        return;
+    }
+
+    println!();
+    let title = if let Some(q) = query {
+        format!("{} ({})", t("help.faq", locale), q)
+    } else {
+        t("help.faq", locale)
+    };
+    println!("{}", style(title).bold());
+    println!("{}", "─".repeat(60));
+    println!();
+
+    for faq in faqs {
+        println!("{}", style(&faq.question).cyan().bold());
+        // Word wrap the answer at 60 chars
+        for line in wrap_text(&faq.answer, 60) {
+            println!("  {}", line);
+        }
+        println!();
+    }
+}
+
+/// Displays FAQ categories.
+pub fn display_faq_categories(locale: &str) {
+    println!();
+    println!("{}", style(t("help.faq", locale)).bold());
+    println!("{}", "─".repeat(40));
+    println!();
+
+    let categories = [
+        ("getting-started", HelpCategory::GettingStarted),
+        ("privacy", HelpCategory::Privacy),
+        ("recovery", HelpCategory::Recovery),
+        ("contacts", HelpCategory::Contacts),
+        ("updates", HelpCategory::Updates),
+        ("features", HelpCategory::Features),
+    ];
+
+    for (id, category) in &categories {
+        let faqs = get_faqs_by_category(*category);
+        println!(
+            "  {:16} {} ({} FAQs)",
+            style(id).cyan(),
+            category.display_name(),
+            faqs.len()
+        );
+    }
+
+    println!();
+    println!("{}", "─".repeat(40));
+    println!("Use: {}", style("vauchi help category <name>").cyan());
+    println!();
+}
+
+/// Displays FAQs for a specific category.
+pub fn display_faqs_by_category(category_name: &str, locale: &str) {
+    let category = match category_name.to_lowercase().as_str() {
+        "getting-started" | "gettingstarted" | "start" => Some(HelpCategory::GettingStarted),
+        "privacy" | "security" => Some(HelpCategory::Privacy),
+        "recovery" => Some(HelpCategory::Recovery),
+        "contacts" | "contact" => Some(HelpCategory::Contacts),
+        "updates" | "sync" => Some(HelpCategory::Updates),
+        "features" | "feature" => Some(HelpCategory::Features),
+        _ => None,
+    };
+
+    let Some(cat) = category else {
+        error(&format!("Unknown category: {}", category_name));
+        info("Valid categories: getting-started, privacy, recovery, contacts, updates, features");
+        return;
+    };
+
+    let faqs = get_faqs_by_category(cat);
+
+    if faqs.is_empty() {
+        println!("No FAQs in category '{}'", category_name);
+        return;
+    }
+
+    println!();
+    println!(
+        "{}: {}",
+        style(t("help.faq", locale)).bold(),
+        style(cat.display_name()).cyan()
+    );
+    println!("{}", "─".repeat(60));
+    println!();
+
+    for faq in faqs {
+        println!("{}", style(&faq.question).cyan().bold());
+        for line in wrap_text(&faq.answer, 60) {
+            println!("  {}", line);
+        }
+        println!();
+    }
+}
+
+/// Simple text wrapping.
+fn wrap_text(text: &str, max_width: usize) -> Vec<String> {
+    let mut lines = Vec::new();
+
+    for paragraph in text.lines() {
+        if paragraph.is_empty() {
+            lines.push(String::new());
+            continue;
+        }
+
+        let words: Vec<&str> = paragraph.split_whitespace().collect();
+        let mut current_line = String::new();
+
+        for word in words {
+            if current_line.is_empty() {
+                current_line = word.to_string();
+            } else if current_line.len() + 1 + word.len() <= max_width {
+                current_line.push(' ');
+                current_line.push_str(word);
+            } else {
+                lines.push(current_line);
+                current_line = word.to_string();
+            }
+        }
+
+        if !current_line.is_empty() {
+            lines.push(current_line);
+        }
+    }
+
+    lines
+}
