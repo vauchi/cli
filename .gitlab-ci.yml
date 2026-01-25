@@ -39,7 +39,6 @@ lint:clippy:
   script:
     - rustup component add clippy
     - cargo clippy --all-targets -- -D warnings
-  allow_failure: true  # May fail on git dependency issues
 
 # ============================================================
 # Test Stage (MR only)
@@ -50,7 +49,6 @@ test:unit:
   stage: test
   script:
     - cargo test --all-targets
-  allow_failure: true  # May fail on git dependency issues
 
 # ============================================================
 # Security Stage (MR only)
@@ -62,4 +60,3 @@ security:audit:
   script:
     - cargo install cargo-audit || true
     - cargo audit
-  allow_failure: true
