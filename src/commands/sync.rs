@@ -222,7 +222,12 @@ fn receive_pending(
         }
     }
 
-    Ok((received, exchange_messages, card_updates, device_sync_messages))
+    Ok((
+        received,
+        exchange_messages,
+        card_updates,
+        device_sync_messages,
+    ))
 }
 
 /// Processes exchange messages and creates contacts.
@@ -610,10 +615,9 @@ fn process_device_sync_messages(
         };
 
         // Decrypt the payload
-        let payload = match orchestrator.decrypt_from_device(
-            &sender.exchange_public_key,
-            &msg.encrypted_payload,
-        ) {
+        let payload = match orchestrator
+            .decrypt_from_device(&sender.exchange_public_key, &msg.encrypted_payload)
+        {
             Ok(p) => p,
             Err(e) => {
                 display::warning(&format!(
@@ -673,7 +677,10 @@ fn process_device_sync_messages(
 }
 
 /// Records a contact addition for inter-device sync.
-fn record_contact_for_device_sync(wb: &Vauchi<WebSocketTransport>, contact: &Contact) -> Result<()> {
+fn record_contact_for_device_sync(
+    wb: &Vauchi<WebSocketTransport>,
+    contact: &Contact,
+) -> Result<()> {
     // Try to load device registry - if none exists or only one device, skip
     let registry = match wb.storage().load_device_registry()? {
         Some(r) if r.device_count() > 1 => r,
@@ -685,15 +692,15 @@ fn record_contact_for_device_sync(wb: &Vauchi<WebSocketTransport>, contact: &Con
         .ok_or_else(|| anyhow::anyhow!("No identity found"))?;
 
     // Load orchestrator with existing state (not new(), which would overwrite previous items)
-    let mut orchestrator = DeviceSyncOrchestrator::load(
-        wb.storage(),
-        identity.create_device_info(),
-        registry,
-    ).unwrap_or_else(|_| DeviceSyncOrchestrator::new(
-        wb.storage(),
-        identity.create_device_info(),
-        identity.initial_device_registry(),
-    ));
+    let mut orchestrator =
+        DeviceSyncOrchestrator::load(wb.storage(), identity.create_device_info(), registry)
+            .unwrap_or_else(|_| {
+                DeviceSyncOrchestrator::new(
+                    wb.storage(),
+                    identity.create_device_info(),
+                    identity.initial_device_registry(),
+                )
+            });
 
     // Create ContactSyncData from the contact
     let contact_data = ContactSyncData::from_contact(contact);
@@ -719,10 +726,8 @@ fn apply_sync_item(wb: &Vauchi<WebSocketTransport>, item: &SyncItem) -> Result<(
             // Check if contact already exists
             if wb.get_contact(&contact_data.id)?.is_none() {
                 // Reconstruct contact from sync data
-                let card: vauchi_core::ContactCard =
-                    serde_json::from_str(&contact_data.card_json).unwrap_or_else(|_| {
-                        vauchi_core::ContactCard::new(&contact_data.display_name)
-                    });
+                let card: vauchi_core::ContactCard = serde_json::from_str(&contact_data.card_json)
+                    .unwrap_or_else(|_| vauchi_core::ContactCard::new(&contact_data.display_name));
                 let shared_key =
                     vauchi_core::crypto::SymmetricKey::from_bytes(contact_data.shared_key);
                 let contact = Contact::from_exchange(contact_data.public_key, card, shared_key);
@@ -870,7 +875,10 @@ pub async fn run(config: &CliConfig) -> Result<()> {
             summary.push_str(&format!(", {} sent", updates_sent));
         }
         if device_syncs_processed > 0 {
-            summary.push_str(&format!(", {} device syncs received", device_syncs_processed));
+            summary.push_str(&format!(
+                ", {} device syncs received",
+                device_syncs_processed
+            ));
         }
         if device_syncs_sent > 0 {
             summary.push_str(&format!(", {} device syncs sent", device_syncs_sent));

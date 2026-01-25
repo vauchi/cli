@@ -9,6 +9,7 @@ use vauchi_core::contact_card::ContactAction;
 use vauchi_core::network::MockTransport;
 use vauchi_core::{Identity, IdentityBackup, Vauchi, VauchiConfig};
 
+use crate::commands::device_sync_helpers::{record_contact_removed, record_visibility_changed};
 use crate::config::CliConfig;
 use crate::display;
 
@@ -112,12 +113,20 @@ pub fn remove(config: &CliConfig, id: &str) -> Result<()> {
     // Get contact name before removing
     let contact = wb.get_contact(id)?;
     let name = contact.as_ref().map(|c| c.display_name().to_string());
+    let contact_id = contact.as_ref().map(|c| c.id().to_string());
 
     if wb.remove_contact(id)? {
         display::success(&format!(
             "Removed contact: {}",
             name.unwrap_or_else(|| id.to_string())
         ));
+
+        // Record for inter-device sync
+        if let Some(cid) = contact_id {
+            if let Err(e) = record_contact_removed(&wb, &cid) {
+                display::warning(&format!("Failed to record for device sync: {}", e));
+            }
+        }
     } else {
         display::warning(&format!("Contact '{}' not found", id));
     }
@@ -184,6 +193,7 @@ pub fn hide_field(config: &CliConfig, contact_id_or_name: &str, field_label: &st
     // Find contact
     let mut contact = find_contact(&wb, contact_id_or_name)?;
     let contact_name = contact.display_name().to_string();
+    let contact_id = contact.id().to_string();
 
     // Find field ID by label
     let field_id = find_field_id(&wb, field_label)?;
@@ -198,6 +208,11 @@ pub fn hide_field(config: &CliConfig, contact_id_or_name: &str, field_label: &st
     ));
     display::info("Changes will take effect on next sync.");
 
+    // Record for inter-device sync
+    if let Err(e) = record_visibility_changed(&wb, &contact_id, field_label, false) {
+        display::warning(&format!("Failed to record for device sync: {}", e));
+    }
+
     Ok(())
 }
 
@@ -208,6 +223,7 @@ pub fn unhide_field(config: &CliConfig, contact_id_or_name: &str, field_label: &
     // Find contact
     let mut contact = find_contact(&wb, contact_id_or_name)?;
     let contact_name = contact.display_name().to_string();
+    let contact_id = contact.id().to_string();
 
     // Find field ID by label
     let field_id = find_field_id(&wb, field_label)?;
@@ -221,6 +237,11 @@ pub fn unhide_field(config: &CliConfig, contact_id_or_name: &str, field_label: &
         field_label, contact_name
     ));
     display::info("Changes will take effect on next sync.");
+
+    // Record for inter-device sync
+    if let Err(e) = record_visibility_changed(&wb, &contact_id, field_label, true) {
+        display::warning(&format!("Failed to record for device sync: {}", e));
+    }
 
     Ok(())
 }
@@ -382,4 +403,129 @@ pub fn open_interactive(config: &CliConfig, contact_id_or_name: &str) -> Result<
 
     let selected_field = &fields[selection];
     open_field(config, contact.id(), selected_field.label())
+}
+
+/// Validates a contact's field value (social proof).
+pub fn validate_field(
+    config: &CliConfig,
+    contact_id_or_name: &str,
+    field_label: &str,
+) -> Result<()> {
+    let wb = open_vauchi(config)?;
+
+    // Find contact
+    let contact = find_contact(&wb, contact_id_or_name)?;
+    let contact_name = contact.display_name().to_string();
+    let contact_id = contact.id().to_string();
+
+    // Find the field by label
+    let field = contact
+        .card()
+        .fields()
+        .iter()
+        .find(|f| f.label().to_lowercase() == field_label.to_lowercase())
+        .ok_or_else(|| anyhow::anyhow!("Field '{}' not found for {}", field_label, contact_name))?;
+
+    let field_id = field.id().to_string();
+    let field_value = field.value().to_string();
+
+    // Create validation
+    let _validation = wb.validate_field(&contact_id, &field_id, &field_value)?;
+
+    display::success(&format!(
+        "Validated {} for {}: {}",
+        field_label, contact_name, field_value
+    ));
+    display::info("Your validation has been recorded.");
+
+    Ok(())
+}
+
+/// Revokes your validation of a contact's field.
+pub fn revoke_validation(
+    config: &CliConfig,
+    contact_id_or_name: &str,
+    field_label: &str,
+) -> Result<()> {
+    let wb = open_vauchi(config)?;
+
+    // Find contact
+    let contact = find_contact(&wb, contact_id_or_name)?;
+    let contact_name = contact.display_name().to_string();
+    let contact_id = contact.id().to_string();
+
+    // Find the field by label
+    let field = contact
+        .card()
+        .fields()
+        .iter()
+        .find(|f| f.label().to_lowercase() == field_label.to_lowercase())
+        .ok_or_else(|| anyhow::anyhow!("Field '{}' not found for {}", field_label, contact_name))?;
+
+    let field_id = field.id().to_string();
+
+    // Revoke validation
+    if wb.revoke_field_validation(&contact_id, &field_id)? {
+        display::success(&format!(
+            "Revoked validation for {} field of {}",
+            field_label, contact_name
+        ));
+    } else {
+        display::warning(&format!(
+            "No validation found to revoke for {} field of {}",
+            field_label, contact_name
+        ));
+    }
+
+    Ok(())
+}
+
+/// Shows validation status for all of a contact's fields.
+pub fn show_validation_status(config: &CliConfig, contact_id_or_name: &str) -> Result<()> {
+    use vauchi_core::social::TrustLevel;
+
+    let wb = open_vauchi(config)?;
+
+    // Find contact
+    let contact = find_contact(&wb, contact_id_or_name)?;
+    let contact_name = contact.display_name().to_string();
+    let contact_id = contact.id().to_string();
+
+    println!();
+    println!("Validation status for {}:", contact_name);
+    println!();
+
+    let fields = contact.card().fields();
+    if fields.is_empty() {
+        display::info("No fields in contact's card.");
+        return Ok(());
+    }
+
+    for field in fields {
+        let status = wb.get_field_validation_status(&contact_id, field.id(), field.value())?;
+
+        let trust_indicator = match status.trust_level {
+            TrustLevel::Unverified => "○",
+            TrustLevel::LowConfidence => "◐",
+            TrustLevel::PartialConfidence => "◑",
+            TrustLevel::HighConfidence => "●",
+        };
+
+        let validated_by_me = if status.validated_by_me { " (you)" } else { "" };
+
+        println!(
+            "  {} {}: {} [{} validations{}]",
+            trust_indicator,
+            field.label(),
+            field.value(),
+            status.count,
+            validated_by_me
+        );
+    }
+
+    println!();
+    display::info("Legend: ○ unverified, ◐ low, ◑ partial, ● high confidence");
+    println!();
+
+    Ok(())
 }

@@ -207,6 +207,28 @@ enum ContactCommands {
         /// Field label to open (optional - interactive if not specified)
         field: Option<String>,
     },
+
+    /// Validate a contact's field (social proof)
+    Validate {
+        /// Contact ID or name
+        contact: String,
+        /// Field label to validate
+        field: String,
+    },
+
+    /// Revoke your validation of a contact's field
+    RevokeValidation {
+        /// Contact ID or name
+        contact: String,
+        /// Field label to revoke validation for
+        field: String,
+    },
+
+    /// Show validation status for a contact's fields
+    ValidationStatus {
+        /// Contact ID or name
+        contact: String,
+    },
 }
 
 #[derive(Subcommand)]
@@ -455,6 +477,15 @@ async fn main() -> Result<()> {
                     commands::contacts::open_interactive(&config, &contact)?;
                 }
             }
+            ContactCommands::Validate { contact, field } => {
+                commands::contacts::validate_field(&config, &contact, &field)?;
+            }
+            ContactCommands::RevokeValidation { contact, field } => {
+                commands::contacts::revoke_validation(&config, &contact, &field)?;
+            }
+            ContactCommands::ValidationStatus { contact } => {
+                commands::contacts::show_validation_status(&config, &contact)?;
+            }
         },
         Commands::Social(cmd) => match cmd {
             SocialCommands::List { query } => {
@@ -476,9 +507,11 @@ async fn main() -> Result<()> {
             DeviceCommands::List => commands::device::list(&config)?,
             DeviceCommands::Info => commands::device::info(&config)?,
             DeviceCommands::Link => commands::device::link(&config)?,
-            DeviceCommands::Join { qr_data, device_name, yes } => {
-                commands::device::join(&config, &qr_data, device_name.as_deref(), yes)?
-            }
+            DeviceCommands::Join {
+                qr_data,
+                device_name,
+                yes,
+            } => commands::device::join(&config, &qr_data, device_name.as_deref(), yes)?,
             DeviceCommands::Complete { request } => commands::device::complete(&config, &request)?,
             DeviceCommands::Finish { response } => commands::device::finish(&config, &response)?,
             DeviceCommands::Revoke { device_id } => commands::device::revoke(&config, &device_id)?,
