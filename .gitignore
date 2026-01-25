@@ -14,3 +14,4 @@ Thumbs.db
 
 # CLI data
 .vauchi/
+.cargo/
