@@ -36,6 +36,10 @@ struct Cli {
         default_value = "wss://relay.vauchi.app"
     )]
     relay: String,
+
+    /// Locale for output messages (en, de, fr, es)
+    #[arg(long, global = true, env = "VAUCHI_LOCALE", default_value = "en")]
+    locale: String,
 }
 
 #[derive(Subcommand)]
@@ -94,6 +98,28 @@ enum Commands {
         /// Shell type
         #[arg(value_enum)]
         shell: Shell,
+    },
+
+    /// Display FAQ and help information
+    #[command(subcommand)]
+    Faq(FaqCommands),
+}
+
+#[derive(Subcommand)]
+enum FaqCommands {
+    /// List all FAQ items (optionally filter by search query)
+    List {
+        /// Search query to filter FAQs
+        query: Option<String>,
+    },
+
+    /// Show FAQ categories
+    Categories,
+
+    /// Show FAQs in a specific category
+    Category {
+        /// Category: getting-started, privacy, recovery, contacts, updates, features
+        name: String,
     },
 }
 
@@ -206,6 +232,28 @@ enum ContactCommands {
         contact: String,
         /// Field label to open (optional - interactive if not specified)
         field: Option<String>,
+    },
+
+    /// Validate a contact's field (social proof)
+    Validate {
+        /// Contact ID or name
+        contact: String,
+        /// Field label to validate
+        field: String,
+    },
+
+    /// Revoke your validation of a contact's field
+    RevokeValidation {
+        /// Contact ID or name
+        contact: String,
+        /// Field label to revoke validation for
+        field: String,
+    },
+
+    /// Show validation status for a contact's fields
+    ValidationStatus {
+        /// Contact ID or name
+        contact: String,
     },
 }
 
@@ -455,6 +503,15 @@ async fn main() -> Result<()> {
                     commands::contacts::open_interactive(&config, &contact)?;
                 }
             }
+            ContactCommands::Validate { contact, field } => {
+                commands::contacts::validate_field(&config, &contact, &field)?;
+            }
+            ContactCommands::RevokeValidation { contact, field } => {
+                commands::contacts::revoke_validation(&config, &contact, &field)?;
+            }
+            ContactCommands::ValidationStatus { contact } => {
+                commands::contacts::show_validation_status(&config, &contact)?;
+            }
         },
         Commands::Social(cmd) => match cmd {
             SocialCommands::List { query } => {
@@ -476,9 +533,11 @@ async fn main() -> Result<()> {
             DeviceCommands::List => commands::device::list(&config)?,
             DeviceCommands::Info => commands::device::info(&config)?,
             DeviceCommands::Link => commands::device::link(&config)?,
-            DeviceCommands::Join { qr_data, device_name, yes } => {
-                commands::device::join(&config, &qr_data, device_name.as_deref(), yes)?
-            }
+            DeviceCommands::Join {
+                qr_data,
+                device_name,
+                yes,
+            } => commands::device::join(&config, &qr_data, device_name.as_deref(), yes)?,
             DeviceCommands::Complete { request } => commands::device::complete(&config, &request)?,
             DeviceCommands::Finish { response } => commands::device::finish(&config, &response)?,
             DeviceCommands::Revoke { device_id } => commands::device::revoke(&config, &device_id)?,
@@ -536,6 +595,17 @@ async fn main() -> Result<()> {
             let mut cmd = Cli::command();
             generate(shell, &mut cmd, "vauchi", &mut io::stdout());
         }
+        Commands::Faq(cmd) => match cmd {
+            FaqCommands::List { query } => {
+                display::display_faqs(query.as_deref(), &cli.locale);
+            }
+            FaqCommands::Categories => {
+                display::display_faq_categories(&cli.locale);
+            }
+            FaqCommands::Category { name } => {
+                display::display_faqs_by_category(&name, &cli.locale);
+            }
+        },
     }
 
     Ok(())

@@ -143,7 +143,12 @@ pub fn link(config: &CliConfig) -> Result<()> {
 }
 
 /// Joins an existing identity by scanning/pasting the link QR data.
-pub fn join(config: &CliConfig, qr_data: &str, device_name_arg: Option<&str>, yes: bool) -> Result<()> {
+pub fn join(
+    config: &CliConfig,
+    qr_data: &str,
+    device_name_arg: Option<&str>,
+    yes: bool,
+) -> Result<()> {
     // Check if already initialized
     if config.is_initialized() {
         display::warning("Vauchi is already initialized on this device.");
@@ -243,11 +248,8 @@ pub fn complete(config: &CliConfig, request_data: &str) -> Result<()> {
     let initiator = identity.restore_device_link_initiator(registry.clone(), saved_qr);
 
     // Create sync payload with all existing contacts and own card
-    let sync_orchestrator = DeviceSyncOrchestrator::new(
-        wb.storage(),
-        identity.create_device_info(),
-        registry,
-    );
+    let sync_orchestrator =
+        DeviceSyncOrchestrator::new(wb.storage(), identity.create_device_info(), registry);
     let sync_payload = sync_orchestrator
         .create_full_sync_payload()
         .map_err(|e| anyhow::anyhow!("Failed to create sync payload: {}", e))?;
