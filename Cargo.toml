@@ -1,9 +1,13 @@
+# SPDX-FileCopyrightText: 2026 Mattia Egloff <mattia.egloff@pm.me>
+#
+# SPDX-License-Identifier: GPL-3.0-or-later
+
 [package]
 name = "vauchi-cli"
 version = "0.1.0"
 edition = "2021"
 description = "Command-line interface for Vauchi"
-license = "MIT"
+license = "GPL-3.0-or-later"
 
 [[bin]]
 name = "vauchi"
