@@ -6,8 +6,13 @@
 #
 # Command-line interface
 #
+# Performance optimizations:
+#   - Change-based rules: Jobs run only when relevant files change
+#   - Timeouts: Prevent runaway jobs from blocking runners
+#   - Read-only cache for lint jobs
+#
 # Pipeline strategy:
-#   - MR: Full validation (lint, test, security)
+#   - MR: Validation on relevant file changes
 #   - Main: No pipeline (validated via MR)
 #
 # Uses shared templates from vauchi/scripts for consistency.
@@ -27,40 +32,46 @@ stages:
   - security
 
 # ============================================================
-# Lint Stage (MR only)
+# Lint Stage (runs on Rust code changes)
 # ============================================================
 
 lint:format:
-  extends: [.rust-job, .validation-only]
+  extends: [.rust-job, .validation-rust, .timeout-quick]
   stage: lint
+  cache:
+    policy: pull  # Read-only cache for lint
   script:
     - rustup component add rustfmt
     - cargo fmt --all -- --check
 
 lint:clippy:
-  extends: [.rust-job, .validation-only]
+  extends: [.rust-job, .validation-rust, .timeout-quick]
   stage: lint
+  cache:
+    policy: pull  # Read-only cache for lint
   script:
     - rustup component add clippy
     - cargo clippy --all-targets -- -D warnings
 
 # ============================================================
-# Test Stage (MR only)
+# Test Stage (runs on Rust code changes)
 # ============================================================
 
 test:unit:
-  extends: [.rust-job, .validation-only]
+  extends: [.rust-job, .validation-rust, .timeout-standard]
   stage: test
   script:
     - cargo test --all-targets
 
 # ============================================================
-# Security Stage (MR only)
+# Security Stage (runs on dependency changes)
 # ============================================================
 
 security:audit:
-  extends: [.rust-job, .validation-cargo]
+  extends: [.rust-job, .validation-deps, .timeout-quick]
   stage: security
+  cache:
+    policy: pull  # Read-only cache
   script:
     - cargo install cargo-audit || true
     - cargo audit
