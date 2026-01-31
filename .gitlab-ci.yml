@@ -39,6 +39,7 @@ stages:
 lint:format:
   extends: [.rust-job, .validation-rust, .timeout-quick]
   stage: lint
+  needs: []
   cache:
     policy: pull  # Read-only cache for lint
   script:
@@ -48,6 +49,7 @@ lint:format:
 lint:clippy:
   extends: [.rust-job, .validation-rust, .timeout-quick]
   stage: lint
+  needs: []
   cache:
     policy: pull  # Read-only cache for lint
   script:
@@ -61,6 +63,7 @@ lint:clippy:
 test:unit:
   extends: [.rust-job, .validation-rust, .timeout-standard]
   stage: test
+  needs: []
   script:
     - cargo test --all-targets
 
@@ -71,6 +74,7 @@ test:unit:
 security:audit:
   extends: [.rust-job, .validation-deps, .timeout-quick]
   stage: security
+  needs: []
   cache:
     policy: pull  # Read-only cache
   script:
