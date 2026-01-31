@@ -25,6 +25,7 @@ include:
       - '/ci-templates/rust-base.yml'
       - '/ci-templates/security.yml'
       - '/ci-templates/mr-rules.yml'
+      - '/ci-templates/reuse.yml'
 
 stages:
   - lint
