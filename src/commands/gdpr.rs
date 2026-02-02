@@ -76,7 +76,7 @@ pub fn schedule_deletion(config: &CliConfig) -> Result<()> {
         return Ok(());
     }
 
-    let mut manager = DeletionManager::new(wb.storage());
+    let manager = DeletionManager::new(wb.storage());
     manager.schedule_deletion()?;
 
     let state = manager.deletion_state()?;
@@ -99,7 +99,7 @@ pub fn schedule_deletion(config: &CliConfig) -> Result<()> {
 /// Cancels a scheduled account deletion.
 pub fn cancel_deletion(config: &CliConfig) -> Result<()> {
     let wb = open_vauchi(config)?;
-    let mut manager = DeletionManager::new(wb.storage());
+    let manager = DeletionManager::new(wb.storage());
     manager.cancel_deletion()?;
 
     display::success("Account deletion cancelled.");
