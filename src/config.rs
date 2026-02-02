@@ -27,6 +27,49 @@ pub struct CliConfig {
 /// Key name used for SecureStorage.
 const KEY_NAME: &str = "storage_key";
 
+/// Loads or generates a per-installation random fallback key from `data_dir/.fallback-key`.
+///
+/// Used only when the `secure-storage` feature is disabled. Each installation
+/// gets a unique random key instead of a hardcoded constant.
+#[cfg(not(feature = "secure-storage"))]
+fn load_or_generate_fallback_key(data_dir: &std::path::Path) -> Result<SymmetricKey> {
+    use anyhow::Context;
+
+    let key_path = data_dir.join(".fallback-key");
+
+    if key_path.exists() {
+        let bytes = std::fs::read(&key_path).context("Failed to read fallback key")?;
+        if bytes.len() != 32 {
+            anyhow::bail!(
+                "Invalid fallback key length ({}), expected 32. Delete {} to regenerate.",
+                bytes.len(),
+                key_path.display()
+            );
+        }
+        let mut arr = [0u8; 32];
+        arr.copy_from_slice(&bytes);
+        return Ok(SymmetricKey::from_bytes(arr));
+    }
+
+    // Generate a new random key
+    let key = SymmetricKey::generate();
+
+    // Ensure parent directory exists
+    std::fs::create_dir_all(data_dir).context("Failed to create data directory")?;
+
+    std::fs::write(&key_path, key.as_bytes()).context("Failed to write fallback key")?;
+
+    // Set restrictive permissions on Unix
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        std::fs::set_permissions(&key_path, std::fs::Permissions::from_mode(0o600))
+            .context("Failed to set fallback key permissions")?;
+    }
+
+    Ok(key)
+}
+
 impl CliConfig {
     /// Returns the storage path for Vauchi data.
     pub fn storage_path(&self) -> PathBuf {
@@ -76,13 +119,7 @@ impl CliConfig {
 
         #[cfg(not(feature = "secure-storage"))]
         {
-            // Fallback key for encrypting the storage key file
-            let fallback_key = SymmetricKey::from_bytes([
-                0x57, 0x65, 0x62, 0x42, 0x6f, 0x6f, 0x6b, 0x43, // "VauchiC"
-                0x6c, 0x69, 0x4b, 0x65, 0x79, 0x46, 0x61, 0x6c, // "liKeyFal"
-                0x6c, 0x62, 0x61, 0x63, 0x6b, 0x56, 0x31, 0x00, // "lbackV1\0"
-                0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // "\0\0\0\0\0\0\0\0"
-            ]);
+            let fallback_key = load_or_generate_fallback_key(&self.data_dir)?;
 
             let key_dir = self.data_dir.join("keys");
             let storage = FileKeyStorage::new(key_dir, fallback_key);
