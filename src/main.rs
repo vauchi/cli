@@ -219,7 +219,15 @@ enum ExchangeCommands {
 #[derive(Subcommand)]
 enum ContactCommands {
     /// List all contacts
-    List,
+    List {
+        /// Start offset for pagination
+        #[arg(long, default_value = "0")]
+        offset: usize,
+
+        /// Maximum number of contacts to show (0 = all)
+        #[arg(long, default_value = "0")]
+        limit: usize,
+    },
 
     /// Show contact details
     Show {
@@ -523,7 +531,7 @@ async fn main() -> Result<()> {
             }
         },
         Commands::Contacts(cmd) => match cmd {
-            ContactCommands::List => commands::contacts::list(&config)?,
+            ContactCommands::List { offset, limit } => commands::contacts::list(&config, offset, limit)?,
             ContactCommands::Show { id } => commands::contacts::show(&config, &id)?,
             ContactCommands::Search { query } => commands::contacts::search(&config, &query)?,
             ContactCommands::Remove { id } => commands::contacts::remove(&config, &id)?,

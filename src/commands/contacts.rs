@@ -42,18 +42,37 @@ fn open_vauchi(config: &CliConfig) -> Result<Vauchi<MockTransport>> {
 }
 
 /// Lists all contacts.
-pub fn list(config: &CliConfig) -> Result<()> {
+pub fn list(config: &CliConfig, offset: usize, limit: usize) -> Result<()> {
     let wb = open_vauchi(config)?;
-    let contacts = wb.list_contacts()?;
+    let all_contacts = wb.list_contacts()?;
 
-    if contacts.is_empty() {
+    if all_contacts.is_empty() {
         display::info("No contacts yet. Exchange with someone using:");
         println!("  vauchi exchange start");
         return Ok(());
     }
 
+    let total = all_contacts.len();
+
+    // Apply pagination if offset or limit specified
+    let contacts: Vec<_> = if offset > 0 || limit > 0 {
+        let end = if limit > 0 {
+            (offset + limit).min(total)
+        } else {
+            total
+        };
+        let start = offset.min(total);
+        all_contacts[start..end].to_vec()
+    } else {
+        all_contacts
+    };
+
     println!();
-    println!("Contacts ({}):", contacts.len());
+    if offset > 0 || limit > 0 {
+        println!("Contacts (showing {}-{} of {}):", offset + 1, offset + contacts.len(), total);
+    } else {
+        println!("Contacts ({}):", total);
+    }
     println!();
 
     display::display_contacts_table(&contacts);
