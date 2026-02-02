@@ -104,6 +104,10 @@ enum Commands {
         shell: Shell,
     },
 
+    /// Privacy & data management (GDPR)
+    #[command(subcommand)]
+    Gdpr(GdprCommands),
+
     /// Display FAQ and help information
     #[command(subcommand)]
     Faq(FaqCommands),
@@ -124,6 +128,39 @@ enum FaqCommands {
     Category {
         /// Category: getting-started, privacy, recovery, contacts, updates, features
         name: String,
+    },
+}
+
+#[derive(Subcommand)]
+enum GdprCommands {
+    /// Export all personal data as JSON
+    Export {
+        /// Output file path
+        output: PathBuf,
+    },
+
+    /// Schedule account deletion (7-day grace period)
+    ScheduleDeletion,
+
+    /// Cancel a scheduled account deletion
+    CancelDeletion,
+
+    /// Show current deletion status
+    DeletionStatus,
+
+    /// Show consent records
+    ConsentStatus,
+
+    /// Grant consent for a type (data_processing, contact_sharing, analytics, recovery_vouching)
+    GrantConsent {
+        /// Consent type
+        consent_type: String,
+    },
+
+    /// Revoke consent for a type
+    RevokeConsent {
+        /// Consent type
+        consent_type: String,
     },
 }
 
@@ -599,6 +636,29 @@ async fn main() -> Result<()> {
             let mut cmd = Cli::command();
             generate(shell, &mut cmd, "vauchi", &mut io::stdout());
         }
+        Commands::Gdpr(cmd) => match cmd {
+            GdprCommands::Export { output } => {
+                commands::gdpr::export_data(&config, &output)?;
+            }
+            GdprCommands::ScheduleDeletion => {
+                commands::gdpr::schedule_deletion(&config)?;
+            }
+            GdprCommands::CancelDeletion => {
+                commands::gdpr::cancel_deletion(&config)?;
+            }
+            GdprCommands::DeletionStatus => {
+                commands::gdpr::deletion_status(&config)?;
+            }
+            GdprCommands::ConsentStatus => {
+                commands::gdpr::consent_status(&config)?;
+            }
+            GdprCommands::GrantConsent { consent_type } => {
+                commands::gdpr::grant_consent(&config, &consent_type)?;
+            }
+            GdprCommands::RevokeConsent { consent_type } => {
+                commands::gdpr::revoke_consent(&config, &consent_type)?;
+            }
+        },
         Commands::Faq(cmd) => match cmd {
             FaqCommands::List { query } => {
                 display::display_faqs(query.as_deref(), &cli.locale);

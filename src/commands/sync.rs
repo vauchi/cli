@@ -778,6 +778,20 @@ fn apply_sync_item(wb: &Vauchi<WebSocketTransport>, item: &SyncItem) -> Result<(
             // Note: Visibility is per-field per-contact, handled by labels system
             // This requires label management which is a more complex operation
         }
+        SyncItem::LabelChange { .. } => {
+            display::info("Synced label change");
+        }
+        SyncItem::ContactTrustChanged {
+            contact_id,
+            recovery_trusted,
+            ..
+        } => {
+            display::info(&format!(
+                "Synced trust change for contact {}... = {}",
+                &contact_id[..8.min(contact_id.len())],
+                recovery_trusted
+            ));
+        }
     }
     Ok(())
 }
