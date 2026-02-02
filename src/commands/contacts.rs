@@ -69,7 +69,12 @@ pub fn list(config: &CliConfig, offset: usize, limit: usize) -> Result<()> {
 
     println!();
     if offset > 0 || limit > 0 {
-        println!("Contacts (showing {}-{} of {}):", offset + 1, offset + contacts.len(), total);
+        println!(
+            "Contacts (showing {}-{} of {}):",
+            offset + 1,
+            offset + contacts.len(),
+            total
+        );
     } else {
         println!("Contacts ({}):", total);
     }

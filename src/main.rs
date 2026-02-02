@@ -531,7 +531,9 @@ async fn main() -> Result<()> {
             }
         },
         Commands::Contacts(cmd) => match cmd {
-            ContactCommands::List { offset, limit } => commands::contacts::list(&config, offset, limit)?,
+            ContactCommands::List { offset, limit } => {
+                commands::contacts::list(&config, offset, limit)?
+            }
             ContactCommands::Show { id } => commands::contacts::show(&config, &id)?,
             ContactCommands::Search { query } => commands::contacts::search(&config, &query)?,
             ContactCommands::Remove { id } => commands::contacts::remove(&config, &id)?,

@@ -153,15 +153,15 @@ pub fn consent_status(config: &CliConfig) -> Result<()> {
         return Ok(());
     }
 
-    println!("{:<20} {:<10} {:<15} {:<15}", "Type", "Granted", "Timestamp", "Policy Version");
+    println!(
+        "{:<20} {:<10} {:<15} {:<15}",
+        "Type", "Granted", "Timestamp", "Policy Version"
+    );
     println!("{}", "-".repeat(60));
 
     for record in &records {
         let granted = if record.granted { "Yes" } else { "No" };
-        let pv = record
-            .policy_version
-            .as_deref()
-            .unwrap_or("-");
+        let pv = record.policy_version.as_deref().unwrap_or("-");
         println!(
             "{:<20} {:<10} {:<15} {:<15}",
             format!("{:?}", record.consent_type),
