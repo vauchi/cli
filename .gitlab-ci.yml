@@ -65,7 +65,10 @@ test:unit:
   stage: test
   needs: []
   script:
-    - cargo test --all-targets
+    # Disable secure-storage (OS keychain) for CI — headless Linux has no
+    # keyring daemon, so PlatformKeyring fails across subprocess invocations.
+    # FileKeyStorage (the fallback) persists correctly in each test's TempDir.
+    - cargo test --all-targets --no-default-features
 
 # ============================================================
 # Security Stage (runs on dependency changes)
