@@ -15,3 +15,4 @@ pub mod init;
 pub mod labels;
 pub mod recovery;
 pub mod sync;
+pub mod tor;

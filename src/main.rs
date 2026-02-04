@@ -108,6 +108,10 @@ enum Commands {
     #[command(subcommand)]
     Gdpr(GdprCommands),
 
+    /// Tor privacy mode configuration
+    #[command(subcommand)]
+    Tor(TorCommands),
+
     /// Display FAQ and help information
     #[command(subcommand)]
     Faq(FaqCommands),
@@ -129,6 +133,40 @@ enum FaqCommands {
         /// Category: getting-started, privacy, recovery, contacts, updates, features
         name: String,
     },
+}
+
+#[derive(Subcommand)]
+enum TorCommands {
+    /// Enable Tor mode
+    Enable,
+
+    /// Disable Tor mode
+    Disable,
+
+    /// Show Tor status
+    Status,
+
+    /// Request a new Tor circuit
+    NewCircuit,
+
+    /// Manage bridge addresses
+    #[command(subcommand)]
+    Bridges(TorBridgesCommands),
+}
+
+#[derive(Subcommand)]
+enum TorBridgesCommands {
+    /// Add a bridge address
+    Add {
+        /// Bridge address (e.g., "obfs4 192.168.1.1:443")
+        addr: String,
+    },
+
+    /// List configured bridges
+    List,
+
+    /// Clear all bridges
+    Clear,
 }
 
 #[derive(Subcommand)]
@@ -668,6 +706,19 @@ async fn main() -> Result<()> {
             GdprCommands::RevokeConsent { consent_type } => {
                 commands::gdpr::revoke_consent(&config, &consent_type)?;
             }
+        },
+        Commands::Tor(cmd) => match cmd {
+            TorCommands::Enable => commands::tor::enable(&config)?,
+            TorCommands::Disable => commands::tor::disable(&config)?,
+            TorCommands::Status => commands::tor::status(&config)?,
+            TorCommands::NewCircuit => commands::tor::new_circuit(&config)?,
+            TorCommands::Bridges(bridges_cmd) => match bridges_cmd {
+                TorBridgesCommands::Add { addr } => {
+                    commands::tor::bridges_add(&config, &addr)?;
+                }
+                TorBridgesCommands::List => commands::tor::bridges_list(&config)?,
+                TorBridgesCommands::Clear => commands::tor::bridges_clear(&config)?,
+            },
         },
         Commands::Faq(cmd) => match cmd {
             FaqCommands::List { query } => {
