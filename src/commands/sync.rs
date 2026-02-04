@@ -792,6 +792,14 @@ fn apply_sync_item(wb: &Vauchi<WebSocketTransport>, item: &SyncItem) -> Result<(
                 recovery_trusted
             ));
         }
+        SyncItem::DeletionScheduled {
+            execute_at, ..
+        } => {
+            display::info(&format!("Synced deletion schedule (executes at {})", execute_at));
+        }
+        SyncItem::DeletionCancelled { .. } => {
+            display::info("Synced deletion cancellation");
+        }
     }
     Ok(())
 }
