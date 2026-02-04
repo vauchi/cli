@@ -409,6 +409,66 @@ pub fn display_faqs_by_category(category_name: &str, locale: &str) {
     }
 }
 
+/// Displays a specific FAQ by ID.
+pub fn display_faq_by_id(id: &str, locale: &str) {
+    use vauchi_core::help::get_faq_by_id;
+
+    match get_faq_by_id(id) {
+        Some(faq) => {
+            println!();
+            println!(
+                "{}: {}",
+                style(t("help.faq", locale)).bold(),
+                style(&faq.id).dim()
+            );
+            println!("{}", "─".repeat(60));
+            println!();
+            println!("{}", style(&faq.question).cyan().bold());
+            for line in wrap_text(&faq.answer, 60) {
+                println!("  {}", line);
+            }
+            if !faq.related.is_empty() {
+                println!();
+                println!("  Related: {}", faq.related.join(", "));
+            }
+            println!();
+        }
+        None => {
+            error(&format!("FAQ not found: {}", id));
+            info("Use 'vauchi faq list' to see available FAQs");
+        }
+    }
+}
+
+// ============================================================
+// Aha Moment Display
+// ============================================================
+
+use vauchi_core::aha_moments::AhaMoment;
+
+/// Displays an aha moment as a highlighted info box.
+pub fn display_aha_moment(moment: &AhaMoment) {
+    let border = "─".repeat(50);
+    let top = format!("┌{}┐", border);
+    let bottom = format!("└{}┘", border);
+
+    println!();
+    println!("{}", style(&top).magenta());
+    println!(
+        "│ {} {}{}│",
+        style("★").magenta().bold(),
+        style(moment.title()).magenta().bold(),
+        " ".repeat(50 - 3 - moment.title().len())
+    );
+    println!("│{}│", " ".repeat(50));
+    for line in wrap_text(&moment.message(), 46) {
+        let padding = 48 - line.len();
+        println!("│  {}{}│", line, " ".repeat(padding));
+    }
+    println!("{}", style(&bottom).magenta());
+    println!();
+}
+
 /// Simple text wrapping.
 fn wrap_text(text: &str, max_width: usize) -> Vec<String> {
     let mut lines = Vec::new();

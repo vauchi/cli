@@ -18,6 +18,8 @@ use vauchi_core::network::WebSocketTransport;
 use vauchi_core::sync::{ContactSyncData, DeviceSyncOrchestrator, SyncItem};
 use vauchi_core::{Contact, Identity, IdentityBackup, Vauchi, VauchiConfig};
 
+use vauchi_core::aha_moments::{AhaMomentTracker, AhaMomentType};
+
 use crate::config::CliConfig;
 use crate::display;
 use crate::protocol::{
@@ -915,5 +917,41 @@ pub async fn run(config: &CliConfig) -> Result<()> {
         display::info("Sync complete: No new messages or pending updates");
     }
 
+    // Check for aha moments
+    let mut tracker = load_aha_tracker(config);
+    if contacts_added > 0 {
+        if let Some(moment) = tracker.try_trigger(AhaMomentType::FirstContactAdded) {
+            display::display_aha_moment(&moment);
+        }
+    }
+    if cards_updated > 0 {
+        if let Some(moment) = tracker.try_trigger(AhaMomentType::FirstUpdateReceived) {
+            display::display_aha_moment(&moment);
+        }
+    }
+    if updates_sent > 0 {
+        if let Some(moment) = tracker.try_trigger(AhaMomentType::FirstOutboundDelivered) {
+            display::display_aha_moment(&moment);
+        }
+    }
+    save_aha_tracker(config, &tracker);
+
     Ok(())
+}
+
+/// Load the aha moment tracker from the data directory.
+fn load_aha_tracker(config: &CliConfig) -> AhaMomentTracker {
+    let path = config.data_dir.join("aha_tracker.json");
+    fs::read_to_string(&path)
+        .ok()
+        .and_then(|json| AhaMomentTracker::from_json(&json).ok())
+        .unwrap_or_default()
+}
+
+/// Save the aha moment tracker to the data directory.
+fn save_aha_tracker(config: &CliConfig, tracker: &AhaMomentTracker) {
+    let path = config.data_dir.join("aha_tracker.json");
+    if let Ok(json) = tracker.to_json() {
+        let _ = fs::write(&path, json);
+    }
 }

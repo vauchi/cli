@@ -133,6 +133,12 @@ enum FaqCommands {
         /// Category: getting-started, privacy, recovery, contacts, updates, features
         name: String,
     },
+
+    /// Show a specific FAQ by ID
+    Show {
+        /// FAQ ID (e.g., faq-phone-lost)
+        id: String,
+    },
 }
 
 #[derive(Subcommand)]
@@ -729,6 +735,9 @@ async fn main() -> Result<()> {
             }
             FaqCommands::Category { name } => {
                 display::display_faqs_by_category(&name, &cli.locale);
+            }
+            FaqCommands::Show { id } => {
+                display::display_faq_by_id(&id, &cli.locale);
             }
         },
     }
