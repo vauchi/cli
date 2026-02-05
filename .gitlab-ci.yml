@@ -13,7 +13,7 @@
 #
 # Pipeline strategy:
 #   - MR: Validation on relevant file changes
-#   - Main: No pipeline (validated via MR)
+#   - Upstream trigger: Verify compatibility when core merges to main
 #
 # Uses shared templates from vauchi/scripts for consistency.
 
@@ -25,12 +25,14 @@ include:
       - '/ci-templates/rust-base.yml'
       - '/ci-templates/security.yml'
       - '/ci-templates/mr-rules.yml'
+      - '/ci-templates/downstream.yml'
       - '/ci-templates/reuse.yml'
 
 stages:
   - lint
   - test
   - security
+  - verify
 
 # ============================================================
 # Lint Stage (runs on Rust code changes)
@@ -97,3 +99,17 @@ security:deny:
   script:
     - cargo binstall cargo-deny --no-confirm 2>/dev/null || cargo install cargo-deny || true
     - cargo deny check
+
+# ============================================================
+# Verify Stage (upstream trigger only)
+# ============================================================
+# Runs when core merges to main and triggers this repo via
+# verify:downstream-rust. Verifies this repo builds and tests
+# pass against the updated vauchi-core.
+
+verify:upstream-compat:
+  extends: [.rust-job, .verify-on-upstream, .timeout-standard]
+  stage: verify
+  needs: []
+  script:
+    - cargo test --all-targets --no-default-features
