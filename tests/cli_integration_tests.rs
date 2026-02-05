@@ -737,3 +737,73 @@ mod completions {
         assert!(output.contains("compdef") || output.contains("_vauchi"));
     }
 }
+
+// ===========================================================================
+// Contact Recovery Trust Tests
+// Trace: features/contact_recovery.feature
+// ===========================================================================
+
+mod contact_recovery_trust {
+    use super::*;
+
+    /// Trace: contact_recovery.feature line 57 - "Mark contact as trusted for recovery"
+    /// Tests that the trust command requires initialization.
+    #[test]
+    fn test_trust_requires_init() {
+        let ctx = CliTestContext::new();
+        let stderr = ctx.run_failure(&["contacts", "trust", "some-id"]);
+        assert!(stderr.contains("not initialized"));
+    }
+
+    /// Trace: contact_recovery.feature line 64 - "Remove recovery trust"
+    /// Tests that the untrust command requires initialization.
+    #[test]
+    fn test_untrust_requires_init() {
+        let ctx = CliTestContext::new();
+        let stderr = ctx.run_failure(&["contacts", "untrust", "some-id"]);
+        assert!(stderr.contains("not initialized"));
+    }
+
+    /// Trace: contact_recovery.feature line 57 - "Mark contact as trusted"
+    /// Tests that trust reports contact not found for unknown ID.
+    #[test]
+    fn test_trust_contact_not_found() {
+        let ctx = CliTestContext::new();
+        ctx.init("Alice");
+
+        let stderr = ctx.run_failure(&["contacts", "trust", "nonexistent"]);
+        assert!(stderr.contains("not found"));
+    }
+
+    /// Trace: contact_recovery.feature line 64 - "Remove recovery trust"
+    /// Tests that untrust reports contact not found for unknown ID.
+    #[test]
+    fn test_untrust_contact_not_found() {
+        let ctx = CliTestContext::new();
+        ctx.init("Alice");
+
+        let stderr = ctx.run_failure(&["contacts", "untrust", "nonexistent"]);
+        assert!(stderr.contains("not found"));
+    }
+
+    /// Trace: contact_recovery.feature line 119 - "Warning when trusted contacts below threshold"
+    /// Tests that recovery settings show displays trusted count.
+    #[test]
+    fn test_recovery_settings_shows_trusted_count() {
+        let ctx = CliTestContext::new();
+        ctx.init("Alice");
+
+        let output = ctx.run_success(&["recovery", "settings", "show"]);
+        assert!(output.contains("Trusted Contacts:"));
+        assert!(output.contains("0"));
+    }
+
+    /// Tests that the help includes the trust/untrust subcommands.
+    #[test]
+    fn test_trust_untrust_in_help() {
+        let ctx = CliTestContext::new();
+        let output = ctx.run_success(&["contacts", "help"]);
+        assert!(output.contains("trust") || output.contains("Trust"));
+        assert!(output.contains("untrust") || output.contains("Untrust"));
+    }
+}

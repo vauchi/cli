@@ -508,6 +508,83 @@ pub fn revoke_validation(
     Ok(())
 }
 
+/// Marks a contact as trusted for recovery.
+pub fn trust(config: &CliConfig, id: &str) -> Result<()> {
+    let wb = open_vauchi(config)?;
+
+    let mut contact = wb
+        .get_contact(id)?
+        .or_else(|| {
+            wb.search_contacts(id)
+                .ok()
+                .and_then(|results| results.into_iter().next())
+        })
+        .ok_or_else(|| anyhow::anyhow!("Contact '{}' not found", id))?;
+
+    let name = contact.display_name().to_string();
+
+    // Blocked contacts cannot be trusted for recovery
+    if contact.is_blocked() {
+        bail!("Blocked contacts cannot be trusted for recovery");
+    }
+
+    if contact.is_recovery_trusted() {
+        display::info(&format!("{} is already trusted for recovery", name));
+        return Ok(());
+    }
+
+    contact.trust_for_recovery();
+    wb.update_contact(&contact)?;
+    display::success(&format!("Marked {} as trusted for recovery", name));
+
+    Ok(())
+}
+
+/// Removes recovery trust from a contact.
+pub fn untrust(config: &CliConfig, id: &str) -> Result<()> {
+    use vauchi_core::recovery::RecoverySettings;
+
+    let wb = open_vauchi(config)?;
+
+    let mut contact = wb
+        .get_contact(id)?
+        .or_else(|| {
+            wb.search_contacts(id)
+                .ok()
+                .and_then(|results| results.into_iter().next())
+        })
+        .ok_or_else(|| anyhow::anyhow!("Contact '{}' not found", id))?;
+
+    let name = contact.display_name().to_string();
+
+    if !contact.is_recovery_trusted() {
+        display::info(&format!("{} is not recovery-trusted", name));
+        return Ok(());
+    }
+
+    contact.untrust_for_recovery();
+    wb.update_contact(&contact)?;
+    display::success(&format!("Removed recovery trust from {}", name));
+
+    // Check if trusted count drops below threshold
+    let all_contacts = wb.list_contacts()?;
+    let trusted_count = all_contacts
+        .iter()
+        .filter(|c| c.is_recovery_trusted())
+        .count();
+    let settings = RecoverySettings::default();
+    let threshold = settings.recovery_threshold() as usize;
+
+    if trusted_count < threshold {
+        display::warning(&format!(
+            "Only {} trusted contact(s) remaining (recovery needs {})",
+            trusted_count, threshold
+        ));
+    }
+
+    Ok(())
+}
+
 /// Shows validation status for all of a contact's fields.
 pub fn show_validation_status(config: &CliConfig, contact_id_or_name: &str) -> Result<()> {
     use vauchi_core::social::TrustLevel;

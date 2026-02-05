@@ -131,6 +131,10 @@ pub fn display_contact_details(contact: &Contact) {
         println!("  Status: {}", style("Not verified").yellow());
     }
 
+    if contact.is_recovery_trusted() {
+        println!("  Recovery: {}", style("Trusted").green());
+    }
+
     println!();
 
     // Show card fields
@@ -253,6 +257,8 @@ struct ContactRow {
     id: String,
     #[tabled(rename = "Status")]
     status: String,
+    #[tabled(rename = "Recovery")]
+    recovery: String,
 }
 
 /// Displays a list of contacts as a formatted table.
@@ -268,6 +274,11 @@ pub fn display_contacts_table(contacts: &[Contact]) {
                 "✓ verified".to_string()
             } else {
                 "not verified".to_string()
+            },
+            recovery: if c.is_recovery_trusted() {
+                "★".to_string()
+            } else {
+                String::new()
             },
         })
         .collect();

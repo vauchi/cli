@@ -348,6 +348,18 @@ enum ContactCommands {
         /// Contact ID or name
         contact: String,
     },
+
+    /// Mark a contact as trusted for recovery
+    Trust {
+        /// Contact ID or name
+        id: String,
+    },
+
+    /// Remove recovery trust from a contact
+    Untrust {
+        /// Contact ID or name
+        id: String,
+    },
 }
 
 #[derive(Subcommand)]
@@ -606,6 +618,12 @@ async fn main() -> Result<()> {
             }
             ContactCommands::ValidationStatus { contact } => {
                 commands::contacts::show_validation_status(&config, &contact)?;
+            }
+            ContactCommands::Trust { id } => {
+                commands::contacts::trust(&config, &id)?;
+            }
+            ContactCommands::Untrust { id } => {
+                commands::contacts::untrust(&config, &id)?;
             }
         },
         Commands::Social(cmd) => match cmd {

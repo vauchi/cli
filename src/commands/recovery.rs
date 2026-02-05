@@ -236,8 +236,26 @@ pub fn add_voucher(config: &CliConfig, voucher_data: &str) -> Result<()> {
         bail!("Voucher keys don't match the recovery in progress");
     }
 
-    // Add voucher
-    proof.add_voucher(voucher)?;
+    // Load trusted contact public keys for voucher validation
+    let contacts = wb.storage().list_contacts()?;
+    let trusted_keys: std::collections::HashSet<[u8; 32]> = contacts
+        .iter()
+        .filter(|c| c.is_recovery_trusted())
+        .map(|c| *c.public_key())
+        .collect();
+
+    // Add voucher — only accepts vouchers from trusted contacts
+    match proof.add_voucher_trusted(voucher, &trusted_keys) {
+        Ok(()) => {}
+        Err(vauchi_core::recovery::RecoveryError::UntrustedVoucher) => {
+            bail!(
+                "Voucher is from an untrusted contact.\n\
+                 Only contacts marked as recovery-trusted can provide valid vouchers.\n\
+                 Use 'vauchi contacts trust <id>' to trust a contact for recovery."
+            );
+        }
+        Err(e) => return Err(e.into()),
+    }
 
     // Save updated proof
     fs::write(&proof_path, proof.to_bytes())?;
@@ -472,7 +490,7 @@ pub fn verify(config: &CliConfig, proof_data: &str) -> Result<()> {
 }
 
 /// Shows current recovery settings.
-pub fn settings_show(_config: &CliConfig) -> Result<()> {
+pub fn settings_show(config: &CliConfig) -> Result<()> {
     let settings = RecoverySettings::default();
 
     println!();
@@ -488,6 +506,26 @@ pub fn settings_show(_config: &CliConfig) -> Result<()> {
         "  Verification Threshold: {} mutual contacts for high confidence",
         settings.verification_threshold()
     );
+
+    // Show trusted contacts count if initialized
+    if config.is_initialized() {
+        if let Ok(wb) = open_vauchi(config) {
+            if let Ok(contacts) = wb.list_contacts() {
+                let trusted_count = contacts.iter().filter(|c| c.is_recovery_trusted()).count();
+                let threshold = settings.recovery_threshold() as usize;
+                println!();
+                println!("  Trusted Contacts:       {}", trusted_count);
+
+                if trusted_count < threshold {
+                    display::warning(&format!(
+                        "You have fewer trusted contacts ({}) than the recovery threshold ({}).",
+                        trusted_count, threshold
+                    ));
+                }
+            }
+        }
+    }
+
     println!();
     println!("{}", "─".repeat(50));
     println!();
