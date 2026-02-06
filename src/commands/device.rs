@@ -189,7 +189,7 @@ pub fn join(
     };
 
     // Create responder
-    let responder = DeviceLinkResponder::from_qr(qr, device_name.clone())?;
+    let mut responder = DeviceLinkResponder::from_qr(qr, device_name.clone())?;
 
     // Create request
     let encrypted_request = responder.create_request()?;
@@ -263,6 +263,7 @@ pub fn complete(config: &CliConfig, request_data: &str) -> Result<()> {
     let encrypted_request = BASE64.decode(request_data)?;
 
     // Process the request with sync payload
+    #[allow(deprecated)] // TODO: Migrate to prepare_confirmation() + confirm_link_with_sync()
     let (encrypted_response, updated_registry, new_device) =
         initiator.process_request_with_sync(&encrypted_request, &sync_json)?;
 

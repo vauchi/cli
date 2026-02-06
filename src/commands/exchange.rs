@@ -13,7 +13,9 @@ use anyhow::{bail, Result};
 use tungstenite::stream::MaybeTlsStream;
 use tungstenite::{connect, Message, WebSocket};
 use vauchi_core::contact_card::ContactCard;
-use vauchi_core::exchange::{ExchangeQR, X3DH};
+use vauchi_core::exchange::{
+    ExchangeEvent, ExchangeQR, ExchangeSession, ExchangeState, ManualConfirmationVerifier,
+};
 use vauchi_core::network::MockTransport;
 use vauchi_core::sync::delta::CardDelta;
 use vauchi_core::sync::{ContactSyncData, DeviceSyncOrchestrator, SyncItem};
@@ -218,6 +220,9 @@ fn record_contact_added(wb: &Vauchi<MockTransport>, contact: &Contact) -> Result
 }
 
 /// Starts a contact exchange by generating a QR code.
+///
+/// Uses ExchangeSession state machine with ManualConfirmationVerifier
+/// since CLI doesn't have audio hardware for proximity verification.
 pub fn start(config: &CliConfig) -> Result<()> {
     let wb = open_vauchi(config)?;
 
@@ -226,10 +231,29 @@ pub fn start(config: &CliConfig) -> Result<()> {
         .identity()
         .ok_or_else(|| anyhow::anyhow!("No identity found"))?;
 
-    // Generate exchange QR
-    let qr = ExchangeQR::generate(identity);
-    let qr_data = qr.to_data_string();
-    let qr_image = qr.to_qr_image_string();
+    let our_card = wb
+        .storage()
+        .load_own_card()?
+        .unwrap_or_else(|| ContactCard::new(identity.display_name()));
+
+    // Create exchange session as initiator with manual confirmation
+    let verifier = ManualConfirmationVerifier::new();
+    verifier.confirm(); // Pre-confirm for CLI (no audio hardware)
+
+    let backup = identity.export_backup(LOCAL_STORAGE_PASSWORD)?;
+    let identity_owned = Identity::import_backup(&backup, LOCAL_STORAGE_PASSWORD)?;
+
+    let mut session = ExchangeSession::new_initiator(identity_owned, our_card, verifier);
+
+    // Generate QR via state machine
+    session
+        .apply(ExchangeEvent::GenerateQR)
+        .map_err(|e| anyhow::anyhow!("Failed to generate QR: {:?}", e))?;
+
+    let (qr_data, qr_image) = match session.qr() {
+        Some(qr) => (qr.to_data_string(), qr.to_qr_image_string()),
+        None => bail!("QR code not generated"),
+    };
 
     // Display
     display::info("Share this with another Vauchi user:");
@@ -246,6 +270,9 @@ pub fn start(config: &CliConfig) -> Result<()> {
 }
 
 /// Completes a contact exchange with received data.
+///
+/// Uses ExchangeSession state machine to process the QR, verify proximity,
+/// perform key agreement, and exchange cards.
 pub fn complete(config: &CliConfig, data: &str) -> Result<()> {
     let wb = open_vauchi(config)?;
 
@@ -257,10 +284,9 @@ pub fn complete(config: &CliConfig, data: &str) -> Result<()> {
         bail!("This exchange QR code has expired. Ask them to generate a new one.");
     }
 
-    // Get their public keys
-    let their_signing_key = qr.public_key();
-    let their_exchange_key = qr.exchange_key();
-    let their_public_id = hex::encode(their_signing_key);
+    // Save exchange key before QR is consumed by the session
+    let their_exchange_key = *qr.exchange_key();
+    let their_public_id = hex::encode(qr.public_key());
 
     // Check if we already have this contact
     if wb.get_contact(&their_public_id)?.is_some() {
@@ -268,25 +294,65 @@ pub fn complete(config: &CliConfig, data: &str) -> Result<()> {
         return Ok(());
     }
 
-    // Get our identity for X3DH
+    // Get our identity
     let identity = wb
         .identity()
         .ok_or_else(|| anyhow::anyhow!("No identity found"))?;
-    let our_x3dh = identity.x3dh_keypair();
 
-    // Perform X3DH as initiator to derive shared secret
-    let (shared_secret, ephemeral_public) = X3DH::initiate(&our_x3dh, their_exchange_key)
-        .map_err(|e| anyhow::anyhow!("X3DH key agreement failed: {:?}", e))?;
+    let our_card = wb
+        .storage()
+        .load_own_card()?
+        .unwrap_or_else(|| ContactCard::new(identity.display_name()));
 
-    // Create a placeholder contact
-    // The real name will be received via sync
-    let their_card = vauchi_core::ContactCard::new("New Contact");
+    // Create exchange session as responder with manual confirmation
+    let verifier = ManualConfirmationVerifier::new();
+    verifier.confirm(); // Pre-confirm for CLI (no audio hardware)
 
-    let contact = Contact::from_exchange(*their_signing_key, their_card, shared_secret.clone());
+    let backup = identity.export_backup(LOCAL_STORAGE_PASSWORD)?;
+    let identity_owned = Identity::import_backup(&backup, LOCAL_STORAGE_PASSWORD)?;
+
+    let mut session = ExchangeSession::new_responder(identity_owned, our_card, verifier);
+
+    // Drive the state machine: ProcessQR → VerifyProximity → PerformKeyAgreement → CompleteExchange
+    session
+        .apply(ExchangeEvent::ProcessQR(qr))
+        .map_err(|e| anyhow::anyhow!("Failed to process QR: {:?}", e))?;
+
+    session
+        .apply(ExchangeEvent::VerifyProximity)
+        .map_err(|e| anyhow::anyhow!("Proximity verification failed: {:?}", e))?;
+
+    session
+        .apply(ExchangeEvent::PerformKeyAgreement)
+        .map_err(|e| anyhow::anyhow!("Key agreement failed: {:?}", e))?;
+
+    // Get shared key for ratchet initialization
+    let shared_key = match session.state() {
+        ExchangeState::AwaitingCardExchange { shared_key, .. } => shared_key.clone(),
+        _ => bail!("Session not in expected state after key agreement"),
+    };
+
+    // Get ephemeral public key for relay message (generated during key agreement)
+    let ephemeral_public = session.ephemeral_public().ok_or_else(|| {
+        anyhow::anyhow!("No ephemeral public key available after key agreement")
+    })?;
+
+    // Complete exchange with placeholder card
+    let their_card = ContactCard::new("New Contact");
+    session
+        .apply(ExchangeEvent::CompleteExchange(their_card))
+        .map_err(|e| anyhow::anyhow!("Card exchange failed: {:?}", e))?;
+
+    // Extract contact from completed session
+    let contact = match session.state() {
+        ExchangeState::Complete { contact } => contact.clone(),
+        _ => bail!("Session not in Complete state"),
+    };
+
     let contact_id = contact.id().to_string();
+    let contact_clone = contact.clone();
 
     // Add the contact
-    let contact_clone = contact.clone();
     wb.add_contact(contact)?;
 
     // Record for inter-device sync (if multiple devices)
@@ -295,10 +361,14 @@ pub fn complete(config: &CliConfig, data: &str) -> Result<()> {
     }
 
     // Initialize Double Ratchet as initiator for forward secrecy
-    wb.create_ratchet_as_initiator(&contact_id, &shared_secret, *their_exchange_key)?;
+    wb.create_ratchet_as_initiator(&contact_id, &shared_key, their_exchange_key)?;
+
+    // Re-load identity for relay operations (session consumed it)
+    let identity = wb
+        .identity()
+        .ok_or_else(|| anyhow::anyhow!("No identity found"))?;
 
     // Send initial encrypted card update to establish responder's send chain
-    // This is critical: the responder cannot send until they receive a message from us
     match send_initial_card_update(config, &wb, identity, &contact_id, &their_public_id) {
         Ok(()) => {
             display::info("Sent initial card to enable bidirectional messaging");
