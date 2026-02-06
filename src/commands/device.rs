@@ -220,6 +220,8 @@ pub fn join(
 }
 
 /// Completes the device linking on the existing device (processes request, sends response).
+// TODO: Migrate to prepare_confirmation() + confirm_link_with_sync() API
+#[allow(deprecated)]
 pub fn complete(config: &CliConfig, request_data: &str) -> Result<()> {
     let wb = open_vauchi(config)?;
 
