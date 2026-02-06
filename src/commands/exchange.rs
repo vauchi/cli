@@ -333,9 +333,9 @@ pub fn complete(config: &CliConfig, data: &str) -> Result<()> {
     };
 
     // Get ephemeral public key for relay message (generated during key agreement)
-    let ephemeral_public = session.ephemeral_public().ok_or_else(|| {
-        anyhow::anyhow!("No ephemeral public key available after key agreement")
-    })?;
+    let ephemeral_public = session
+        .ephemeral_public()
+        .ok_or_else(|| anyhow::anyhow!("No ephemeral public key available after key agreement"))?;
 
     // Complete exchange with placeholder card
     let their_card = ContactCard::new("New Contact");
