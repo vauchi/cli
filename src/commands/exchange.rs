@@ -147,7 +147,7 @@ fn send_initial_card_update(
 
     // Send handshake
     let our_id = identity.public_id();
-    send_handshake(&mut socket, &our_id)?;
+    send_handshake(&mut socket, identity)?;
 
     // Create encrypted update message
     let update = EncryptedUpdate {
