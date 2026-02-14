@@ -35,7 +35,7 @@ const KEY_NAME: &str = "storage_key";
 /// Used only when the `secure-storage` feature is disabled. Each installation
 /// gets a unique random key instead of a hardcoded constant.
 #[cfg(not(feature = "secure-storage"))]
-fn load_or_generate_fallback_key(data_dir: &std::path::Path) -> Result<SymmetricKey> {
+pub(crate) fn load_or_generate_fallback_key(data_dir: &std::path::Path) -> Result<SymmetricKey> {
     use anyhow::Context;
 
     let key_path = data_dir.join(".fallback-key");

@@ -11,8 +11,14 @@ use std::path::Path;
 
 use anyhow::{bail, Result};
 use dialoguer::Input;
-use vauchi_core::api::{export_all_data, ConsentManager, ConsentType, DeletionManager};
-use vauchi_core::network::MockTransport;
+use vauchi_core::api::{
+    export_all_data, ConsentManager, ConsentType, DeletionManager, ShredManager, ShredReport,
+    ShredToken, ShredVerification,
+};
+use vauchi_core::network::{
+    MockTransport, RelayClient, RelayClientConfig, TransportConfig, WebSocketTransport,
+};
+use vauchi_core::storage::secure::SecureStorage;
 use vauchi_core::storage::DeletionState;
 use vauchi_core::{Vauchi, VauchiConfig};
 
@@ -189,6 +195,192 @@ pub fn revoke_consent(config: &CliConfig, type_str: &str) -> Result<()> {
 
     display::success(&format!("Consent revoked for: {}", type_str));
     Ok(())
+}
+
+/// Creates a SecureStorage instance matching the platform config pattern.
+#[allow(unused_variables)]
+fn create_secure_storage(config: &CliConfig) -> Result<Box<dyn SecureStorage>> {
+    #[cfg(feature = "secure-storage")]
+    {
+        Ok(Box::new(vauchi_core::storage::secure::PlatformKeyring::new(
+            "vauchi-cli",
+        )))
+    }
+
+    #[cfg(not(feature = "secure-storage"))]
+    {
+        let fallback_key = crate::config::load_or_generate_fallback_key(&config.data_dir)?;
+        let key_dir = config.data_dir.join("keys");
+        Ok(Box::new(vauchi_core::storage::secure::FileKeyStorage::new(
+            key_dir,
+            fallback_key,
+        )))
+    }
+}
+
+/// Creates a connected RelayClient for shred operations.
+fn create_relay_client(
+    relay_url: &str,
+    identity_id: &str,
+) -> Result<RelayClient<WebSocketTransport>> {
+    let transport_config = TransportConfig {
+        server_url: relay_url.to_string(),
+        ..TransportConfig::default()
+    };
+    let config = RelayClientConfig {
+        transport: transport_config,
+        ..RelayClientConfig::default()
+    };
+    let transport = WebSocketTransport::new();
+    let mut client = RelayClient::new(transport, config, identity_id.to_string());
+    client
+        .connect()
+        .map_err(|e| anyhow::anyhow!("Failed to connect to relay: {}", e))?;
+    Ok(client)
+}
+
+/// Executes a scheduled account deletion after the grace period.
+pub async fn execute_deletion(config: &CliConfig) -> Result<()> {
+    let wb = open_vauchi(config)?;
+    let identity = config.import_local_identity()?;
+
+    // Verify deletion is scheduled and grace period elapsed
+    let manager = DeletionManager::new(wb.storage());
+    let state = manager.deletion_state()?;
+    let token = match state {
+        DeletionState::Scheduled { scheduled_at, execute_at } => {
+            let now = std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .map(|d| d.as_secs())
+                .unwrap_or(0);
+            if now < execute_at {
+                let remaining = execute_at.saturating_sub(now);
+                let days = remaining / 86400;
+                let hours = (remaining % 86400) / 3600;
+                bail!(
+                    "Grace period has not elapsed. {} days, {} hours remaining.",
+                    days,
+                    hours
+                );
+            }
+            ShredToken::from_created_at(scheduled_at)
+        }
+        DeletionState::None => bail!("No deletion scheduled. Run 'vauchi gdpr schedule-deletion' first."),
+        DeletionState::Executed { .. } => bail!("Account has already been deleted."),
+    };
+
+    // Confirmation prompt
+    let confirm: String = Input::new()
+        .with_prompt("This will permanently destroy all data and notify contacts. Type 'EXECUTE' to confirm")
+        .interact_text()?;
+
+    if confirm != "EXECUTE" {
+        display::info("Deletion cancelled.");
+        return Ok(());
+    }
+
+    let secure_storage = create_secure_storage(config)?;
+    let identity_id = hex::encode(identity.signing_public_key());
+    let shred_manager =
+        ShredManager::new(wb.storage(), secure_storage.as_ref(), &identity, &config.data_dir);
+
+    // Create two separate relay clients (borrow rules: PurgeSender + RevocationSender)
+    let mut purge_client = create_relay_client(&config.relay_url, &identity_id)?;
+    let mut revocation_client = create_relay_client(&config.relay_url, &identity_id)?;
+
+    display::info("Executing account deletion...");
+
+    let report = shred_manager
+        .hard_shred(
+            token,
+            Some(&mut purge_client),
+            Some(&mut revocation_client),
+        )
+        .map_err(|e| anyhow::anyhow!("Shred failed: {}", e))?;
+
+    display_shred_report(&report);
+    let verification = shred_manager.verify_shred();
+    display_shred_verification(&verification);
+
+    display::success("Account deletion complete. Goodbye.");
+    Ok(())
+}
+
+/// Emergency immediate deletion — no grace period.
+pub async fn panic_shred(config: &CliConfig) -> Result<()> {
+    let wb = open_vauchi(config)?;
+    let identity = config.import_local_identity()?;
+
+    // Confirmation prompt
+    let confirm: String = Input::new()
+        .with_prompt("EMERGENCY: This will immediately destroy ALL data. Type 'PANIC' to confirm")
+        .interact_text()?;
+
+    if confirm != "PANIC" {
+        display::info("Panic shred cancelled.");
+        return Ok(());
+    }
+
+    let secure_storage = create_secure_storage(config)?;
+    let identity_id = hex::encode(identity.signing_public_key());
+    let shred_manager =
+        ShredManager::new(wb.storage(), secure_storage.as_ref(), &identity, &config.data_dir);
+
+    // Best-effort relay connections — failure doesn't block shred
+    let mut purge_client = create_relay_client(&config.relay_url, &identity_id).ok();
+    let mut revocation_client = create_relay_client(&config.relay_url, &identity_id).ok();
+
+    if purge_client.is_none() || revocation_client.is_none() {
+        display::warning("Could not connect to relay. Revocations will be best-effort.");
+    }
+
+    display::warning("Executing emergency panic shred...");
+
+    let report = shred_manager
+        .panic_shred(
+            purge_client.as_mut().map(|c| c as &mut dyn vauchi_core::api::PurgeSender),
+            revocation_client
+                .as_mut()
+                .map(|c| c as &mut dyn vauchi_core::api::RevocationSender),
+        )
+        .map_err(|e| anyhow::anyhow!("Panic shred failed: {}", e))?;
+
+    display_shred_report(&report);
+    let verification = shred_manager.verify_shred();
+    display_shred_verification(&verification);
+
+    display::success("Panic shred complete. All data destroyed.");
+    Ok(())
+}
+
+/// Displays a shred report summary.
+fn display_shred_report(report: &ShredReport) {
+    println!();
+    display::info("=== Shred Report ===");
+    println!("  Contacts notified:      {}", report.contacts_notified);
+    println!("  Relay purge sent:       {}", report.relay_purge_sent);
+    println!("  Devices notified:       {}", report.devices_notified);
+    println!("  SMK destroyed:          {}", report.smk_destroyed);
+    println!("  Identity file destroyed:{}", report.identity_file_destroyed);
+    println!("  Key files destroyed:    {}", report.key_files_destroyed);
+    println!("  SQLite destroyed:       {}", report.sqlite_destroyed);
+    println!("  Pre-signed deleted:     {}", report.pre_signed_deleted);
+    println!("  Data dir deleted:       {}", report.data_dir_deleted);
+}
+
+/// Displays shred verification results.
+fn display_shred_verification(verification: &ShredVerification) {
+    println!();
+    display::info("=== Shred Verification ===");
+    println!("  SMK absent:        {}", verification.smk_absent);
+    println!("  Database absent:   {}", verification.database_absent);
+    println!("  Data dir absent:   {}", verification.data_dir_absent);
+    println!("  Pre-signed absent: {}", verification.pre_signed_absent);
+    if verification.all_clear {
+        display::success("  All clear — all data verified destroyed.");
+    } else {
+        display::warning("  WARNING: Some data may not have been fully destroyed.");
+    }
 }
 
 fn parse_consent_type(s: &str) -> Result<ConsentType> {

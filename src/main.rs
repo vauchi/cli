@@ -189,6 +189,12 @@ enum GdprCommands {
     /// Cancel a scheduled account deletion
     CancelDeletion,
 
+    /// Execute a scheduled account deletion (after grace period)
+    ExecuteDeletion,
+
+    /// Emergency immediate deletion — no grace period
+    PanicShred,
+
     /// Show current deletion status
     DeletionStatus,
 
@@ -711,6 +717,12 @@ async fn main() -> Result<()> {
         Commands::Gdpr(cmd) => match cmd {
             GdprCommands::Export { output } => {
                 commands::gdpr::export_data(&config, &output)?;
+            }
+            GdprCommands::ExecuteDeletion => {
+                commands::gdpr::execute_deletion(&config).await?;
+            }
+            GdprCommands::PanicShred => {
+                commands::gdpr::panic_shred(&config).await?;
             }
             GdprCommands::ScheduleDeletion => {
                 commands::gdpr::schedule_deletion(&config)?;
