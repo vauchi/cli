@@ -67,6 +67,18 @@ pub struct Handshake {
     /// Optional device ID for inter-device sync (hex-encoded, 64 chars).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub device_id: Option<String>,
+    /// Ed25519 public key proving ownership of client_id (hex, 64 chars = 32 bytes).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub identity_public_key: Option<String>,
+    /// Random nonce for replay prevention (hex, 64 chars = 32 bytes).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub nonce: Option<String>,
+    /// Ed25519 signature over `nonce || timestamp.to_be_bytes()` (hex, 128 chars = 64 bytes).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub signature: Option<String>,
+    /// Unix timestamp in seconds, must be within ±60s of relay clock.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub timestamp: Option<u64>,
 }
 
 /// Exchange message sent when completing contact exchange.
@@ -126,6 +138,44 @@ impl ExchangeMessage {
     /// Serializes to bytes.
     pub fn to_bytes(&self) -> Vec<u8> {
         serde_json::to_vec(self).unwrap_or_default()
+    }
+}
+
+/// Creates a signed handshake for authenticated relay registration.
+///
+/// Signs `nonce || timestamp.to_be_bytes()` using the identity's Ed25519 signing key.
+pub fn create_signed_handshake(
+    identity: &vauchi_core::Identity,
+    device_id: Option<String>,
+) -> Handshake {
+    use std::time::{SystemTime, UNIX_EPOCH};
+
+    let client_id = identity.public_id();
+
+    // Generate random 32-byte nonce using SymmetricKey's secure RNG
+    let nonce_key = vauchi_core::SymmetricKey::generate();
+    let nonce_bytes = nonce_key.as_bytes();
+
+    let timestamp = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .expect("system time before UNIX epoch")
+        .as_secs();
+
+    // Sign: nonce || timestamp.to_be_bytes()
+    let mut signed_data = Vec::with_capacity(40);
+    signed_data.extend_from_slice(nonce_bytes);
+    signed_data.extend_from_slice(&timestamp.to_be_bytes());
+
+    let signature = identity.signing_keypair().sign(&signed_data);
+    let public_key = identity.signing_keypair().public_key();
+
+    Handshake {
+        client_id,
+        device_id,
+        identity_public_key: Some(hex::encode(public_key.as_bytes())),
+        nonce: Some(hex::encode(nonce_bytes)),
+        signature: Some(hex::encode(signature.as_bytes())),
+        timestamp: Some(timestamp),
     }
 }
 

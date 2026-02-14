@@ -17,9 +17,6 @@ use vauchi_core::{Identity, IdentityBackup, Vauchi, VauchiConfig};
 use crate::config::CliConfig;
 use crate::display;
 
-/// Internal password for local identity storage.
-const LOCAL_STORAGE_PASSWORD: &str = "vauchi-local-storage";
-
 /// Opens Vauchi from the config and loads the identity.
 fn open_vauchi(config: &CliConfig) -> Result<Vauchi<MockTransport>> {
     if !config.is_initialized() {
@@ -32,10 +29,7 @@ fn open_vauchi(config: &CliConfig) -> Result<Vauchi<MockTransport>> {
 
     let mut wb = Vauchi::new(wb_config)?;
 
-    // Load identity from file
-    let backup_data = fs::read(config.identity_path())?;
-    let backup = IdentityBackup::new(backup_data);
-    let identity = Identity::import_backup(&backup, LOCAL_STORAGE_PASSWORD)?;
+    let identity = config.import_local_identity()?;
     wb.set_identity(identity)?;
 
     Ok(wb)
@@ -102,8 +96,7 @@ pub fn import(config: &CliConfig, input: &Path) -> Result<()> {
     fs::create_dir_all(&config.data_dir)?;
 
     // Save identity to local file for persistence
-    let local_backup = identity.export_backup(LOCAL_STORAGE_PASSWORD)?;
-    fs::write(config.identity_path(), local_backup.as_bytes())?;
+    config.save_local_identity(&identity)?;
 
     // Initialize Vauchi with restored identity
     let wb_config = VauchiConfig::with_storage_path(config.storage_path())

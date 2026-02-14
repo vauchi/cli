@@ -15,10 +15,6 @@ use vauchi_core::{Vauchi, VauchiConfig};
 use crate::config::CliConfig;
 use crate::display;
 
-/// Internal password for local identity storage.
-/// This is not for security - just for CLI persistence.
-const LOCAL_STORAGE_PASSWORD: &str = "vauchi-local-storage";
-
 /// Creates a new identity.
 pub fn run(name: &str, config: &CliConfig) -> Result<()> {
     // Check if already initialized
@@ -41,8 +37,7 @@ pub fn run(name: &str, config: &CliConfig) -> Result<()> {
     let identity = wb
         .identity()
         .ok_or_else(|| anyhow::anyhow!("Identity not found after creation"))?;
-    let backup = identity.export_backup(LOCAL_STORAGE_PASSWORD)?;
-    fs::write(config.identity_path(), backup.as_bytes())?;
+    config.save_local_identity(identity)?;
 
     // Get identity info
     let public_id = wb.public_id()?;

@@ -6,7 +6,6 @@
 //!
 //! Generate and complete contact exchanges.
 
-use std::fs;
 use std::net::TcpStream;
 
 use anyhow::{bail, Result};
@@ -19,16 +18,14 @@ use vauchi_core::exchange::{
 use vauchi_core::network::MockTransport;
 use vauchi_core::sync::delta::CardDelta;
 use vauchi_core::sync::{ContactSyncData, DeviceSyncOrchestrator, SyncItem};
-use vauchi_core::{Contact, Identity, IdentityBackup, Vauchi, VauchiConfig};
+use vauchi_core::{Contact, Identity, Vauchi, VauchiConfig};
 
 use crate::config::CliConfig;
 use crate::display;
 use crate::protocol::{
-    create_envelope, encode_message, EncryptedUpdate, ExchangeMessage, Handshake, MessagePayload,
+    create_envelope, create_signed_handshake, encode_message, EncryptedUpdate, ExchangeMessage,
+    MessagePayload,
 };
-
-/// Internal password for local identity storage.
-const LOCAL_STORAGE_PASSWORD: &str = "vauchi-local-storage";
 
 /// Opens Vauchi from the config and loads the identity.
 fn open_vauchi(config: &CliConfig) -> Result<Vauchi<MockTransport>> {
@@ -42,24 +39,18 @@ fn open_vauchi(config: &CliConfig) -> Result<Vauchi<MockTransport>> {
 
     let mut wb = Vauchi::new(wb_config)?;
 
-    // Load identity from file
-    let backup_data = fs::read(config.identity_path())?;
-    let backup = IdentityBackup::new(backup_data);
-    let identity = Identity::import_backup(&backup, LOCAL_STORAGE_PASSWORD)?;
+    let identity = config.import_local_identity()?;
     wb.set_identity(identity)?;
 
     Ok(wb)
 }
 
-/// Sends handshake message to relay.
+/// Sends authenticated handshake message to relay.
 fn send_handshake(
     socket: &mut WebSocket<MaybeTlsStream<TcpStream>>,
-    client_id: &str,
+    identity: &Identity,
 ) -> Result<()> {
-    let handshake = Handshake {
-        client_id: client_id.to_string(),
-        device_id: None, // No device sync needed for exchange
-    };
+    let handshake = create_signed_handshake(identity, None);
     let envelope = create_envelope(MessagePayload::Handshake(handshake));
     let data = encode_message(&envelope).map_err(|e| anyhow::anyhow!(e))?;
     socket.send(Message::Binary(data))?;
@@ -76,9 +67,10 @@ fn send_exchange_message(
     // Connect to relay
     let (mut socket, _) = connect(&config.relay_url)?;
 
-    // Send handshake
+    // Send authenticated handshake
+    send_handshake(&mut socket, our_identity)?;
+
     let our_id = our_identity.public_id();
-    send_handshake(&mut socket, &our_id)?;
 
     // Create exchange message with the ephemeral key from X3DH
     let exchange_msg = ExchangeMessage::new(
@@ -240,8 +232,9 @@ pub fn start(config: &CliConfig) -> Result<()> {
     let verifier = ManualConfirmationVerifier::new();
     verifier.confirm(); // Pre-confirm for CLI (no audio hardware)
 
-    let backup = identity.export_backup(LOCAL_STORAGE_PASSWORD)?;
-    let identity_owned = Identity::import_backup(&backup, LOCAL_STORAGE_PASSWORD)?;
+    let backup_password = config.backup_password()?;
+    let backup = identity.export_backup(&backup_password)?;
+    let identity_owned = Identity::import_backup(&backup, &backup_password)?;
 
     let mut session = ExchangeSession::new_initiator(identity_owned, our_card, verifier);
 
@@ -308,8 +301,9 @@ pub fn complete(config: &CliConfig, data: &str) -> Result<()> {
     let verifier = ManualConfirmationVerifier::new();
     verifier.confirm(); // Pre-confirm for CLI (no audio hardware)
 
-    let backup = identity.export_backup(LOCAL_STORAGE_PASSWORD)?;
-    let identity_owned = Identity::import_backup(&backup, LOCAL_STORAGE_PASSWORD)?;
+    let backup_password = config.backup_password()?;
+    let backup = identity.export_backup(&backup_password)?;
+    let identity_owned = Identity::import_backup(&backup, &backup_password)?;
 
     let mut session = ExchangeSession::new_responder(identity_owned, our_card, verifier);
 

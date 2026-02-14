@@ -6,18 +6,13 @@
 //!
 //! Manage your contact card.
 
-use std::fs;
-
 use anyhow::{bail, Result};
 use vauchi_core::network::MockTransport;
-use vauchi_core::{ContactField, FieldType, Identity, IdentityBackup, Vauchi, VauchiConfig};
+use vauchi_core::{ContactField, FieldType, Vauchi, VauchiConfig};
 
 use crate::commands::device_sync_helpers::{record_card_field_removed, record_card_update};
 use crate::config::CliConfig;
 use crate::display;
-
-/// Internal password for local identity storage.
-const LOCAL_STORAGE_PASSWORD: &str = "vauchi-local-storage";
 
 /// Opens Vauchi from the config and loads the identity.
 fn open_vauchi(config: &CliConfig) -> Result<Vauchi<MockTransport>> {
@@ -31,10 +26,7 @@ fn open_vauchi(config: &CliConfig) -> Result<Vauchi<MockTransport>> {
 
     let mut wb = Vauchi::new(wb_config)?;
 
-    // Load identity from file
-    let backup_data = fs::read(config.identity_path())?;
-    let backup = IdentityBackup::new(backup_data);
-    let identity = Identity::import_backup(&backup, LOCAL_STORAGE_PASSWORD)?;
+    let identity = config.import_local_identity()?;
     wb.set_identity(identity)?;
 
     Ok(wb)

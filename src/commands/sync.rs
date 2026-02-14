@@ -16,7 +16,7 @@ use tungstenite::{connect, Message, WebSocket};
 use vauchi_core::exchange::X3DH;
 use vauchi_core::network::WebSocketTransport;
 use vauchi_core::sync::{ContactSyncData, DeviceSyncOrchestrator, SyncItem};
-use vauchi_core::{Contact, Identity, IdentityBackup, Vauchi, VauchiConfig};
+use vauchi_core::{Contact, Identity, Vauchi, VauchiConfig};
 
 use vauchi_core::aha_moments::{AhaMomentTracker, AhaMomentType};
 
@@ -27,9 +27,6 @@ use crate::protocol::{
     decode_message, encode_message, AckStatus, DeviceSyncMessage, EncryptedUpdate, ExchangeMessage,
     Handshake, MessagePayload,
 };
-
-/// Internal password for local identity storage.
-const LOCAL_STORAGE_PASSWORD: &str = "vauchi-local-storage";
 
 /// Opens Vauchi from the config and loads the identity.
 fn open_vauchi(config: &CliConfig) -> Result<Vauchi<WebSocketTransport>> {
@@ -43,25 +40,20 @@ fn open_vauchi(config: &CliConfig) -> Result<Vauchi<WebSocketTransport>> {
 
     let mut wb = Vauchi::with_transport_factory(wb_config, WebSocketTransport::new)?;
 
-    // Load identity from file
-    let backup_data = fs::read(config.identity_path())?;
-    let backup = IdentityBackup::new(backup_data);
-    let identity = Identity::import_backup(&backup, LOCAL_STORAGE_PASSWORD)?;
+    let identity = config.import_local_identity()?;
     wb.set_identity(identity)?;
 
     Ok(wb)
 }
 
-/// Sends handshake message to relay.
+/// Sends authenticated handshake message to relay.
 fn send_handshake(
     socket: &mut WebSocket<MaybeTlsStream<TcpStream>>,
-    client_id: &str,
+    identity: &Identity,
     device_id: Option<&str>,
 ) -> Result<()> {
-    let handshake = Handshake {
-        client_id: client_id.to_string(),
-        device_id: device_id.map(|s| s.to_string()),
-    };
+    let handshake =
+        crate::protocol::create_signed_handshake(identity, device_id.map(|s| s.to_string()));
     let envelope = create_envelope(MessagePayload::Handshake(handshake));
     let data = encode_message(&envelope).map_err(|e| anyhow::anyhow!(e))?;
     socket.send(Message::Binary(data))?;
@@ -77,10 +69,10 @@ fn send_exchange_response(
     // Connect to relay
     let (mut socket, _) = connect(&config.relay_url)?;
 
-    // Send handshake (no device_id needed for exchange response)
-    let our_id = our_identity.public_id();
-    send_handshake(&mut socket, &our_id, None)?;
+    // Send authenticated handshake (no device_id needed for exchange response)
+    send_handshake(&mut socket, our_identity, None)?;
 
+    let our_id = our_identity.public_id();
     // Get our exchange key for the message
     let exchange_key_slice = our_identity.exchange_public_key();
     let exchange_key: [u8; 32] = exchange_key_slice
@@ -840,8 +832,8 @@ pub async fn run(config: &CliConfig) -> Result<()> {
         stream.set_read_timeout(Some(std::time::Duration::from_millis(1000)))?;
     }
 
-    // Send handshake with device_id for inter-device sync
-    send_handshake(&mut socket, &client_id, Some(&device_id_hex))?;
+    // Send authenticated handshake with device_id for inter-device sync
+    send_handshake(&mut socket, identity, Some(&device_id_hex))?;
 
     // Small delay to let server send pending messages
     std::thread::sleep(std::time::Duration::from_millis(500));

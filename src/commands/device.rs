@@ -14,13 +14,10 @@ use dialoguer::Input;
 use vauchi_core::exchange::{DeviceLinkQR, DeviceLinkResponder, DeviceLinkResponse};
 use vauchi_core::network::MockTransport;
 use vauchi_core::sync::{DeviceSyncOrchestrator, DeviceSyncPayload};
-use vauchi_core::{Identity, IdentityBackup, Vauchi, VauchiConfig};
+use vauchi_core::{Identity, Vauchi, VauchiConfig};
 
 use crate::config::CliConfig;
 use crate::display;
-
-/// Internal password for local identity storage.
-const LOCAL_STORAGE_PASSWORD: &str = "vauchi-local-storage";
 
 /// Opens Vauchi from the config and loads the identity.
 fn open_vauchi(config: &CliConfig) -> Result<Vauchi<MockTransport>> {
@@ -34,10 +31,7 @@ fn open_vauchi(config: &CliConfig) -> Result<Vauchi<MockTransport>> {
 
     let mut wb = Vauchi::new(wb_config)?;
 
-    // Load identity from file
-    let backup_data = fs::read(config.identity_path())?;
-    let backup = IdentityBackup::new(backup_data);
-    let identity = Identity::import_backup(&backup, LOCAL_STORAGE_PASSWORD)?;
+    let identity = config.import_local_identity()?;
     wb.set_identity(identity)?;
 
     Ok(wb)
@@ -329,9 +323,7 @@ pub fn finish(config: &CliConfig, response_data: &str) -> Result<()> {
     );
 
     // Save the identity
-    let backup = identity.export_backup(LOCAL_STORAGE_PASSWORD)?;
-    fs::create_dir_all(&config.data_dir)?;
-    fs::write(config.identity_path(), backup.as_bytes())?;
+    config.save_local_identity(&identity)?;
 
     // Save the device registry
     let wb_config = VauchiConfig::with_storage_path(config.storage_path())

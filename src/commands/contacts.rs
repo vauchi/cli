@@ -6,19 +6,14 @@
 //!
 //! List, view, and manage contacts.
 
-use std::fs;
-
 use anyhow::{bail, Result};
 use vauchi_core::contact_card::ContactAction;
 use vauchi_core::network::MockTransport;
-use vauchi_core::{Identity, IdentityBackup, Vauchi, VauchiConfig};
+use vauchi_core::{Vauchi, VauchiConfig};
 
 use crate::commands::device_sync_helpers::{record_contact_removed, record_visibility_changed};
 use crate::config::CliConfig;
 use crate::display;
-
-/// Internal password for local identity storage.
-const LOCAL_STORAGE_PASSWORD: &str = "vauchi-local-storage";
 
 /// Opens Vauchi from the config and loads the identity.
 fn open_vauchi(config: &CliConfig) -> Result<Vauchi<MockTransport>> {
@@ -32,10 +27,7 @@ fn open_vauchi(config: &CliConfig) -> Result<Vauchi<MockTransport>> {
 
     let mut wb = Vauchi::new(wb_config)?;
 
-    // Load identity from file
-    let backup_data = fs::read(config.identity_path())?;
-    let backup = IdentityBackup::new(backup_data);
-    let identity = Identity::import_backup(&backup, LOCAL_STORAGE_PASSWORD)?;
+    let identity = config.import_local_identity()?;
     wb.set_identity(identity)?;
 
     Ok(wb)

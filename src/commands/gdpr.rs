@@ -14,13 +14,10 @@ use dialoguer::Input;
 use vauchi_core::api::{export_all_data, ConsentManager, ConsentType, DeletionManager};
 use vauchi_core::network::MockTransport;
 use vauchi_core::storage::DeletionState;
-use vauchi_core::{Identity, IdentityBackup, Vauchi, VauchiConfig};
+use vauchi_core::{Vauchi, VauchiConfig};
 
 use crate::config::CliConfig;
 use crate::display;
-
-/// Internal password for local identity storage.
-const LOCAL_STORAGE_PASSWORD: &str = "vauchi-local-storage";
 
 /// Opens Vauchi from the config and loads the identity.
 fn open_vauchi(config: &CliConfig) -> Result<Vauchi<MockTransport>> {
@@ -34,9 +31,7 @@ fn open_vauchi(config: &CliConfig) -> Result<Vauchi<MockTransport>> {
 
     let mut wb = Vauchi::new(wb_config)?;
 
-    let backup_data = fs::read(config.identity_path())?;
-    let backup = IdentityBackup::new(backup_data);
-    let identity = Identity::import_backup(&backup, LOCAL_STORAGE_PASSWORD)?;
+    let identity = config.import_local_identity()?;
     wb.set_identity(identity)?;
 
     Ok(wb)
