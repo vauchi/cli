@@ -15,7 +15,7 @@ use vauchi_core::network::MockTransport;
 use vauchi_core::recovery::{
     RecoveryClaim, RecoveryProof, RecoverySettings, RecoveryVoucher, VerificationResult,
 };
-use vauchi_core::{Identity, Vauchi, VauchiConfig};
+use vauchi_core::{Vauchi, VauchiConfig};
 
 use crate::config::CliConfig;
 use crate::display;

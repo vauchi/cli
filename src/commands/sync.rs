@@ -25,7 +25,7 @@ use crate::display;
 use crate::protocol::{
     create_ack, create_device_sync_ack, create_device_sync_message, create_envelope,
     decode_message, encode_message, AckStatus, DeviceSyncMessage, EncryptedUpdate, ExchangeMessage,
-    Handshake, MessagePayload,
+    MessagePayload,
 };
 
 /// Opens Vauchi from the config and loads the identity.

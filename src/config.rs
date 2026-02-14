@@ -83,8 +83,8 @@ fn load_or_generate_backup_password(data_dir: &std::path::Path) -> Result<String
     let password_path = data_dir.join(".backup-password");
 
     if password_path.exists() {
-        let content = std::fs::read_to_string(&password_path)
-            .context("Failed to read backup password")?;
+        let content =
+            std::fs::read_to_string(&password_path).context("Failed to read backup password")?;
         let trimmed = content.trim().to_string();
         if trimmed.len() != 64 {
             anyhow::bail!(
@@ -98,7 +98,11 @@ fn load_or_generate_backup_password(data_dir: &std::path::Path) -> Result<String
 
     // Generate a new random password (32 random bytes, hex-encoded = 64 chars)
     let key = SymmetricKey::generate();
-    let password: String = key.as_bytes().iter().map(|b| format!("{:02x}", b)).collect();
+    let password: String = key
+        .as_bytes()
+        .iter()
+        .map(|b| format!("{:02x}", b))
+        .collect();
 
     // Ensure parent directory exists
     std::fs::create_dir_all(data_dir).context("Failed to create data directory")?;
