@@ -229,9 +229,9 @@ impl CliConfig {
                     if let Ok(Some(legacy_bytes)) = storage.load_key(LEGACY_KEY_NAME) {
                         if legacy_bytes.len() == 32 {
                             // Migrate: save under new per-dir name, delete legacy entry
-                            storage
-                                .save_key(&key_name, &legacy_bytes)
-                                .map_err(|e| anyhow::anyhow!("Failed to migrate keychain key: {}", e))?;
+                            storage.save_key(&key_name, &legacy_bytes).map_err(|e| {
+                                anyhow::anyhow!("Failed to migrate keychain key: {}", e)
+                            })?;
                             let _ = storage.delete_key(LEGACY_KEY_NAME);
                             let mut arr = [0u8; 32];
                             arr.copy_from_slice(&legacy_bytes);
