@@ -23,8 +23,7 @@ use vauchi_core::{Contact, Identity, Vauchi, VauchiConfig};
 use crate::config::CliConfig;
 use crate::display;
 use crate::protocol::{
-    create_envelope, create_signed_handshake, encode_message, EncryptedUpdate, ExchangeMessage,
-    MessagePayload,
+    create_envelope, create_signed_handshake, encode_message, EncryptedUpdate, MessagePayload,
 };
 
 /// Opens Vauchi from the config and loads the identity.
@@ -54,48 +53,6 @@ fn send_handshake(
     let envelope = create_envelope(MessagePayload::Handshake(handshake));
     let data = encode_message(&envelope).map_err(|e| anyhow::anyhow!(e))?;
     socket.send(Message::Binary(data))?;
-    Ok(())
-}
-
-/// Sends an exchange message to a recipient via the relay.
-fn send_exchange_message(
-    config: &CliConfig,
-    our_identity: &Identity,
-    recipient_id: &str,
-    ephemeral_public: &[u8; 32],
-) -> Result<()> {
-    // Connect to relay
-    let (mut socket, _) = connect(&config.relay_url)?;
-
-    // Send authenticated handshake
-    send_handshake(&mut socket, our_identity)?;
-
-    let our_id = our_identity.public_id();
-
-    // Create exchange message with the ephemeral key from X3DH
-    let exchange_msg = ExchangeMessage::new(
-        our_identity.signing_public_key(),
-        ephemeral_public,
-        our_identity.display_name(),
-    );
-
-    // Create encrypted update (using exchange message as ciphertext)
-    let update = EncryptedUpdate {
-        recipient_id: recipient_id.to_string(),
-        sender_id: our_id.clone(),
-        ciphertext: exchange_msg.to_bytes(),
-    };
-
-    let envelope = create_envelope(MessagePayload::EncryptedUpdate(update));
-    let data = encode_message(&envelope).map_err(|e| anyhow::anyhow!(e))?;
-    socket.send(Message::Binary(data))?;
-
-    // Wait briefly for acknowledgment
-    std::thread::sleep(std::time::Duration::from_millis(100));
-
-    // Close connection
-    let _ = socket.close(None);
-
     Ok(())
 }
 
@@ -228,19 +185,18 @@ pub fn start(config: &CliConfig) -> Result<()> {
         .load_own_card()?
         .unwrap_or_else(|| ContactCard::new(identity.display_name()));
 
-    // Create exchange session as initiator with manual confirmation
+    // Create exchange session with manual confirmation verifier
     let verifier = ManualConfirmationVerifier::new();
-    verifier.confirm(); // Pre-confirm for CLI (no audio hardware)
 
     let backup_password = config.backup_password()?;
     let backup = identity.export_backup(&backup_password)?;
     let identity_owned = Identity::import_backup(&backup, &backup_password)?;
 
-    let mut session = ExchangeSession::new_initiator(identity_owned, our_card, verifier);
+    let mut session = ExchangeSession::new_qr(identity_owned, our_card, verifier);
 
     // Generate QR via state machine
     session
-        .apply(ExchangeEvent::GenerateQR)
+        .apply(ExchangeEvent::StartQR)
         .map_err(|e| anyhow::anyhow!("Failed to generate QR: {:?}", e))?;
 
     let (qr_data, qr_image) = match session.qr() {
@@ -264,8 +220,9 @@ pub fn start(config: &CliConfig) -> Result<()> {
 
 /// Completes a contact exchange with received data.
 ///
-/// Uses ExchangeSession state machine to process the QR, verify proximity,
-/// perform key agreement, and exchange cards.
+/// Uses the mutual QR exchange flow: both sides generate a QR and scan each
+/// other's QR code. The mutual scan serves as proximity verification.
+/// Flow: StartQR → ProcessQR → TheyScannedOurQR → PerformKeyAgreement → CompleteExchange.
 pub fn complete(config: &CliConfig, data: &str) -> Result<()> {
     let wb = open_vauchi(config)?;
 
@@ -297,24 +254,41 @@ pub fn complete(config: &CliConfig, data: &str) -> Result<()> {
         .load_own_card()?
         .unwrap_or_else(|| ContactCard::new(identity.display_name()));
 
-    // Create exchange session as responder with manual confirmation
+    // Create exchange session with manual confirmation verifier
     let verifier = ManualConfirmationVerifier::new();
-    verifier.confirm(); // Pre-confirm for CLI (no audio hardware)
 
     let backup_password = config.backup_password()?;
     let backup = identity.export_backup(&backup_password)?;
     let identity_owned = Identity::import_backup(&backup, &backup_password)?;
 
-    let mut session = ExchangeSession::new_responder(identity_owned, our_card, verifier);
+    let mut session = ExchangeSession::new_qr(identity_owned, our_card, verifier);
 
-    // Drive the state machine: ProcessQR → VerifyProximity → PerformKeyAgreement → CompleteExchange
+    // Start our QR first (session must be in DisplayingQr state to process a peer's QR)
+    session
+        .apply(ExchangeEvent::StartQR)
+        .map_err(|e| anyhow::anyhow!("Failed to start QR: {:?}", e))?;
+
+    // Display our QR so the other user can scan it to complete their side
+    if let Some(our_qr) = session.qr() {
+        let qr_data = our_qr.to_data_string();
+        let qr_image = our_qr.to_qr_image_string();
+        display::info("Your QR code (share with the other user):");
+        println!();
+        println!("{}", qr_image);
+        println!();
+        println!("Or share this data string:");
+        println!("  {}", qr_data);
+        println!();
+    }
+
+    // Drive the state machine: ProcessQR → TheyScannedOurQR → PerformKeyAgreement → CompleteExchange
     session
         .apply(ExchangeEvent::ProcessQR(qr))
         .map_err(|e| anyhow::anyhow!("Failed to process QR: {:?}", e))?;
 
     session
-        .apply(ExchangeEvent::VerifyProximity)
-        .map_err(|e| anyhow::anyhow!("Proximity verification failed: {:?}", e))?;
+        .apply(ExchangeEvent::TheyScannedOurQR)
+        .map_err(|e| anyhow::anyhow!("Failed to confirm they scanned our QR: {:?}", e))?;
 
     session
         .apply(ExchangeEvent::PerformKeyAgreement)
@@ -325,11 +299,6 @@ pub fn complete(config: &CliConfig, data: &str) -> Result<()> {
         ExchangeState::AwaitingCardExchange { shared_key, .. } => shared_key.clone(),
         _ => bail!("Session not in expected state after key agreement"),
     };
-
-    // Get ephemeral public key for relay message (generated during key agreement)
-    let ephemeral_public = session
-        .ephemeral_public()
-        .ok_or_else(|| anyhow::anyhow!("No ephemeral public key available after key agreement"))?;
 
     // Complete exchange with placeholder card
     let their_card = ContactCard::new("New Contact");
@@ -369,20 +338,7 @@ pub fn complete(config: &CliConfig, data: &str) -> Result<()> {
         }
         Err(e) => {
             display::warning(&format!("Could not send initial card update: {}", e));
-            display::info("The responder may not be able to send updates until you sync again.");
-        }
-    }
-
-    // Send exchange message via relay with our ephemeral key
-    println!("Sending exchange request via relay...");
-    match send_exchange_message(config, identity, &their_public_id, &ephemeral_public) {
-        Ok(()) => {
-            display::success("Exchange request sent");
-        }
-        Err(e) => {
-            display::warning(&format!("Could not send via relay: {}", e));
-            display::info("The contact has been added locally.");
-            display::info("Ask them to run 'vauchi sync' or share your QR code manually.");
+            display::info("The other user may not be able to send updates until you sync again.");
         }
     }
 
