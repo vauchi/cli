@@ -15,7 +15,7 @@ path = "src/main.rs"
 
 [dependencies]
 # Core library - use git dependency for CI, patched to local path via .cargo/config.toml
-vauchi-core = { git = "https://gitlab.com/vauchi/core.git", branch = "refactor/remove-qr-oneway" }
+vauchi-core = { git = "https://gitlab.com/vauchi/core.git", rev = "6d79a0dbd8a31fe0beb1902393e6a8270d217d40" }
 
 # CLI framework
 clap = { version = "4", features = ["derive", "env"] }

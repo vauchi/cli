@@ -34,6 +34,16 @@ stages:
   - security
   - verify
 
+# Cross-repo git access: configure git to use CI_JOB_TOKEN for HTTPS
+# requests and use system git (instead of libgit2) for cargo fetches.
+# Required when Cargo.toml points to branches in other vauchi/* repos.
+variables:
+  CARGO_NET_GIT_FETCH_WITH_CLI: "true"
+
+default:
+  before_script:
+    - git config --global url."https://gitlab-ci-token:${CI_JOB_TOKEN}@gitlab.com/".insteadOf "https://gitlab.com/"
+
 # ============================================================
 # Lint Stage (runs on Rust code changes)
 # ============================================================
