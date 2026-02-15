@@ -202,9 +202,9 @@ pub fn revoke_consent(config: &CliConfig, type_str: &str) -> Result<()> {
 fn create_secure_storage(config: &CliConfig) -> Result<Box<dyn SecureStorage>> {
     #[cfg(feature = "secure-storage")]
     {
-        Ok(Box::new(vauchi_core::storage::secure::PlatformKeyring::new(
-            "vauchi-cli",
-        )))
+        Ok(Box::new(
+            vauchi_core::storage::secure::PlatformKeyring::new("vauchi-cli"),
+        ))
     }
 
     #[cfg(not(feature = "secure-storage"))]
@@ -248,7 +248,10 @@ pub async fn execute_deletion(config: &CliConfig) -> Result<()> {
     let manager = DeletionManager::new(wb.storage());
     let state = manager.deletion_state()?;
     let token = match state {
-        DeletionState::Scheduled { scheduled_at, execute_at } => {
+        DeletionState::Scheduled {
+            scheduled_at,
+            execute_at,
+        } => {
             let now = std::time::SystemTime::now()
                 .duration_since(std::time::UNIX_EPOCH)
                 .map(|d| d.as_secs())
@@ -265,13 +268,17 @@ pub async fn execute_deletion(config: &CliConfig) -> Result<()> {
             }
             ShredToken::from_created_at(scheduled_at)
         }
-        DeletionState::None => bail!("No deletion scheduled. Run 'vauchi gdpr schedule-deletion' first."),
+        DeletionState::None => {
+            bail!("No deletion scheduled. Run 'vauchi gdpr schedule-deletion' first.")
+        }
         DeletionState::Executed { .. } => bail!("Account has already been deleted."),
     };
 
     // Confirmation prompt
     let confirm: String = Input::new()
-        .with_prompt("This will permanently destroy all data and notify contacts. Type 'EXECUTE' to confirm")
+        .with_prompt(
+            "This will permanently destroy all data and notify contacts. Type 'EXECUTE' to confirm",
+        )
         .interact_text()?;
 
     if confirm != "EXECUTE" {
@@ -281,8 +288,12 @@ pub async fn execute_deletion(config: &CliConfig) -> Result<()> {
 
     let secure_storage = create_secure_storage(config)?;
     let identity_id = hex::encode(identity.signing_public_key());
-    let shred_manager =
-        ShredManager::new(wb.storage(), secure_storage.as_ref(), &identity, &config.data_dir);
+    let shred_manager = ShredManager::new(
+        wb.storage(),
+        secure_storage.as_ref(),
+        &identity,
+        &config.data_dir,
+    );
 
     // Create two separate relay clients (borrow rules: PurgeSender + RevocationSender)
     let mut purge_client = create_relay_client(&config.relay_url, &identity_id)?;
@@ -291,11 +302,7 @@ pub async fn execute_deletion(config: &CliConfig) -> Result<()> {
     display::info("Executing account deletion...");
 
     let report = shred_manager
-        .hard_shred(
-            token,
-            Some(&mut purge_client),
-            Some(&mut revocation_client),
-        )
+        .hard_shred(token, Some(&mut purge_client), Some(&mut revocation_client))
         .map_err(|e| anyhow::anyhow!("Shred failed: {}", e))?;
 
     display_shred_report(&report);
@@ -323,8 +330,12 @@ pub async fn panic_shred(config: &CliConfig) -> Result<()> {
 
     let secure_storage = create_secure_storage(config)?;
     let identity_id = hex::encode(identity.signing_public_key());
-    let shred_manager =
-        ShredManager::new(wb.storage(), secure_storage.as_ref(), &identity, &config.data_dir);
+    let shred_manager = ShredManager::new(
+        wb.storage(),
+        secure_storage.as_ref(),
+        &identity,
+        &config.data_dir,
+    );
 
     // Best-effort relay connections — failure doesn't block shred
     let mut purge_client = create_relay_client(&config.relay_url, &identity_id).ok();
@@ -338,7 +349,9 @@ pub async fn panic_shred(config: &CliConfig) -> Result<()> {
 
     let report = shred_manager
         .panic_shred(
-            purge_client.as_mut().map(|c| c as &mut dyn vauchi_core::api::PurgeSender),
+            purge_client
+                .as_mut()
+                .map(|c| c as &mut dyn vauchi_core::api::PurgeSender),
             revocation_client
                 .as_mut()
                 .map(|c| c as &mut dyn vauchi_core::api::RevocationSender),
@@ -361,7 +374,10 @@ fn display_shred_report(report: &ShredReport) {
     println!("  Relay purge sent:       {}", report.relay_purge_sent);
     println!("  Devices notified:       {}", report.devices_notified);
     println!("  SMK destroyed:          {}", report.smk_destroyed);
-    println!("  Identity file destroyed:{}", report.identity_file_destroyed);
+    println!(
+        "  Identity file destroyed:{}",
+        report.identity_file_destroyed
+    );
     println!("  Key files destroyed:    {}", report.key_files_destroyed);
     println!("  SQLite destroyed:       {}", report.sqlite_destroyed);
     println!("  Pre-signed deleted:     {}", report.pre_signed_deleted);
