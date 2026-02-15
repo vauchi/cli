@@ -73,16 +73,11 @@ fn send_exchange_response(
     send_handshake(&mut socket, our_identity, None)?;
 
     let our_id = our_identity.public_id();
-    // Get our exchange key for the message
-    let exchange_key_slice = our_identity.exchange_public_key();
-    let exchange_key: [u8; 32] = exchange_key_slice
-        .try_into()
-        .map_err(|_| anyhow::anyhow!("Invalid exchange key length"))?;
 
     // Create response message
     let exchange_msg = ExchangeMessage::new_response(
-        our_identity.signing_public_key(),
-        &exchange_key,
+        &hex::encode(our_identity.signing_public_key()),
+        &hex::encode(our_identity.exchange_public_key()),
         our_identity.display_name(),
     );
 

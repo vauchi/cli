@@ -74,10 +74,16 @@ fn send_initial_card_update(
         .load_own_card()?
         .ok_or_else(|| anyhow::anyhow!("No own card found"))?;
 
+    // Load contact for signature binding
+    let contact = wb
+        .storage()
+        .load_contact(contact_id)?
+        .ok_or_else(|| anyhow::anyhow!("Contact not found: {}", contact_id))?;
+
     // Create a delta from empty card to our current card
     let empty_card = ContactCard::new(identity.display_name());
     let mut delta = CardDelta::compute(&empty_card, &our_card);
-    delta.sign(identity);
+    delta.sign(identity, contact.public_key());
 
     // Serialize delta
     let delta_bytes =
