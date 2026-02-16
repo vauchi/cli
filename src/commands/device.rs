@@ -214,8 +214,6 @@ pub fn join(
 }
 
 /// Completes the device linking on the existing device (processes request, sends response).
-// TODO: Migrate to prepare_confirmation() + confirm_link_with_sync() API
-#[allow(deprecated)]
 pub fn complete(config: &CliConfig, request_data: &str) -> Result<()> {
     let wb = open_vauchi(config)?;
 
@@ -245,7 +243,7 @@ pub fn complete(config: &CliConfig, request_data: &str) -> Result<()> {
         .unwrap_or_else(|| identity.initial_device_registry());
 
     // Restore the initiator with the saved QR
-    let initiator = identity.restore_device_link_initiator(registry.clone(), saved_qr);
+    let mut initiator = identity.restore_device_link_initiator(registry.clone(), saved_qr);
 
     // Create sync payload with all existing contacts and own card
     let sync_orchestrator =
@@ -258,10 +256,20 @@ pub fn complete(config: &CliConfig, request_data: &str) -> Result<()> {
     // Decode the request
     let encrypted_request = BASE64.decode(request_data)?;
 
-    // Process the request with sync payload
-    #[allow(deprecated)] // TODO: Migrate to prepare_confirmation() + confirm_link_with_sync()
+    // Decrypt request and get confirmation details
+    let (confirmation, request) = initiator.prepare_confirmation(&encrypted_request)?;
+
+    display::info(&format!(
+        "Device '{}' wants to link. Confirmation code: {}",
+        confirmation.device_name, confirmation.confirmation_code
+    ));
+
+    // CLI uses manual data exchange (copy-paste), which is implicit proximity proof
+    initiator.set_proximity_verified();
+
+    // Create response with sync payload
     let (encrypted_response, updated_registry, new_device) =
-        initiator.process_request_with_sync(&encrypted_request, &sync_json)?;
+        initiator.confirm_link_with_sync(&request, &sync_json)?;
 
     // Save the updated registry
     wb.storage().save_device_registry(&updated_registry)?;
