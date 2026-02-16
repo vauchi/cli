@@ -9,6 +9,7 @@ pub mod card;
 pub mod contacts;
 pub mod device;
 pub mod device_sync_helpers;
+pub mod duress;
 pub mod exchange;
 pub mod gdpr;
 pub mod init;

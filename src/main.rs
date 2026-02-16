@@ -112,9 +112,31 @@ enum Commands {
     #[command(subcommand)]
     Tor(TorCommands),
 
+    /// Duress PIN for plausible deniability
+    #[command(subcommand)]
+    Duress(DuressCommands),
+
     /// Display FAQ and help information
     #[command(subcommand)]
     Faq(FaqCommands),
+}
+
+#[derive(Subcommand)]
+enum DuressCommands {
+    /// Set up duress PIN (prompts for app password first if not set)
+    Setup,
+
+    /// Show duress status and configuration
+    Status,
+
+    /// Disable duress PIN
+    Disable,
+
+    /// Test authentication (shows Normal/Duress result)
+    Test {
+        /// PIN to test
+        pin: String,
+    },
 }
 
 #[derive(Subcommand)]
@@ -761,6 +783,12 @@ async fn main() -> Result<()> {
                 TorBridgesCommands::List => commands::tor::bridges_list(&config)?,
                 TorBridgesCommands::Clear => commands::tor::bridges_clear(&config)?,
             },
+        },
+        Commands::Duress(cmd) => match cmd {
+            DuressCommands::Setup => commands::duress::setup(&config)?,
+            DuressCommands::Status => commands::duress::status(&config)?,
+            DuressCommands::Disable => commands::duress::disable(&config)?,
+            DuressCommands::Test { pin } => commands::duress::test(&config, &pin)?,
         },
         Commands::Faq(cmd) => match cmd {
             FaqCommands::List { query } => {
