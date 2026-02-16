@@ -78,11 +78,7 @@ pub fn status(config: &CliConfig) -> Result<()> {
     );
     println!(
         "  Duress PIN:    {}",
-        if duress_enabled {
-            "ENABLED"
-        } else {
-            "NOT SET"
-        }
+        if duress_enabled { "ENABLED" } else { "NOT SET" }
     );
 
     if duress_enabled {
