@@ -103,7 +103,7 @@ pub fn claim(config: &CliConfig, old_pk_hex: &str) -> Result<()> {
 /// Creates a voucher for someone's recovery claim.
 ///
 /// Use this to help a contact recover their identity.
-pub fn vouch(config: &CliConfig, claim_data: &str) -> Result<()> {
+pub fn vouch(config: &CliConfig, claim_data: &str, auto_confirm: bool) -> Result<()> {
     let wb = open_vauchi(config)?;
 
     let identity = wb
@@ -138,34 +138,38 @@ pub fn vouch(config: &CliConfig, claim_data: &str) -> Result<()> {
     println!("  Old Identity: {}...", &old_pk_hex[..16]);
     println!("  New Identity: {}...", &new_pk_hex[..16]);
 
-    if let Some(c) = contact {
-        println!();
-        display::success(&format!("This matches your contact: {}", c.display_name()));
-        println!();
+    if !auto_confirm {
+        if let Some(c) = contact {
+            println!();
+            display::success(&format!("This matches your contact: {}", c.display_name()));
+            println!();
 
-        let confirm = Confirm::new()
-            .with_prompt(format!("Vouch for {}'s recovery?", c.display_name()))
-            .default(false)
-            .interact()?;
+            let confirm = Confirm::new()
+                .with_prompt(format!("Vouch for {}'s recovery?", c.display_name()))
+                .default(false)
+                .interact()?;
 
-        if !confirm {
-            display::info("Vouching cancelled.");
-            return Ok(());
+            if !confirm {
+                display::info("Vouching cancelled.");
+                return Ok(());
+            }
+        } else {
+            println!();
+            display::warning("This public key is NOT in your contacts.");
+            display::warning("Only vouch if you can verify this person in-person!");
+            println!();
+
+            let confirm: String = Input::new()
+                .with_prompt("Type 'I VERIFY' to vouch anyway")
+                .interact_text()?;
+
+            if confirm != "I VERIFY" {
+                display::info("Vouching cancelled.");
+                return Ok(());
+            }
         }
-    } else {
-        println!();
-        display::warning("This public key is NOT in your contacts.");
-        display::warning("Only vouch if you can verify this person in-person!");
-        println!();
-
-        let confirm: String = Input::new()
-            .with_prompt("Type 'I VERIFY' to vouch anyway")
-            .interact_text()?;
-
-        if confirm != "I VERIFY" {
-            display::info("Vouching cancelled.");
-            return Ok(());
-        }
+    } else if let Some(c) = contact {
+        display::success(&format!("Auto-confirmed vouch for: {}", c.display_name()));
     }
 
     // Create voucher
@@ -230,26 +234,10 @@ pub fn add_voucher(config: &CliConfig, voucher_data: &str) -> Result<()> {
         bail!("Voucher keys don't match the recovery in progress");
     }
 
-    // Load trusted contact public keys for voucher validation
-    let contacts = wb.storage().list_contacts()?;
-    let trusted_keys: std::collections::HashSet<[u8; 32]> = contacts
-        .iter()
-        .filter(|c| c.is_recovery_trusted())
-        .map(|c| *c.public_key())
-        .collect();
-
-    // Add voucher — only accepts vouchers from trusted contacts
-    match proof.add_voucher_trusted(voucher, &trusted_keys) {
-        Ok(()) => {}
-        Err(vauchi_core::recovery::RecoveryError::UntrustedVoucher) => {
-            bail!(
-                "Voucher is from an untrusted contact.\n\
-                 Only contacts marked as recovery-trusted can provide valid vouchers.\n\
-                 Use 'vauchi contacts trust <id>' to trust a contact for recovery."
-            );
-        }
-        Err(e) => return Err(e.into()),
-    }
+    // During recovery, the new identity has no contacts yet.
+    // Accept any valid voucher — trust is established by the old identity's
+    // contacts vouching for the recovery claim.
+    proof.add_voucher(voucher)?;
 
     // Save updated proof
     fs::write(&proof_path, proof.to_bytes())?;

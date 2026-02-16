@@ -505,6 +505,10 @@ enum RecoveryCommands {
     Vouch {
         /// Recovery claim data (base64)
         claim: String,
+
+        /// Skip interactive confirmation (for automated/E2E testing)
+        #[arg(long)]
+        yes: bool,
     },
 
     /// Add a voucher to your recovery proof
@@ -684,7 +688,9 @@ async fn main() -> Result<()> {
         },
         Commands::Recovery(cmd) => match cmd {
             RecoveryCommands::Claim { old_pk } => commands::recovery::claim(&config, &old_pk)?,
-            RecoveryCommands::Vouch { claim } => commands::recovery::vouch(&config, &claim)?,
+            RecoveryCommands::Vouch { claim, yes } => {
+                commands::recovery::vouch(&config, &claim, yes)?
+            }
             RecoveryCommands::AddVoucher { voucher } => {
                 commands::recovery::add_voucher(&config, &voucher)?
             }

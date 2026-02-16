@@ -158,11 +158,9 @@ pub fn remove(config: &CliConfig, id: &str) -> Result<()> {
 pub fn verify(config: &CliConfig, id: &str) -> Result<()> {
     let wb = open_vauchi(config)?;
 
-    // Get contact first
-    let contact = wb
-        .get_contact(id)?
-        .ok_or_else(|| anyhow::anyhow!("Contact '{}' not found", id))?;
-
+    // Find contact by ID or name (supports partial ID prefixes)
+    let contact = find_contact(&wb, id)?;
+    let contact_id = contact.id().to_string();
     let name = contact.display_name().to_string();
 
     if contact.is_fingerprint_verified() {
@@ -170,7 +168,7 @@ pub fn verify(config: &CliConfig, id: &str) -> Result<()> {
         return Ok(());
     }
 
-    wb.verify_contact_fingerprint(id)?;
+    wb.verify_contact_fingerprint(&contact_id)?;
     display::success(&format!("Verified fingerprint for {}", name));
 
     Ok(())
@@ -178,17 +176,31 @@ pub fn verify(config: &CliConfig, id: &str) -> Result<()> {
 
 /// Helper to find contact by ID or name
 fn find_contact(wb: &Vauchi<MockTransport>, id_or_name: &str) -> Result<vauchi_core::Contact> {
-    // Try to find by ID first, then by name
-    let contact = wb
-        .get_contact(id_or_name)?
-        .or_else(|| {
-            // Search by name
-            wb.search_contacts(id_or_name)
-                .ok()
-                .and_then(|results| results.into_iter().next())
-        })
-        .ok_or_else(|| anyhow::anyhow!("Contact '{}' not found", id_or_name))?;
-    Ok(contact)
+    // Try exact ID match first
+    if let Some(contact) = wb.get_contact(id_or_name)? {
+        return Ok(contact);
+    }
+
+    // Try name search
+    if let Some(contact) = wb
+        .search_contacts(id_or_name)
+        .ok()
+        .and_then(|results| results.into_iter().next())
+    {
+        return Ok(contact);
+    }
+
+    // Try ID prefix match (for truncated IDs from table output)
+    if let Ok(contacts) = wb.list_contacts() {
+        if let Some(contact) = contacts
+            .into_iter()
+            .find(|c| c.id().to_string().starts_with(id_or_name))
+        {
+            return Ok(contact);
+        }
+    }
+
+    bail!("Contact '{}' not found", id_or_name)
 }
 
 /// Helper to find field ID by label in own card
