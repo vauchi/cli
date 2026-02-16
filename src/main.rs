@@ -116,6 +116,10 @@ enum Commands {
     #[command(subcommand)]
     Duress(DuressCommands),
 
+    /// Emergency broadcast to trusted contacts
+    #[command(subcommand)]
+    Emergency(EmergencyCommands),
+
     /// Display FAQ and help information
     #[command(subcommand)]
     Faq(FaqCommands),
@@ -137,6 +141,21 @@ enum DuressCommands {
         /// PIN to test
         pin: String,
     },
+}
+
+#[derive(Subcommand)]
+enum EmergencyCommands {
+    /// Configure trusted contacts and alert message
+    Configure,
+
+    /// Send emergency broadcast to all trusted contacts
+    Send,
+
+    /// Show emergency broadcast configuration
+    Status,
+
+    /// Disable emergency broadcast
+    Disable,
 }
 
 #[derive(Subcommand)]
@@ -789,6 +808,12 @@ async fn main() -> Result<()> {
             DuressCommands::Status => commands::duress::status(&config)?,
             DuressCommands::Disable => commands::duress::disable(&config)?,
             DuressCommands::Test { pin } => commands::duress::test(&config, &pin)?,
+        },
+        Commands::Emergency(cmd) => match cmd {
+            EmergencyCommands::Configure => commands::emergency::configure(&config)?,
+            EmergencyCommands::Send => commands::emergency::send(&config)?,
+            EmergencyCommands::Status => commands::emergency::status(&config)?,
+            EmergencyCommands::Disable => commands::emergency::disable(&config)?,
         },
         Commands::Faq(cmd) => match cmd {
             FaqCommands::List { query } => {

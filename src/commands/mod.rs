@@ -10,6 +10,7 @@ pub mod contacts;
 pub mod device;
 pub mod device_sync_helpers;
 pub mod duress;
+pub mod emergency;
 pub mod exchange;
 pub mod gdpr;
 pub mod init;
