@@ -23,9 +23,8 @@ use vauchi_core::aha_moments::{AhaMomentTracker, AhaMomentType};
 use crate::config::CliConfig;
 use crate::display;
 use crate::protocol::{
-    create_ack, create_device_sync_ack, create_device_sync_message, create_envelope,
-    decode_message, encode_message, AckStatus, DeviceSyncMessage, EncryptedUpdate, ExchangeMessage,
-    MessagePayload,
+    create_ack, create_device_sync_ack, create_envelope, decode_message, encode_message, AckStatus,
+    DeviceSyncMessage, EncryptedUpdate, ExchangeMessage, MessagePayload,
 };
 
 /// Opens Vauchi from the config and loads the identity.
@@ -454,101 +453,23 @@ fn send_device_sync(
     socket: &mut WebSocket<MaybeTlsStream<TcpStream>>,
     identity: &Identity,
 ) -> Result<usize> {
-    // Try to load device registry
-    let registry = match wb.storage().load_device_registry()? {
-        Some(r) => r,
-        None => {
-            // No device registry - single device, nothing to sync
-            return Ok(0);
-        }
-    };
-
-    // Check if we have more than one device
-    if registry.device_count() <= 1 {
-        return Ok(0);
-    }
-
-    // Load orchestrator with persisted sync state
-    let orchestrator = match DeviceSyncOrchestrator::load(
-        wb.storage(),
-        identity.create_device_info(),
-        registry.clone(),
-    ) {
-        Ok(o) => o,
+    let envelopes = match vauchi_core::sync::build_device_sync_envelopes(identity, wb.storage()) {
+        Ok(e) => e,
         Err(e) => {
-            display::warning(&format!("Failed to load device sync state: {}", e));
+            display::warning(&format!("Failed to build device sync: {}", e));
             return Ok(0);
         }
     };
-
-    let client_id = identity.public_id();
-    let our_device_id = identity.device_id();
-    let our_device_id_hex = hex::encode(our_device_id);
 
     let mut sent = 0;
-
-    // Get pending items for each other device
-    for device in registry.all_devices() {
-        if device.device_id == *our_device_id {
-            continue; // Skip self
+    for data in envelopes {
+        if socket.send(Message::Binary(data)).is_ok() {
+            sent += 1;
         }
+    }
 
-        if !device.is_active() {
-            continue; // Skip revoked devices
-        }
-
-        let pending = orchestrator.pending_for_device(&device.device_id);
-        if pending.is_empty() {
-            continue;
-        }
-
-        // Serialize the pending items
-        let payload = match serde_json::to_vec(&pending) {
-            Ok(p) => p,
-            Err(e) => {
-                display::warning(&format!("Failed to serialize sync items: {}", e));
-                continue;
-            }
-        };
-
-        // Encrypt for the target device
-        let encrypted = match orchestrator.encrypt_for_device(&device.exchange_public_key, &payload)
-        {
-            Ok(e) => e,
-            Err(e) => {
-                display::warning(&format!("Failed to encrypt for device: {:?}", e));
-                continue;
-            }
-        };
-
-        // Get version
-        let version = orchestrator.version_vector().get(our_device_id);
-
-        // Create and send message
-        let target_device_id_hex = hex::encode(device.device_id);
-        let envelope = create_device_sync_message(
-            &client_id,
-            &target_device_id_hex,
-            &our_device_id_hex,
-            encrypted,
-            version,
-        );
-
-        match encode_message(&envelope) {
-            Ok(data) => {
-                if socket.send(Message::Binary(data)).is_ok() {
-                    sent += 1;
-                    display::info(&format!(
-                        "Sent {} sync items to device {}",
-                        pending.len(),
-                        &device.device_name
-                    ));
-                }
-            }
-            Err(e) => {
-                display::warning(&format!("Failed to encode device sync: {}", e));
-            }
-        }
+    if sent > 0 {
+        display::info(&format!("Sent device sync to {} devices", sent));
     }
 
     Ok(sent)
