@@ -15,7 +15,7 @@ path = "src/main.rs"
 
 [dependencies]
 # Core library - use git dependency for CI, patched to local path via .cargo/config.toml
-vauchi-core = { git = "https://gitlab.com/vauchi/core.git", rev = "1e3a3029bcd4ee9e55cc68b12c6f2548d719b7d3" }
+vauchi-core = { git = "https://gitlab.com/vauchi/core.git", branch = "main" }
 
 # CLI framework
 clap = { version = "4", features = ["derive", "env"] }
