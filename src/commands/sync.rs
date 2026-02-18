@@ -4,15 +4,15 @@
 
 //! Sync Command
 //!
-//! Synchronize with the relay server.
+//! Synchronize with the relay server using async WebSocket I/O.
 
 use std::fs;
-use std::net::TcpStream;
+use std::time::Duration;
 
 use anyhow::{bail, Result};
+use futures_util::{SinkExt, StreamExt};
 use indicatif::{ProgressBar, ProgressStyle};
-use tungstenite::stream::MaybeTlsStream;
-use tungstenite::{connect, Message, WebSocket};
+use tokio_tungstenite::tungstenite::Message;
 use vauchi_core::exchange::X3DH;
 use vauchi_core::network::WebSocketTransport;
 use vauchi_core::sync::{ContactSyncData, DeviceSyncOrchestrator, SyncItem};
@@ -26,6 +26,11 @@ use crate::protocol::{
     create_ack, create_device_sync_ack, create_envelope, decode_message, encode_message, AckStatus,
     DeviceSyncMessage, EncryptedUpdate, ExchangeMessage, MessagePayload,
 };
+
+/// Type alias for the async WebSocket stream.
+type WsStream = tokio_tungstenite::WebSocketStream<
+    tokio_tungstenite::MaybeTlsStream<tokio::net::TcpStream>,
+>;
 
 /// Opens Vauchi from the config and loads the identity.
 fn open_vauchi(config: &CliConfig) -> Result<Vauchi<WebSocketTransport>> {
@@ -45,9 +50,22 @@ fn open_vauchi(config: &CliConfig) -> Result<Vauchi<WebSocketTransport>> {
     Ok(wb)
 }
 
+/// Connect to relay server via async WebSocket with timeout.
+async fn connect_to_relay(relay_url: &str) -> Result<WsStream> {
+    let (ws_stream, _) = tokio::time::timeout(
+        Duration::from_secs(5),
+        tokio_tungstenite::connect_async(relay_url),
+    )
+    .await
+    .map_err(|_| anyhow::anyhow!("Connection timed out"))?
+    .map_err(|e| anyhow::anyhow!("WebSocket connection failed: {}", e))?;
+
+    Ok(ws_stream)
+}
+
 /// Sends authenticated handshake message to relay.
-fn send_handshake(
-    socket: &mut WebSocket<MaybeTlsStream<TcpStream>>,
+async fn send_handshake(
+    socket: &mut WsStream,
     identity: &Identity,
     device_id: Option<&str>,
 ) -> Result<()> {
@@ -55,21 +73,22 @@ fn send_handshake(
         crate::protocol::create_signed_handshake(identity, device_id.map(|s| s.to_string()));
     let envelope = create_envelope(MessagePayload::Handshake(handshake));
     let data = encode_message(&envelope).map_err(|e| anyhow::anyhow!(e))?;
-    socket.send(Message::Binary(data))?;
+    socket
+        .send(Message::Binary(data))
+        .await
+        .map_err(|e| anyhow::anyhow!("Send error: {}", e))?;
     Ok(())
 }
 
 /// Sends an exchange response with our name to a contact.
-fn send_exchange_response(
+pub async fn send_exchange_response(
     config: &CliConfig,
     our_identity: &Identity,
     recipient_id: &str,
 ) -> Result<()> {
-    // Connect to relay
-    let (mut socket, _) = connect(&config.relay_url)?;
+    let mut socket = connect_to_relay(&config.relay_url).await?;
 
-    // Send authenticated handshake (no device_id needed for exchange response)
-    send_handshake(&mut socket, our_identity, None)?;
+    send_handshake(&mut socket, our_identity, None).await?;
 
     let our_id = our_identity.public_id();
 
@@ -89,13 +108,15 @@ fn send_exchange_response(
 
     let envelope = create_envelope(MessagePayload::EncryptedUpdate(update));
     let data = encode_message(&envelope).map_err(|e| anyhow::anyhow!(e))?;
-    socket.send(Message::Binary(data))?;
+    socket
+        .send(Message::Binary(data))
+        .await
+        .map_err(|e| anyhow::anyhow!("Send error: {}", e))?;
 
     // Wait briefly for acknowledgment
-    std::thread::sleep(std::time::Duration::from_millis(100));
+    tokio::time::sleep(Duration::from_millis(100)).await;
 
-    // Close connection
-    let _ = socket.close(None);
+    let _ = socket.close(None).await;
 
     Ok(())
 }
@@ -103,8 +124,8 @@ fn send_exchange_response(
 /// Receives and processes pending messages from relay.
 /// Returns: (total_received, exchange_messages, encrypted_card_updates, device_sync_messages)
 #[allow(clippy::type_complexity)]
-fn receive_pending(
-    socket: &mut WebSocket<MaybeTlsStream<TcpStream>>,
+async fn receive_pending(
+    socket: &mut WsStream,
     _wb: &Vauchi<WebSocketTransport>,
 ) -> Result<(
     usize,
@@ -117,11 +138,16 @@ fn receive_pending(
     let mut card_updates = Vec::new(); // (sender_id, ciphertext)
     let mut device_sync_messages = Vec::new();
 
-    // Set a read timeout so we don't block forever
-    // The relay sends pending messages immediately after handshake
     loop {
-        match socket.read() {
-            Ok(Message::Binary(data)) => {
+        // Use timeout to detect when no more messages are pending
+        let msg = match tokio::time::timeout(Duration::from_secs(1), socket.next()).await {
+            Ok(Some(Ok(msg))) => msg,
+            Ok(Some(Err(_))) | Ok(None) => break,
+            Err(_) => break, // Timeout — no more pending messages
+        };
+
+        match msg {
+            Message::Binary(data) => {
                 match decode_message(&data) {
                     Ok(envelope) => {
                         match envelope.payload {
@@ -155,7 +181,7 @@ fn receive_pending(
                                     AckStatus::ReceivedByRecipient,
                                 );
                                 if let Ok(ack_data) = encode_message(&ack) {
-                                    let _ = socket.send(Message::Binary(ack_data));
+                                    let _ = socket.send(Message::Binary(ack_data)).await;
                                 }
                             }
                             MessagePayload::Acknowledgment(ack) => {
@@ -175,7 +201,7 @@ fn receive_pending(
                                 // Send acknowledgment
                                 let ack = create_device_sync_ack(&envelope.message_id, 0);
                                 if let Ok(ack_data) = encode_message(&ack) {
-                                    let _ = socket.send(Message::Binary(ack_data));
+                                    let _ = socket.send(Message::Binary(ack_data)).await;
                                 }
                             }
                             MessagePayload::DeviceSyncAck(ack) => {
@@ -193,23 +219,14 @@ fn receive_pending(
                     }
                 }
             }
-            Ok(Message::Ping(data)) => {
-                let _ = socket.send(Message::Pong(data));
+            Message::Ping(data) => {
+                let _ = socket.send(Message::Pong(data)).await;
             }
-            Ok(Message::Close(_)) => {
+            Message::Close(_) => {
                 break;
             }
-            Ok(_) => {
+            _ => {
                 // Ignore text messages, pongs, etc.
-            }
-            Err(tungstenite::Error::Io(ref e)) if e.kind() == std::io::ErrorKind::WouldBlock => {
-                // No more messages available
-                break;
-            }
-            Err(e) => {
-                // Connection error or closed
-                display::warning(&format!("Connection issue: {}", e));
-                break;
             }
         }
     }
@@ -226,10 +243,10 @@ fn receive_pending(
 fn process_exchange_messages(
     wb: &Vauchi<WebSocketTransport>,
     messages: Vec<ExchangeMessage>,
-    config: &CliConfig,
-) -> Result<(usize, usize)> {
+) -> Result<(usize, usize, Vec<String>)> {
     let mut added = 0;
     let mut updated = 0;
+    let mut response_recipients = Vec::new();
 
     // Get our identity for X3DH
     let identity = wb
@@ -341,19 +358,11 @@ fn process_exchange_messages(
         display::success(&format!("Added contact: {}", exchange.display_name));
         added += 1;
 
-        // Send our name back to them
-        display::info(&format!("Sending our name to {}...", exchange.display_name));
-        match send_exchange_response(config, identity, &public_id) {
-            Ok(()) => {
-                display::success("Response sent");
-            }
-            Err(e) => {
-                display::warning(&format!("Could not send response: {}", e));
-            }
-        }
+        // Collect recipient IDs for async response sending
+        response_recipients.push(public_id);
     }
 
-    Ok((added, updated))
+    Ok((added, updated, response_recipients))
 }
 
 /// Processes encrypted card updates from contacts.
@@ -402,15 +411,14 @@ fn process_card_updates(
     Ok(processed)
 }
 
-/// Sends pending card updates to contacts via relay.
-fn send_pending_updates(
+/// Collects pending outbound updates as serialized envelopes (sync — no await).
+/// Returns (update_id, serialized_envelope) pairs for async sending.
+fn collect_pending_updates_data(
     wb: &Vauchi<WebSocketTransport>,
-    socket: &mut WebSocket<MaybeTlsStream<TcpStream>>,
     our_id: &str,
-) -> Result<usize> {
-    // Get all contacts and check for pending updates
+) -> Result<Vec<(String, Vec<u8>, String)>> {
     let contacts = wb.list_contacts()?;
-    let mut sent = 0;
+    let mut result = Vec::new();
 
     for contact in contacts {
         let pending = wb.storage().get_pending_updates(contact.id())?;
@@ -420,7 +428,6 @@ fn send_pending_updates(
                 continue;
             }
 
-            // Create encrypted update message
             let msg = EncryptedUpdate {
                 recipient_id: contact.id().to_string(),
                 sender_id: our_id.to_string(),
@@ -430,12 +437,7 @@ fn send_pending_updates(
             let envelope = create_envelope(MessagePayload::EncryptedUpdate(msg));
             match encode_message(&envelope) {
                 Ok(data) => {
-                    if socket.send(Message::Binary(data)).is_ok() {
-                        // Mark as sent (delete from pending)
-                        let _ = wb.storage().delete_pending_update(&update.id);
-                        sent += 1;
-                        display::info(&format!("Sent update to {}", contact.display_name()));
-                    }
+                    result.push((update.id, data, contact.display_name().to_string()));
                 }
                 Err(e) => {
                     display::warning(&format!("Failed to encode update: {}", e));
@@ -444,35 +446,21 @@ fn send_pending_updates(
         }
     }
 
-    Ok(sent)
+    Ok(result)
 }
 
-/// Sends pending device sync items to other linked devices.
-fn send_device_sync(
+/// Builds device sync envelopes (sync — no await).
+fn build_device_sync_data(
     wb: &Vauchi<WebSocketTransport>,
-    socket: &mut WebSocket<MaybeTlsStream<TcpStream>>,
     identity: &Identity,
-) -> Result<usize> {
-    let envelopes = match vauchi_core::sync::build_device_sync_envelopes(identity, wb.storage()) {
+) -> Vec<Vec<u8>> {
+    match vauchi_core::sync::build_device_sync_envelopes(identity, wb.storage()) {
         Ok(e) => e,
         Err(e) => {
             display::warning(&format!("Failed to build device sync: {}", e));
-            return Ok(0);
-        }
-    };
-
-    let mut sent = 0;
-    for data in envelopes {
-        if socket.send(Message::Binary(data)).is_ok() {
-            sent += 1;
+            Vec::new()
         }
     }
-
-    if sent > 0 {
-        display::info(&format!("Sent device sync to {} devices", sent));
-    }
-
-    Ok(sent)
 }
 
 /// Processes received device sync messages from other devices.
@@ -717,6 +705,7 @@ fn apply_sync_item(wb: &Vauchi<WebSocketTransport>, item: &SyncItem) -> Result<(
 
 /// Runs the sync command.
 pub async fn run(config: &CliConfig) -> Result<()> {
+    // ── Phase 1: Open Vauchi and extract data (sync, Vauchi is !Send) ──
     let wb = open_vauchi(config)?;
 
     let identity = wb
@@ -733,26 +722,19 @@ pub async fn run(config: &CliConfig) -> Result<()> {
             .unwrap(),
     );
     spinner.set_message(format!("Connecting to {}...", config.relay_url));
-    spinner.enable_steady_tick(std::time::Duration::from_millis(80));
+    spinner.enable_steady_tick(Duration::from_millis(80));
 
-    // Connect via WebSocket
-    let (mut socket, response) = connect(&config.relay_url)?;
+    // ── Phase 2: Connect via async WebSocket ──
+    let mut socket = connect_to_relay(&config.relay_url).await?;
 
     spinner.finish_and_clear();
-    if response.status().is_success() || response.status().as_u16() == 101 {
-        display::success("Connected");
-    }
-
-    // Set read timeout on underlying socket for non-blocking receive
-    if let MaybeTlsStream::Plain(ref stream) = socket.get_ref() {
-        stream.set_read_timeout(Some(std::time::Duration::from_millis(1000)))?;
-    }
+    display::success("Connected");
 
     // Send authenticated handshake with device_id for inter-device sync
-    send_handshake(&mut socket, identity, Some(&device_id_hex))?;
+    send_handshake(&mut socket, identity, Some(&device_id_hex)).await?;
 
     // Small delay to let server send pending messages
-    std::thread::sleep(std::time::Duration::from_millis(500));
+    tokio::time::sleep(Duration::from_millis(500)).await;
 
     // Create a spinner for receiving messages
     let recv_spinner = ProgressBar::new_spinner();
@@ -762,31 +744,66 @@ pub async fn run(config: &CliConfig) -> Result<()> {
             .unwrap(),
     );
     recv_spinner.set_message("Receiving pending messages...");
-    recv_spinner.enable_steady_tick(std::time::Duration::from_millis(80));
+    recv_spinner.enable_steady_tick(Duration::from_millis(80));
 
-    // Receive pending messages (including device sync messages)
+    // Receive pending messages (async)
     let (received, exchange_messages, card_updates, device_sync_messages) =
-        receive_pending(&mut socket, &wb)?;
+        receive_pending(&mut socket, &wb).await?;
     recv_spinner.finish_and_clear();
 
-    // Process exchange messages
-    let (contacts_added, contacts_updated) =
-        process_exchange_messages(&wb, exchange_messages, config)?;
+    // ── Phase 3: Process received messages (sync, Vauchi scope) ──
+    let (contacts_added, contacts_updated, response_recipients) =
+        process_exchange_messages(&wb, exchange_messages)?;
 
-    // Process encrypted card updates
     let cards_updated = process_card_updates(&wb, card_updates)?;
 
-    // Process device sync messages from other devices
-    let device_syncs_processed = process_device_sync_messages(&wb, device_sync_messages, identity)?;
+    let device_syncs_processed =
+        process_device_sync_messages(&wb, device_sync_messages, identity)?;
 
-    // Send pending outbound updates to contacts
-    let updates_sent = send_pending_updates(&wb, &mut socket, &client_id)?;
+    // Collect outbound data (sync)
+    let pending_data = collect_pending_updates_data(&wb, &client_id)?;
+    let device_envelopes = build_device_sync_data(&wb, identity);
 
-    // Send pending device sync to other linked devices
-    let device_syncs_sent = send_device_sync(&wb, &mut socket, identity)?;
+    // ── Phase 4: Send outbound data (async) ──
+
+    // Send exchange responses
+    for recipient_id in &response_recipients {
+        display::info(&format!("Sending our name to {}...", &recipient_id[..16]));
+        match send_exchange_response(config, identity, recipient_id).await {
+            Ok(()) => display::success("Response sent"),
+            Err(e) => display::warning(&format!("Could not send response: {}", e)),
+        }
+    }
+
+    // Send device sync envelopes
+    let mut device_syncs_sent = 0;
+    for data in device_envelopes {
+        if socket.send(Message::Binary(data)).await.is_ok() {
+            device_syncs_sent += 1;
+        }
+    }
+    if device_syncs_sent > 0 {
+        display::info(&format!("Sent device sync to {} devices", device_syncs_sent));
+    }
+
+    // Send pending updates
+    let mut updates_sent = 0;
+    let mut sent_ids = Vec::new();
+    for (update_id, data, contact_name) in pending_data {
+        if socket.send(Message::Binary(data)).await.is_ok() {
+            sent_ids.push(update_id);
+            updates_sent += 1;
+            display::info(&format!("Sent update to {}", contact_name));
+        }
+    }
 
     // Close connection
-    let _ = socket.close(None);
+    let _ = socket.close(None).await;
+
+    // ── Phase 5: Cleanup sent updates (sync, Vauchi scope) ──
+    for id in &sent_ids {
+        let _ = wb.storage().delete_pending_update(id);
+    }
 
     // Display results
     println!();

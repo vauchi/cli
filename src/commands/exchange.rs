@@ -6,11 +6,11 @@
 //!
 //! Generate and complete contact exchanges.
 
-use std::net::TcpStream;
+use std::time::Duration;
 
 use anyhow::{bail, Result};
-use tungstenite::stream::MaybeTlsStream;
-use tungstenite::{connect, Message, WebSocket};
+use futures_util::SinkExt;
+use tokio_tungstenite::tungstenite::Message;
 use vauchi_core::contact_card::ContactCard;
 use vauchi_core::exchange::{
     ExchangeEvent, ExchangeQR, ExchangeSession, ExchangeState, ManualConfirmationVerifier,
@@ -25,6 +25,11 @@ use crate::display;
 use crate::protocol::{
     create_envelope, create_signed_handshake, encode_message, EncryptedUpdate, MessagePayload,
 };
+
+/// Type alias for the async WebSocket stream.
+type WsStream = tokio_tungstenite::WebSocketStream<
+    tokio_tungstenite::MaybeTlsStream<tokio::net::TcpStream>,
+>;
 
 /// Opens Vauchi from the config and loads the identity.
 fn open_vauchi(config: &CliConfig) -> Result<Vauchi<MockTransport>> {
@@ -44,15 +49,28 @@ fn open_vauchi(config: &CliConfig) -> Result<Vauchi<MockTransport>> {
     Ok(wb)
 }
 
+/// Connect to relay server via async WebSocket with timeout.
+async fn connect_to_relay(relay_url: &str) -> Result<WsStream> {
+    let (ws_stream, _) = tokio::time::timeout(
+        Duration::from_secs(5),
+        tokio_tungstenite::connect_async(relay_url),
+    )
+    .await
+    .map_err(|_| anyhow::anyhow!("Connection timed out"))?
+    .map_err(|e| anyhow::anyhow!("WebSocket connection failed: {}", e))?;
+
+    Ok(ws_stream)
+}
+
 /// Sends authenticated handshake message to relay.
-fn send_handshake(
-    socket: &mut WebSocket<MaybeTlsStream<TcpStream>>,
-    identity: &Identity,
-) -> Result<()> {
+async fn send_handshake(socket: &mut WsStream, identity: &Identity) -> Result<()> {
     let handshake = create_signed_handshake(identity, None);
     let envelope = create_envelope(MessagePayload::Handshake(handshake));
     let data = encode_message(&envelope).map_err(|e| anyhow::anyhow!(e))?;
-    socket.send(Message::Binary(data))?;
+    socket
+        .send(Message::Binary(data))
+        .await
+        .map_err(|e| anyhow::anyhow!("Send error: {}", e))?;
     Ok(())
 }
 
@@ -61,7 +79,7 @@ fn send_handshake(
 /// This is critical for the Double Ratchet protocol: the responder cannot send
 /// messages until they receive at least one message from the initiator. By sending
 /// our card immediately after the exchange, we ensure both parties can send.
-fn send_initial_card_update(
+async fn send_initial_card_update(
     config: &CliConfig,
     wb: &Vauchi<MockTransport>,
     identity: &Identity,
@@ -105,12 +123,12 @@ fn send_initial_card_update(
     wb.storage()
         .save_ratchet_state(contact_id, &ratchet, is_initiator)?;
 
-    // Connect to relay and send
-    let (mut socket, _) = connect(&config.relay_url)?;
+    // Connect to relay and send (async)
+    let mut socket = connect_to_relay(&config.relay_url).await?;
 
     // Send handshake
     let our_id = identity.public_id();
-    send_handshake(&mut socket, identity)?;
+    send_handshake(&mut socket, identity).await?;
 
     // Create encrypted update message
     let update = EncryptedUpdate {
@@ -121,13 +139,15 @@ fn send_initial_card_update(
 
     let envelope = create_envelope(MessagePayload::EncryptedUpdate(update));
     let data = encode_message(&envelope).map_err(|e| anyhow::anyhow!(e))?;
-    socket.send(Message::Binary(data))?;
+    socket
+        .send(Message::Binary(data))
+        .await
+        .map_err(|e| anyhow::anyhow!("Send error: {}", e))?;
 
     // Wait briefly for acknowledgment
-    std::thread::sleep(std::time::Duration::from_millis(100));
+    tokio::time::sleep(Duration::from_millis(100)).await;
 
-    // Close connection
-    let _ = socket.close(None);
+    let _ = socket.close(None).await;
 
     Ok(())
 }
@@ -229,7 +249,7 @@ pub fn start(config: &CliConfig) -> Result<()> {
 /// Uses the mutual QR exchange flow: both sides generate a QR and scan each
 /// other's QR code. The mutual scan serves as proximity verification.
 /// Flow: StartQR → ProcessQR → TheyScannedOurQR → PerformKeyAgreement → CompleteExchange.
-pub fn complete(config: &CliConfig, data: &str) -> Result<()> {
+pub async fn complete(config: &CliConfig, data: &str) -> Result<()> {
     let wb = open_vauchi(config)?;
 
     // Parse the exchange QR data
@@ -338,7 +358,7 @@ pub fn complete(config: &CliConfig, data: &str) -> Result<()> {
         .ok_or_else(|| anyhow::anyhow!("No identity found"))?;
 
     // Send initial encrypted card update to establish responder's send chain
-    match send_initial_card_update(config, &wb, identity, &contact_id, &their_public_id) {
+    match send_initial_card_update(config, &wb, identity, &contact_id, &their_public_id).await {
         Ok(()) => {
             display::info("Sent initial card to enable bidirectional messaging");
         }

@@ -634,7 +634,7 @@ async fn main() -> Result<()> {
         Commands::Exchange(cmd) => match cmd {
             ExchangeCommands::Start => commands::exchange::start(&config)?,
             ExchangeCommands::Complete { data } => {
-                commands::exchange::complete(&config, &data)?;
+                commands::exchange::complete(&config, &data).await?;
             }
         },
         Commands::Contacts(cmd) => match cmd {

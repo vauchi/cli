@@ -49,8 +49,10 @@ anyhow = "1"
 # QR code generation
 qrcode = "0.14"
 
-# WebSocket client
-tungstenite = "0.21"
+# Async WebSocket client
+tokio-tungstenite = { version = "0.21", features = ["native-tls"] }
+# Stream/Sink combinators for async WebSocket
+futures-util = "0.3"
 url = "2"
 
 # UUID generation
