@@ -28,9 +28,8 @@ use crate::protocol::{
 };
 
 /// Type alias for the async WebSocket stream.
-type WsStream = tokio_tungstenite::WebSocketStream<
-    tokio_tungstenite::MaybeTlsStream<tokio::net::TcpStream>,
->;
+type WsStream =
+    tokio_tungstenite::WebSocketStream<tokio_tungstenite::MaybeTlsStream<tokio::net::TcpStream>>;
 
 /// Opens Vauchi from the config and loads the identity.
 fn open_vauchi(config: &CliConfig) -> Result<Vauchi<WebSocketTransport>> {
@@ -450,10 +449,7 @@ fn collect_pending_updates_data(
 }
 
 /// Builds device sync envelopes (sync — no await).
-fn build_device_sync_data(
-    wb: &Vauchi<WebSocketTransport>,
-    identity: &Identity,
-) -> Vec<Vec<u8>> {
+fn build_device_sync_data(wb: &Vauchi<WebSocketTransport>, identity: &Identity) -> Vec<Vec<u8>> {
     match vauchi_core::sync::build_device_sync_envelopes(identity, wb.storage()) {
         Ok(e) => e,
         Err(e) => {
@@ -757,8 +753,7 @@ pub async fn run(config: &CliConfig) -> Result<()> {
 
     let cards_updated = process_card_updates(&wb, card_updates)?;
 
-    let device_syncs_processed =
-        process_device_sync_messages(&wb, device_sync_messages, identity)?;
+    let device_syncs_processed = process_device_sync_messages(&wb, device_sync_messages, identity)?;
 
     // Collect outbound data (sync)
     let pending_data = collect_pending_updates_data(&wb, &client_id)?;
@@ -783,7 +778,10 @@ pub async fn run(config: &CliConfig) -> Result<()> {
         }
     }
     if device_syncs_sent > 0 {
-        display::info(&format!("Sent device sync to {} devices", device_syncs_sent));
+        display::info(&format!(
+            "Sent device sync to {} devices",
+            device_syncs_sent
+        ));
     }
 
     // Send pending updates

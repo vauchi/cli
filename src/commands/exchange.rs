@@ -27,9 +27,8 @@ use crate::protocol::{
 };
 
 /// Type alias for the async WebSocket stream.
-type WsStream = tokio_tungstenite::WebSocketStream<
-    tokio_tungstenite::MaybeTlsStream<tokio::net::TcpStream>,
->;
+type WsStream =
+    tokio_tungstenite::WebSocketStream<tokio_tungstenite::MaybeTlsStream<tokio::net::TcpStream>>;
 
 /// Opens Vauchi from the config and loads the identity.
 fn open_vauchi(config: &CliConfig) -> Result<Vauchi<MockTransport>> {
