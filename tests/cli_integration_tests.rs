@@ -106,15 +106,33 @@ mod identity_management {
     }
 
     /// Trace: identity_management.feature - "Display name validation"
-    /// Note: Currently the CLI allows empty names - this tests current behavior
+    /// M-1: Verify that empty-name init either fails or creates empty identity.
     #[test]
     fn test_init_empty_name_behavior() {
         let ctx = CliTestContext::new();
-        // Current behavior: empty name is accepted at CLI level
-        // Validation should ideally happen but currently doesn't
         let output = ctx.run(&["init", ""]);
-        // Just verify the command runs without crashing
-        let _stdout = String::from_utf8_lossy(&output.stdout);
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let stderr = String::from_utf8_lossy(&output.stderr);
+
+        if output.status.success() {
+            // If accepted, the card should exist (even with empty name)
+            let card = ctx.run_success(&["card", "show"]);
+            assert!(
+                !card.is_empty(),
+                "Empty-name init succeeded but card show returned nothing"
+            );
+        } else {
+            // If rejected, stderr should mention the name issue
+            assert!(
+                stderr.contains("empty")
+                    || stderr.contains("name")
+                    || stderr.contains("invalid")
+                    || stderr.contains("required"),
+                "Empty-name init failed but stderr is unclear: stdout={}, stderr={}",
+                stdout,
+                stderr
+            );
+        }
     }
 
     /// Trace: identity_management.feature - Cannot re-initialize
@@ -550,16 +568,20 @@ mod device_management {
     }
 
     /// Trace: device_management.feature - "Generate device linking QR code"
+    /// M-5: Verify QR data structure, not just length.
     #[test]
     fn test_device_link_generates_qr() {
         let ctx = CliTestContext::new();
         ctx.init("Alice Smith");
 
         let output = ctx.run_success(&["device", "link"]);
-        // Should output linking data
+        // Should contain base64-encoded data or a wb:// URL
+        let last_line = output.lines().last().unwrap_or("").trim();
         assert!(
-            output.len() > 20,
-            "Expected device link data, got: {}",
+            last_line.contains("wb://")
+                || last_line.contains("vdl://")
+                || last_line.len() > 50,
+            "Expected device link data with protocol prefix or substantial base64, got: {}",
             output
         );
     }
@@ -685,31 +707,27 @@ mod sync {
     use super::*;
 
     /// Trace: sync_updates.feature - Sync command runs (may fail without relay)
+    /// M-3: Tightened assertion — must show sync-specific or relay-specific output.
     #[test]
     fn test_sync_command_executes() {
         let ctx = CliTestContext::new();
         ctx.init("Alice Smith");
 
-        // Sync will likely fail without a running relay, but should execute
+        // Sync will fail without a running relay, but should execute and report
         let output = ctx.run(&["sync"]);
         let stdout = String::from_utf8_lossy(&output.stdout);
         let stderr = String::from_utf8_lossy(&output.stderr);
-        let combined = format!("{}{}", stdout, stderr);
+        let combined_lower = format!("{}{}", stdout, stderr).to_lowercase();
 
-        // Should either succeed or fail with connection error
+        // Must mention sync, relay, or connection — not just any English word
         assert!(
-            combined.contains("sync")
-                || combined.contains("Sync")
-                || combined.contains("connect")
-                || combined.contains("Connect")
-                || combined.contains("relay")
-                || combined.contains("Relay")
-                || combined.contains("error")
-                || combined.contains("Error")
-                || combined.contains("success")
-                || combined.contains("Success"),
-            "Sync command should run, got: {}",
-            combined
+            combined_lower.contains("sync")
+                || combined_lower.contains("relay")
+                || combined_lower.contains("connect")
+                || combined_lower.contains("websocket"),
+            "Sync output should mention sync/relay/connection, got: stdout={}, stderr={}",
+            stdout,
+            stderr
         );
     }
 }
@@ -805,5 +823,494 @@ mod contact_recovery_trust {
         let output = ctx.run_success(&["contacts", "help"]);
         assert!(output.contains("trust") || output.contains("Trust"));
         assert!(output.contains("untrust") || output.contains("Untrust"));
+    }
+}
+
+// ===========================================================================
+// GDPR Commands Tests (Tracker #210, MIS-7)
+// Trace: features/privacy_compliance.feature
+// ===========================================================================
+
+mod gdpr {
+    use super::*;
+
+    /// Trace: privacy_compliance.feature - "View consent status"
+    #[test]
+    fn test_gdpr_consent_status() {
+        let ctx = CliTestContext::new();
+        ctx.init("Alice Smith");
+
+        let output = ctx.run_success(&["gdpr", "consent-status"]);
+        assert!(
+            output.contains("consent")
+                || output.contains("Consent")
+                || output.contains("No consent"),
+            "Expected consent status output, got: {}",
+            output
+        );
+    }
+
+    /// Trace: privacy_compliance.feature - "Grant consent for data processing"
+    #[test]
+    fn test_gdpr_grant_and_revoke_consent() {
+        let ctx = CliTestContext::new();
+        ctx.init("Alice Smith");
+
+        let output = ctx.run_success(&["gdpr", "grant-consent", "data_processing"]);
+        assert!(
+            output.contains("granted") || output.contains("Granted"),
+            "Expected grant confirmation, got: {}",
+            output
+        );
+
+        // Revoke the same consent
+        let revoke = ctx.run_success(&["gdpr", "revoke-consent", "data_processing"]);
+        assert!(
+            revoke.contains("revoked") || revoke.contains("Revoked"),
+            "Expected revoke confirmation, got: {}",
+            revoke
+        );
+    }
+
+    /// Trace: privacy_compliance.feature - "View deletion status"
+    #[test]
+    fn test_gdpr_deletion_status() {
+        let ctx = CliTestContext::new();
+        ctx.init("Alice Smith");
+
+        let output = ctx.run_success(&["gdpr", "deletion-status"]);
+        assert!(
+            output.contains("No deletion") || output.contains("deletion"),
+            "Expected deletion status, got: {}",
+            output
+        );
+    }
+
+    /// Trace: privacy_compliance.feature - "Export personal data"
+    #[test]
+    fn test_gdpr_export_data() {
+        let ctx = CliTestContext::new();
+        ctx.init("Alice Smith");
+
+        let export_path = ctx.data_dir.path().join("gdpr-export.json");
+        let output = ctx.run_success(&["gdpr", "export", export_path.to_str().unwrap()]);
+        assert!(
+            output.contains("export") || output.contains("Export"),
+            "Expected export confirmation, got: {}",
+            output
+        );
+        assert!(export_path.exists(), "Export file should be created");
+
+        // Verify it's valid JSON
+        let contents = std::fs::read_to_string(&export_path).unwrap();
+        let parsed: serde_json::Value = serde_json::from_str(&contents)
+            .expect("Export should be valid JSON");
+        assert!(parsed.is_object(), "Export should be a JSON object");
+    }
+
+    /// Trace: privacy_compliance.feature - "Invalid consent type"
+    #[test]
+    fn test_gdpr_grant_invalid_consent_type() {
+        let ctx = CliTestContext::new();
+        ctx.init("Alice Smith");
+
+        let stderr = ctx.run_failure(&["gdpr", "grant-consent", "nonexistent_type"]);
+        assert!(
+            stderr.contains("Unknown") || stderr.contains("unknown") || stderr.contains("invalid"),
+            "Expected unknown type error, got: {}",
+            stderr
+        );
+    }
+
+    /// Trace: privacy_compliance.feature - "Cancel deletion without scheduling"
+    #[test]
+    fn test_gdpr_cancel_deletion_not_scheduled() {
+        let ctx = CliTestContext::new();
+        ctx.init("Alice Smith");
+
+        // Cancel when nothing scheduled — should fail or warn
+        let output = ctx.run(&["gdpr", "cancel-deletion"]);
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let combined = format!("{}{}", stdout, stderr).to_lowercase();
+        assert!(
+            combined.contains("no deletion")
+                || combined.contains("not scheduled")
+                || combined.contains("cancelled")
+                || combined.contains("no active"),
+            "Expected no-deletion message, got: {}",
+            combined
+        );
+    }
+}
+
+// ===========================================================================
+// Tor Commands Tests (MIS-8)
+// Trace: features/privacy_compliance.feature
+// ===========================================================================
+
+mod tor {
+    use super::*;
+
+    /// Trace: privacy_compliance.feature - "View Tor status"
+    #[test]
+    fn test_tor_status_default() {
+        let ctx = CliTestContext::new();
+        ctx.init("Alice Smith");
+
+        let output = ctx.run_success(&["tor", "status"]);
+        assert!(
+            output.contains("DISABLED"),
+            "Tor should be disabled by default, got: {}",
+            output
+        );
+    }
+
+    /// Trace: privacy_compliance.feature - "Enable Tor mode"
+    #[test]
+    fn test_tor_enable_disable_cycle() {
+        let ctx = CliTestContext::new();
+        ctx.init("Alice Smith");
+
+        // Enable
+        let enable = ctx.run_success(&["tor", "enable"]);
+        assert!(
+            enable.contains("enabled") || enable.contains("Enabled"),
+            "Expected enable confirmation, got: {}",
+            enable
+        );
+
+        // Status should show enabled
+        let status = ctx.run_success(&["tor", "status"]);
+        assert!(status.contains("ENABLED"), "Tor should be enabled, got: {}", status);
+
+        // Disable
+        let disable = ctx.run_success(&["tor", "disable"]);
+        assert!(
+            disable.contains("disabled") || disable.contains("Disabled"),
+            "Expected disable confirmation, got: {}",
+            disable
+        );
+
+        // Status should show disabled
+        let status2 = ctx.run_success(&["tor", "status"]);
+        assert!(status2.contains("DISABLED"), "Tor should be disabled, got: {}", status2);
+    }
+
+    /// Trace: privacy_compliance.feature - "Enable Tor when already enabled"
+    #[test]
+    fn test_tor_enable_idempotent() {
+        let ctx = CliTestContext::new();
+        ctx.init("Alice Smith");
+
+        ctx.run_success(&["tor", "enable"]);
+        let output = ctx.run_success(&["tor", "enable"]);
+        assert!(
+            output.contains("already"),
+            "Re-enabling Tor should say 'already enabled', got: {}",
+            output
+        );
+    }
+
+    /// Trace: privacy_compliance.feature - "Request new Tor circuit"
+    #[test]
+    fn test_tor_new_circuit() {
+        let ctx = CliTestContext::new();
+        ctx.init("Alice Smith");
+
+        let output = ctx.run_success(&["tor", "new-circuit"]);
+        // Should mention that Tor is not enabled, or circuit requested
+        assert!(
+            output.contains("circuit") || output.contains("Circuit") || output.contains("not enabled"),
+            "Expected circuit-related output, got: {}",
+            output
+        );
+    }
+
+    /// Trace: privacy_compliance.feature - "Manage bridge addresses"
+    #[test]
+    fn test_tor_bridges_lifecycle() {
+        let ctx = CliTestContext::new();
+        ctx.init("Alice Smith");
+
+        // List empty
+        let list = ctx.run_success(&["tor", "bridges", "list"]);
+        assert!(
+            list.contains("No bridges") || list.contains("none"),
+            "Expected no bridges, got: {}",
+            list
+        );
+
+        // Add bridge
+        let add = ctx.run_success(&["tor", "bridges", "add", "obfs4://198.51.100.1:9001"]);
+        assert!(
+            add.contains("added") || add.contains("Added"),
+            "Expected bridge added, got: {}",
+            add
+        );
+
+        // List should show it
+        let list2 = ctx.run_success(&["tor", "bridges", "list"]);
+        assert!(
+            list2.contains("198.51.100.1"),
+            "Bridge should appear in list, got: {}",
+            list2
+        );
+
+        // Clear
+        let clear = ctx.run_success(&["tor", "bridges", "clear"]);
+        assert!(
+            clear.contains("Cleared") || clear.contains("cleared"),
+            "Expected bridges cleared, got: {}",
+            clear
+        );
+
+        // List should be empty again
+        let list3 = ctx.run_success(&["tor", "bridges", "list"]);
+        assert!(
+            list3.contains("No bridges") || list3.contains("none"),
+            "Expected no bridges after clear, got: {}",
+            list3
+        );
+    }
+}
+
+// ===========================================================================
+// Duress PIN Tests (MIS-9)
+// Trace: features/duress_mode.feature
+// ===========================================================================
+
+mod duress {
+    use super::*;
+
+    /// Trace: duress_mode.feature - "View duress status"
+    #[test]
+    fn test_duress_status_default() {
+        let ctx = CliTestContext::new();
+        ctx.init("Alice Smith");
+
+        let output = ctx.run_success(&["duress", "status"]);
+        assert!(
+            output.contains("NOT SET"),
+            "Duress should not be set by default, got: {}",
+            output
+        );
+    }
+
+    /// Trace: duress_mode.feature - "Disable when not enabled"
+    #[test]
+    fn test_duress_disable_when_not_enabled() {
+        let ctx = CliTestContext::new();
+        ctx.init("Alice Smith");
+
+        let output = ctx.run_success(&["duress", "disable"]);
+        assert!(
+            output.contains("not enabled") || output.contains("Not"),
+            "Expected not-enabled message, got: {}",
+            output
+        );
+    }
+
+    /// Trace: duress_mode.feature - "Test auth without password"
+    #[test]
+    fn test_duress_test_without_password() {
+        let ctx = CliTestContext::new();
+        ctx.init("Alice Smith");
+
+        let stderr = ctx.run_failure(&["duress", "test", "1234"]);
+        assert!(
+            stderr.contains("password") || stderr.contains("Password"),
+            "Expected password-required error, got: {}",
+            stderr
+        );
+    }
+}
+
+// ===========================================================================
+// Emergency Broadcast Tests (MIS-10)
+// Trace: features/emergency_broadcast.feature
+// ===========================================================================
+
+mod emergency {
+    use super::*;
+
+    /// Trace: emergency_broadcast.feature - "View emergency status"
+    #[test]
+    fn test_emergency_status_default() {
+        let ctx = CliTestContext::new();
+        ctx.init("Alice Smith");
+
+        let output = ctx.run_success(&["emergency", "status"]);
+        assert!(
+            output.contains("NOT CONFIGURED"),
+            "Emergency should not be configured by default, got: {}",
+            output
+        );
+    }
+
+    /// Trace: emergency_broadcast.feature - "Disable when not configured"
+    #[test]
+    fn test_emergency_disable_when_not_configured() {
+        let ctx = CliTestContext::new();
+        ctx.init("Alice Smith");
+
+        let output = ctx.run_success(&["emergency", "disable"]);
+        assert!(
+            output.contains("not configured") || output.contains("Not"),
+            "Expected not-configured message, got: {}",
+            output
+        );
+    }
+}
+
+// ===========================================================================
+// CRIT-08: "Not Initialized" Guard — Parameterized Tests
+// All command groups should fail gracefully when identity is not initialized.
+// ===========================================================================
+
+mod not_initialized_guard {
+    use super::*;
+
+    fn assert_not_initialized(ctx: &CliTestContext, args: &[&str]) {
+        let output = ctx.run(args);
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        assert!(
+            !output.status.success(),
+            "Command {:?} should fail when not initialized, but succeeded",
+            args
+        );
+        assert!(
+            stderr.contains("not initialized") || stderr.contains("Not initialized"),
+            "Command {:?} should mention 'not initialized', got stderr: {}",
+            args,
+            stderr
+        );
+    }
+
+    #[test]
+    fn test_card_requires_init() {
+        let ctx = CliTestContext::new();
+        assert_not_initialized(&ctx, &["card", "show"]);
+    }
+
+    #[test]
+    fn test_contacts_requires_init() {
+        let ctx = CliTestContext::new();
+        assert_not_initialized(&ctx, &["contacts", "list"]);
+    }
+
+    #[test]
+    fn test_exchange_requires_init() {
+        let ctx = CliTestContext::new();
+        assert_not_initialized(&ctx, &["exchange", "start"]);
+    }
+
+    #[test]
+    fn test_device_requires_init() {
+        let ctx = CliTestContext::new();
+        assert_not_initialized(&ctx, &["device", "list"]);
+    }
+
+    #[test]
+    fn test_labels_requires_init() {
+        let ctx = CliTestContext::new();
+        assert_not_initialized(&ctx, &["labels", "list"]);
+    }
+
+    #[test]
+    fn test_sync_requires_init() {
+        let ctx = CliTestContext::new();
+        assert_not_initialized(&ctx, &["sync"]);
+    }
+
+    #[test]
+    fn test_gdpr_requires_init() {
+        let ctx = CliTestContext::new();
+        assert_not_initialized(&ctx, &["gdpr", "consent-status"]);
+    }
+
+    #[test]
+    fn test_tor_requires_init() {
+        let ctx = CliTestContext::new();
+        assert_not_initialized(&ctx, &["tor", "status"]);
+    }
+
+    #[test]
+    fn test_duress_requires_init() {
+        let ctx = CliTestContext::new();
+        assert_not_initialized(&ctx, &["duress", "status"]);
+    }
+
+    #[test]
+    fn test_emergency_requires_init() {
+        let ctx = CliTestContext::new();
+        assert_not_initialized(&ctx, &["emergency", "status"]);
+    }
+
+    #[test]
+    fn test_recovery_requires_init() {
+        let ctx = CliTestContext::new();
+        assert_not_initialized(&ctx, &["recovery", "status"]);
+    }
+}
+
+// ===========================================================================
+// Recovery Additional Tests (MIS-5)
+// Trace: features/contact_recovery.feature
+// ===========================================================================
+
+mod recovery_additional {
+    use super::*;
+
+    /// Trace: contact_recovery.feature - "Show recovery proof when none exists"
+    #[test]
+    fn test_recovery_proof_no_proof() {
+        let ctx = CliTestContext::new();
+        ctx.init("Alice Smith");
+
+        // No proof exists — command should fail with informative message
+        let stderr = ctx.run_failure(&["recovery", "proof"]);
+        assert!(
+            stderr.contains("No recovery proof")
+                || stderr.contains("not found")
+                || stderr.contains("claim"),
+            "Expected no-proof message, got: {}",
+            stderr
+        );
+    }
+
+    /// Trace: contact_recovery.feature - "Claim with invalid hex"
+    #[test]
+    fn test_recovery_claim_invalid_hex() {
+        let ctx = CliTestContext::new();
+        ctx.init("Alice Smith");
+
+        let stderr = ctx.run_failure(&["recovery", "claim", "not-valid-hex"]);
+        assert!(
+            stderr.contains("invalid")
+                || stderr.contains("Invalid")
+                || stderr.contains("hex")
+                || stderr.contains("Odd")
+                || stderr.contains("error"),
+            "Expected hex decode error, got: {}",
+            stderr
+        );
+    }
+
+    /// Trace: contact_recovery.feature - "Add invalid voucher data"
+    #[test]
+    fn test_recovery_add_voucher_invalid() {
+        let ctx = CliTestContext::new();
+        ctx.init("Alice Smith");
+
+        let stderr = ctx.run_failure(&["recovery", "add-voucher", "invalid-base64-data"]);
+        assert!(
+            stderr.contains("invalid")
+                || stderr.contains("Invalid")
+                || stderr.contains("decode")
+                || stderr.contains("error"),
+            "Expected decode error, got: {}",
+            stderr
+        );
     }
 }
