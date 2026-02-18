@@ -72,15 +72,31 @@ lint:clippy:
 # Test Stage (runs on Rust code changes)
 # ============================================================
 
-test:unit:
+test:coverage:
   extends: [.rust-job, .validation-rust, .timeout-standard]
   stage: test
   needs: []
+  before_script:
+    - git config --global url."https://gitlab-ci-token:${CI_JOB_TOKEN}@gitlab.com/".insteadOf "https://gitlab.com/"
+    - rustup component add llvm-tools-preview
+    - cargo install cargo-llvm-cov --locked || true
   script:
     # Disable secure-storage (OS keychain) for CI — headless Linux has no
     # keyring daemon, so PlatformKeyring fails across subprocess invocations.
     # FileKeyStorage (the fallback) persists correctly in each test's TempDir.
-    - cargo test --all-targets --no-default-features
+    - cargo llvm-cov --all-targets --no-default-features --lcov --output-path lcov.info
+    - cargo llvm-cov report --cobertura --output-path cobertura.xml
+    - cargo llvm-cov report
+  coverage: '/Total:\s+(\d+(?:\.\d+)?%)/'
+  artifacts:
+    reports:
+      coverage_report:
+        coverage_format: cobertura
+        path: cobertura.xml
+    paths:
+      - lcov.info
+      - cobertura.xml
+    expire_in: 1 week
 
 # ============================================================
 # Security Stage (runs on dependency changes)
