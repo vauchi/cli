@@ -460,6 +460,16 @@ fn build_device_sync_data(wb: &Vauchi<WebSocketTransport>, identity: &Identity) 
 }
 
 /// Processes received device sync messages from other devices.
+/// Processes incoming device sync messages from paired devices.
+///
+/// ## Known Gaps (Tracker #62)
+///
+/// - `VisibilityChanged`, `LabelChange`, and `ContactTrustChanged` sync items are
+///   logged but NOT applied to storage (silently no-op'd).
+/// - Individual item failures are logged via `display::warning` but the message is
+///   still counted as "processed", masking partial failures.
+/// - No structured audit trail for dropped messages — errors are only visible in
+///   terminal output.
 fn process_device_sync_messages(
     wb: &Vauchi<WebSocketTransport>,
     messages: Vec<DeviceSyncMessage>,
