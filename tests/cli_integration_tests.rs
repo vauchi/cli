@@ -578,9 +578,7 @@ mod device_management {
         // Should contain base64-encoded data or a wb:// URL
         let last_line = output.lines().last().unwrap_or("").trim();
         assert!(
-            last_line.contains("wb://")
-                || last_line.contains("vdl://")
-                || last_line.len() > 50,
+            last_line.contains("wb://") || last_line.contains("vdl://") || last_line.len() > 50,
             "Expected device link data with protocol prefix or substantial base64, got: {}",
             output
         );
@@ -903,8 +901,8 @@ mod gdpr {
 
         // Verify it's valid JSON
         let contents = std::fs::read_to_string(&export_path).unwrap();
-        let parsed: serde_json::Value = serde_json::from_str(&contents)
-            .expect("Export should be valid JSON");
+        let parsed: serde_json::Value =
+            serde_json::from_str(&contents).expect("Export should be valid JSON");
         assert!(parsed.is_object(), "Export should be a JSON object");
     }
 
@@ -982,7 +980,11 @@ mod tor {
 
         // Status should show enabled
         let status = ctx.run_success(&["tor", "status"]);
-        assert!(status.contains("ENABLED"), "Tor should be enabled, got: {}", status);
+        assert!(
+            status.contains("ENABLED"),
+            "Tor should be enabled, got: {}",
+            status
+        );
 
         // Disable
         let disable = ctx.run_success(&["tor", "disable"]);
@@ -994,7 +996,11 @@ mod tor {
 
         // Status should show disabled
         let status2 = ctx.run_success(&["tor", "status"]);
-        assert!(status2.contains("DISABLED"), "Tor should be disabled, got: {}", status2);
+        assert!(
+            status2.contains("DISABLED"),
+            "Tor should be disabled, got: {}",
+            status2
+        );
     }
 
     /// Trace: privacy_compliance.feature - "Enable Tor when already enabled"
@@ -1021,7 +1027,9 @@ mod tor {
         let output = ctx.run_success(&["tor", "new-circuit"]);
         // Should mention that Tor is not enabled, or circuit requested
         assert!(
-            output.contains("circuit") || output.contains("Circuit") || output.contains("not enabled"),
+            output.contains("circuit")
+                || output.contains("Circuit")
+                || output.contains("not enabled"),
             "Expected circuit-related output, got: {}",
             output
         );
