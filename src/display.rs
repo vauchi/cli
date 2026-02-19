@@ -600,6 +600,7 @@ mod tests {
             text in "(.|\n){0,200}",
             max_width in 0usize..200,
         ) {
+            // allow(zero_assertions): No-panic fuzz test
             let _ = wrap_text(&text, max_width);
         }
     }

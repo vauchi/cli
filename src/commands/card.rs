@@ -206,16 +206,31 @@ mod tests {
 
     #[test]
     fn test_parse_field_type_email_aliases() {
-        assert!(matches!(parse_field_type("email").unwrap(), FieldType::Email));
-        assert!(matches!(parse_field_type("mail").unwrap(), FieldType::Email));
-        assert!(matches!(parse_field_type("EMAIL").unwrap(), FieldType::Email));
+        assert!(matches!(
+            parse_field_type("email").unwrap(),
+            FieldType::Email
+        ));
+        assert!(matches!(
+            parse_field_type("mail").unwrap(),
+            FieldType::Email
+        ));
+        assert!(matches!(
+            parse_field_type("EMAIL").unwrap(),
+            FieldType::Email
+        ));
     }
 
     #[test]
     fn test_parse_field_type_phone_aliases() {
-        assert!(matches!(parse_field_type("phone").unwrap(), FieldType::Phone));
+        assert!(matches!(
+            parse_field_type("phone").unwrap(),
+            FieldType::Phone
+        ));
         assert!(matches!(parse_field_type("tel").unwrap(), FieldType::Phone));
-        assert!(matches!(parse_field_type("telephone").unwrap(), FieldType::Phone));
+        assert!(matches!(
+            parse_field_type("telephone").unwrap(),
+            FieldType::Phone
+        ));
     }
 
     #[test]
@@ -297,7 +312,7 @@ mod tests {
         fn prop_parse_field_type_never_panics(
             s in prop::string::string_regex("(.|\n){0,200}").unwrap()
         ) {
-            // Just verify it doesn't panic — Ok or Err are both fine
+            // allow(zero_assertions): No-panic fuzz test
             let _ = parse_field_type(&s);
         }
     }

@@ -36,13 +36,18 @@ fn contract_create_identity_succeeds_with_valid_name() {
     let wb = setup();
     // After create_identity, public_id is available
     let public_id = wb.public_id().unwrap();
-    assert!(!public_id.is_empty(), "public_id must be a non-empty String");
+    assert!(
+        !public_id.is_empty(),
+        "public_id must be a non-empty String"
+    );
 }
 
 #[test]
 fn contract_identity_has_display_name() {
     let wb = setup();
-    let identity = wb.identity().expect("identity() must return Some after create");
+    let identity = wb
+        .identity()
+        .expect("identity() must return Some after create");
     assert_eq!(
         identity.display_name(),
         "ContractTest",
@@ -114,6 +119,7 @@ fn contract_contact_has_required_accessors() {
 
 #[test]
 fn contract_contact_card_has_required_accessors() {
+    // allow(zero_assertions): Compile-time shape check — fails to compile if API changes
     let card = ContactCard::new("Test");
     let _id: &str = card.id();
     let _name: &str = card.display_name();
@@ -136,8 +142,7 @@ fn contract_contact_card_serde_roundtrip() {
 
 #[test]
 fn contract_field_type_variants_exist() {
-    // CLI's parse_field_type maps user strings to these variants.
-    // If a variant is removed from the enum, this fails to compile.
+    // allow(zero_assertions): Compile-time shape check — fails to compile if variants removed
     let _variants = [
         FieldType::Phone,
         FieldType::Email,
