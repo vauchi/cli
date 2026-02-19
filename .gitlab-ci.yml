@@ -7,6 +7,7 @@
 # Command-line interface
 #
 # Performance optimizations:
+#   - Self-hosted runners: sccache, persistent caches, load-balanced
 #   - Change-based rules: Jobs run only when relevant files change
 #   - Timeouts: Prevent runaway jobs from blocking runners
 #   - Read-only cache for lint jobs
@@ -36,16 +37,6 @@ stages:
   - security
   - verify
 
-# Cross-repo git access: configure git to use CI_JOB_TOKEN for HTTPS
-# requests and use system git (instead of libgit2) for cargo fetches.
-# Required when Cargo.toml points to branches in other vauchi/* repos.
-variables:
-  CARGO_NET_GIT_FETCH_WITH_CLI: "true"
-
-default:
-  before_script:
-    - git config --global url."https://gitlab-ci-token:${CI_JOB_TOKEN}@gitlab.com/".insteadOf "https://gitlab.com/"
-
 # ============================================================
 # Lint Stage — Preflight Gate (runs on Rust code changes)
 # ============================================================
@@ -53,21 +44,17 @@ default:
 # to pass before starting (PI-13 fail-fast DAG).
 
 lint:format:
-  extends: [.rust-job, .validation-rust, .timeout-quick]
+  extends: [.rust-runner-nocache, .validation-rust, .timeout-quick]
   stage: lint
   needs: []
-  cache:
-    policy: pull  # Read-only cache for lint
   script:
     - rustup component add rustfmt
     - cargo fmt --all -- --check
 
 lint:clippy:
-  extends: [.rust-job, .validation-rust, .timeout-quick]
+  extends: [.rust-runner-readonly, .validation-rust, .timeout-quick]
   stage: lint
   needs: []
-  cache:
-    policy: pull  # Read-only cache for lint
   script:
     - rustup component add clippy
     - cargo clippy --all-targets -- -D warnings
@@ -77,7 +64,7 @@ lint:clippy:
 # ============================================================
 
 test:coverage:
-  extends: [.rust-job, .validation-rust, .timeout-standard]
+  extends: [.rust-runner, .validation-rust, .timeout-standard]
   stage: test
   needs:
     - job: lint:format
@@ -85,9 +72,10 @@ test:coverage:
     - job: lint:clippy
       optional: true
   before_script:
-    - git config --global url."https://gitlab-ci-token:${CI_JOB_TOKEN}@gitlab.com/".insteadOf "https://gitlab.com/"
+    - !reference [.self-hosted, before_script]
+    - !reference [.git-credentials, before_script]
     - rustup component add llvm-tools-preview
-    - cargo install cargo-llvm-cov --locked || true
+    - cargo binstall cargo-llvm-cov --no-confirm 2>/dev/null || cargo install cargo-llvm-cov --locked || true
   script:
     # Disable secure-storage (OS keychain) for CI — headless Linux has no
     # keyring daemon, so PlatformKeyring fails across subprocess invocations.
@@ -112,7 +100,7 @@ test:coverage:
 
 # Nightly full mutation testing (scheduled pipeline)
 mutation:nightly:
-  extends: [.rust-job, .timeout-extended]
+  extends: [.rust-runner, .timeout-extended]
   stage: mutation
   needs: []
   rules:
@@ -127,7 +115,7 @@ mutation:nightly:
 
 # Per-MR incremental mutation testing (advisory, runs after tests pass)
 mutation:incremental:
-  extends: [.rust-job, .timeout-extended]
+  extends: [.rust-runner, .timeout-extended]
   stage: mutation
   needs:
     - job: test:coverage
@@ -153,30 +141,26 @@ mutation:incremental:
 # ============================================================
 
 security:audit:
-  extends: [.rust-job, .validation-deps, .timeout-quick]
+  extends: [.rust-runner-readonly, .validation-deps, .timeout-quick]
   stage: security
   needs:
     - job: lint:format
       optional: true
     - job: lint:clippy
       optional: true
-  cache:
-    policy: pull  # Read-only cache
   script:
-    - cargo install cargo-audit || true
+    - cargo binstall cargo-audit --no-confirm 2>/dev/null || cargo install cargo-audit || true
     - cargo audit
 
 # Full cargo-deny check: advisories, licenses, bans, sources
 security:deny:
-  extends: [.rust-job, .timeout-quick]
+  extends: [.rust-runner-readonly, .timeout-quick]
   stage: security
   needs:
     - job: lint:format
       optional: true
     - job: lint:clippy
       optional: true
-  cache:
-    policy: pull
   rules:
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
     - if: $CI_PIPELINE_SOURCE == "schedule"
@@ -192,7 +176,7 @@ security:deny:
 # pass against the updated vauchi-core.
 
 verify:upstream-compat:
-  extends: [.rust-job, .verify-on-upstream, .timeout-standard]
+  extends: [.rust-runner, .verify-on-upstream, .timeout-standard]
   stage: verify
   needs: []
   script:
