@@ -27,6 +27,7 @@ include:
       - '/ci-templates/mr-rules.yml'
       - '/ci-templates/downstream.yml'
       - '/ci-templates/reuse.yml'
+      - '/ci-templates/test-quality.yml'
 
 stages:
   - lint
