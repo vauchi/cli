@@ -512,3 +512,95 @@ fn wrap_text(text: &str, max_width: usize) -> Vec<String> {
 
     lines
 }
+
+// INLINE_TEST_REQUIRED: Binary crate without lib.rs - tests cannot be external
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use proptest::prelude::*;
+
+    // ====================================================================
+    // Unit tests
+    // ====================================================================
+
+    #[test]
+    fn test_wrap_text_empty_input() {
+        let result = wrap_text("", 40);
+        assert!(result.is_empty());
+    }
+
+    #[test]
+    fn test_wrap_text_single_word_fits() {
+        let result = wrap_text("hello", 40);
+        assert_eq!(result, vec!["hello"]);
+    }
+
+    #[test]
+    fn test_wrap_text_wraps_at_boundary() {
+        let result = wrap_text("hello world this is a test", 11);
+        assert_eq!(result, vec!["hello world", "this is a", "test"]);
+    }
+
+    #[test]
+    fn test_wrap_text_preserves_empty_lines() {
+        let result = wrap_text("hello\n\nworld", 40);
+        assert_eq!(result, vec!["hello", "", "world"]);
+    }
+
+    // ====================================================================
+    // Property-Based Tests (CC-04)
+    // ====================================================================
+
+    proptest! {
+        /// All non-empty output lines fit within max_width, except when a
+        /// single word exceeds max_width (unavoidable overflow).
+        #[test]
+        fn prop_wrap_text_lines_respect_width(
+            text in "[a-z ]{0,200}",
+            max_width in 5usize..80,
+        ) {
+            let lines = wrap_text(&text, max_width);
+            for line in &lines {
+                // Lines with a single word may exceed max_width (expected behavior)
+                let word_count = line.split_whitespace().count();
+                if word_count > 1 {
+                    prop_assert!(
+                        line.len() <= max_width,
+                        "Multi-word line '{}' exceeds max_width {}",
+                        line, max_width,
+                    );
+                }
+            }
+        }
+
+        /// All original words appear in the output in order.
+        #[test]
+        fn prop_wrap_text_preserves_words(
+            text in "[a-z]{1,10}( [a-z]{1,10}){0,20}",
+            max_width in 5usize..80,
+        ) {
+            let original_words: Vec<&str> = text.split_whitespace().collect();
+            let lines = wrap_text(&text, max_width);
+            let output_words: Vec<&str> = lines.iter()
+                .flat_map(|l| l.split_whitespace())
+                .collect();
+            prop_assert_eq!(&original_words, &output_words);
+        }
+
+        /// Empty input always produces empty output.
+        #[test]
+        fn prop_wrap_text_empty_produces_empty(max_width in 1usize..100) {
+            let lines = wrap_text("", max_width);
+            prop_assert!(lines.is_empty());
+        }
+
+        /// Never panics on any input.
+        #[test]
+        fn prop_wrap_text_never_panics(
+            text in "(.|\n){0,200}",
+            max_width in 0usize..200,
+        ) {
+            let _ = wrap_text(&text, max_width);
+        }
+    }
+}

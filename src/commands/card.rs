@@ -193,3 +193,112 @@ pub fn edit_name(config: &CliConfig, name: &str) -> Result<()> {
 
     Ok(())
 }
+
+// INLINE_TEST_REQUIRED: Binary crate without lib.rs - tests cannot be external
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use proptest::prelude::*;
+
+    // ====================================================================
+    // Known-alias unit tests
+    // ====================================================================
+
+    #[test]
+    fn test_parse_field_type_email_aliases() {
+        assert!(matches!(parse_field_type("email").unwrap(), FieldType::Email));
+        assert!(matches!(parse_field_type("mail").unwrap(), FieldType::Email));
+        assert!(matches!(parse_field_type("EMAIL").unwrap(), FieldType::Email));
+    }
+
+    #[test]
+    fn test_parse_field_type_phone_aliases() {
+        assert!(matches!(parse_field_type("phone").unwrap(), FieldType::Phone));
+        assert!(matches!(parse_field_type("tel").unwrap(), FieldType::Phone));
+        assert!(matches!(parse_field_type("telephone").unwrap(), FieldType::Phone));
+    }
+
+    #[test]
+    fn test_parse_field_type_unknown_returns_error() {
+        assert!(parse_field_type("unknown").is_err());
+        assert!(parse_field_type("").is_err());
+    }
+
+    // ====================================================================
+    // Property-Based Tests (CC-04, CC-14)
+    // ====================================================================
+
+    /// All known aliases mapped to their expected FieldType.
+    fn all_valid_aliases() -> Vec<(&'static str, FieldType)> {
+        vec![
+            ("email", FieldType::Email),
+            ("mail", FieldType::Email),
+            ("phone", FieldType::Phone),
+            ("tel", FieldType::Phone),
+            ("telephone", FieldType::Phone),
+            ("website", FieldType::Website),
+            ("web", FieldType::Website),
+            ("url", FieldType::Website),
+            ("address", FieldType::Address),
+            ("addr", FieldType::Address),
+            ("home", FieldType::Address),
+            ("social", FieldType::Social),
+            ("twitter", FieldType::Social),
+            ("instagram", FieldType::Social),
+            ("linkedin", FieldType::Social),
+            ("custom", FieldType::Custom),
+            ("other", FieldType::Custom),
+            ("note", FieldType::Custom),
+        ]
+    }
+
+    proptest! {
+        /// Case-insensitive: any mixed-case variant of a valid alias is accepted.
+        #[test]
+        fn prop_parse_field_type_case_insensitive(
+            idx in 0usize..18,
+            bits in proptest::collection::vec(any::<bool>(), 20),
+        ) {
+            let aliases = all_valid_aliases();
+            let (alias, expected_type) = &aliases[idx];
+            // Apply random casing
+            let mixed: String = alias.chars().enumerate().map(|(i, c)| {
+                if *bits.get(i).unwrap_or(&false) {
+                    c.to_uppercase().next().unwrap()
+                } else {
+                    c
+                }
+            }).collect();
+
+            let result = parse_field_type(&mixed);
+            prop_assert!(result.is_ok(), "Should accept '{}' (from alias '{}')", mixed, alias);
+            prop_assert_eq!(
+                std::mem::discriminant(&result.unwrap()),
+                std::mem::discriminant(expected_type),
+            );
+        }
+
+        /// Arbitrary non-alias strings always produce an error.
+        #[test]
+        fn prop_parse_field_type_rejects_unknown(s in "\\PC{0,100}") {
+            let known: Vec<&str> = vec![
+                "email", "mail", "phone", "tel", "telephone",
+                "website", "web", "url", "address", "addr", "home",
+                "social", "twitter", "instagram", "linkedin",
+                "custom", "other", "note",
+            ];
+            if !known.contains(&s.to_lowercase().as_str()) {
+                prop_assert!(parse_field_type(&s).is_err());
+            }
+        }
+
+        /// Adversarial inputs (CC-14): never panics.
+        #[test]
+        fn prop_parse_field_type_never_panics(
+            s in prop::string::string_regex("(.|\n){0,200}").unwrap()
+        ) {
+            // Just verify it doesn't panic — Ok or Err are both fine
+            let _ = parse_field_type(&s);
+        }
+    }
+}
