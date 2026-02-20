@@ -168,6 +168,19 @@ pub fn verify(config: &CliConfig, id: &str) -> Result<()> {
         return Ok(());
     }
 
+    // Display fingerprints for manual comparison before marking verified
+    println!();
+    println!("  Their fingerprint ({}):", name);
+    println!("  {}", contact.fingerprint());
+    if let Ok(own_fp) = wb.own_fingerprint() {
+        println!();
+        println!("  Your fingerprint:");
+        println!("  {}", own_fp);
+    }
+    println!();
+    println!("  Compare these fingerprints in person before verifying.");
+    println!();
+
     wb.verify_contact_fingerprint(&contact_id)?;
     display::success(&format!("Verified fingerprint for {}", name));
 
