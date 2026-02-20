@@ -61,21 +61,33 @@ lint:clippy:
 # Test Stage (runs on Rust code changes, gated by lint)
 # ============================================================
 
-test:coverage:
-  extends: [.rust-runner, .validation-rust, .timeout-standard]
+# MR: fast nextest (no coverage overhead)
+test:
+  extends: [.rust-runner, .validation-rust, .timeout-quick]
   stage: test
   needs:
     - job: lint:format
       optional: true
     - job: lint:clippy
       optional: true
+  script:
+    - cargo nextest run --all-targets --no-default-features
+
+# Main: full coverage with llvm-cov
+coverage:
+  extends: [.rust-runner, .timeout-standard]
+  stage: test
+  needs:
+    - job: lint:format
+      optional: true
+    - job: lint:clippy
+      optional: true
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
   before_script:
     - !reference [.self-hosted, before_script]
     - !reference [.git-credentials, before_script]
   script:
-    # Disable secure-storage (OS keychain) for CI — headless Linux has no
-    # keyring daemon, so PlatformKeyring fails across subprocess invocations.
-    # FileKeyStorage (the fallback) persists correctly in each test's TempDir.
     - cargo llvm-cov nextest --all-targets --no-default-features --lcov --output-path lcov.info
     - cargo llvm-cov report --cobertura --output-path cobertura.xml
     - cargo llvm-cov report
@@ -113,7 +125,7 @@ mutation:incremental:
   extends: [.rust-runner, .timeout-extended]
   stage: mutation
   needs:
-    - job: test:coverage
+    - job: test
       optional: true
   rules:
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
