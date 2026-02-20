@@ -172,7 +172,16 @@ pub fn verify(config: &CliConfig, id: &str) -> Result<()> {
     println!();
     println!("  Their fingerprint ({}):", name);
     println!("  {}", contact.fingerprint());
-    if let Ok(own_fp) = wb.own_fingerprint() {
+    if let Some(identity) = wb.identity() {
+        let own_hex = hex::encode(identity.signing_public_key());
+        let own_fp: String = own_hex
+            .chars()
+            .collect::<Vec<_>>()
+            .chunks(4)
+            .map(|c| c.iter().collect::<String>())
+            .collect::<Vec<_>>()
+            .join(" ")
+            .to_uppercase();
         println!();
         println!("  Your fingerprint:");
         println!("  {}", own_fp);
