@@ -76,7 +76,7 @@ test:coverage:
     # Disable secure-storage (OS keychain) for CI — headless Linux has no
     # keyring daemon, so PlatformKeyring fails across subprocess invocations.
     # FileKeyStorage (the fallback) persists correctly in each test's TempDir.
-    - cargo llvm-cov --all-targets --no-default-features --lcov --output-path lcov.info
+    - cargo llvm-cov nextest --all-targets --no-default-features --lcov --output-path lcov.info
     - cargo llvm-cov report --cobertura --output-path cobertura.xml
     - cargo llvm-cov report
   coverage: '/Total:\s+(\d+(?:\.\d+)?%)/'
@@ -172,4 +172,4 @@ verify:upstream-compat:
   stage: verify
   needs: []
   script:
-    - cargo test --all-targets --no-default-features
+    - cargo nextest run --all-targets --no-default-features
