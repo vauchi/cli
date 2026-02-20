@@ -145,6 +145,21 @@ mod identity_management {
         assert!(stderr.contains("already initialized"));
     }
 
+    /// Trace: identity_management.feature - Re-initialize with --force
+    #[test]
+    fn test_init_force_overwrites_existing_identity() {
+        let ctx = CliTestContext::new();
+        ctx.init("Alice Smith");
+
+        // Re-init with --force should succeed
+        let output = ctx.run_success(&["init", "--force", "Bob Jones"]);
+        assert!(output.contains("Identity created: Bob Jones"));
+
+        // Verify the new identity is active
+        let card_output = ctx.run_success(&["card", "show"]);
+        assert!(card_output.contains("Bob Jones"));
+    }
+
     /// Trace: identity_management.feature - "Create encrypted identity backup"
     /// Note: Skipped - export requires interactive password input via dialoguer
     #[test]

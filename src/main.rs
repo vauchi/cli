@@ -52,6 +52,9 @@ enum Commands {
     Init {
         /// Your display name
         name: String,
+        /// Overwrite existing identity (destructive)
+        #[arg(long)]
+        force: bool,
     },
 
     /// Manage your contact card
@@ -609,8 +612,8 @@ async fn main() -> Result<()> {
     };
 
     match cli.command {
-        Commands::Init { name } => {
-            commands::init::run(&name, &config)?;
+        Commands::Init { name, force } => {
+            commands::init::run(&name, force, &config)?;
         }
         Commands::Card(cmd) => match cmd {
             CardCommands::Show => commands::card::show(&config)?,
