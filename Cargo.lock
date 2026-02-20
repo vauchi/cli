@@ -2457,6 +2457,7 @@ dependencies = [
  "open",
  "proptest",
  "qrcode",
+ "ring",
  "serde",
  "serde_json",
  "tabled",
