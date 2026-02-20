@@ -61,6 +61,9 @@ uuid = { version = "1", features = ["v4"] }
 # Hex encoding
 hex = "0.4"
 
+# Cryptographic random number generation (for GDPR export salt)
+ring = "0.17"
+
 # Base64 encoding
 base64 = "0.21"
 

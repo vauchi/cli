@@ -11,10 +11,12 @@ use std::path::Path;
 
 use anyhow::{bail, Result};
 use dialoguer::Input;
+use ring::rand::{SecureRandom, SystemRandom};
 use vauchi_core::api::{
     export_all_data, ConsentManager, ConsentType, DeletionManager, ShredManager, ShredReport,
     ShredToken, ShredVerification,
 };
+use vauchi_core::crypto::derive_key_argon2id;
 use vauchi_core::network::{
     MockTransport, RelayClient, RelayClientConfig, TransportConfig, WebSocketTransport,
 };
@@ -43,15 +45,50 @@ fn open_vauchi(config: &CliConfig) -> Result<Vauchi<MockTransport>> {
     Ok(wb)
 }
 
+/// Version byte for encrypted GDPR exports.
+const GDPR_EXPORT_VERSION: u8 = 0x01;
+
+/// Salt length for Argon2id key derivation.
+const GDPR_SALT_LEN: usize = 16;
+
 /// Exports all user data as GDPR-compliant JSON.
-pub fn export_data(config: &CliConfig, output: &Path) -> Result<()> {
+///
+/// If `password` is provided, the JSON is encrypted with Argon2id + XChaCha20-Poly1305.
+/// Format: `version_byte (0x01) || salt (16 bytes) || ciphertext`
+pub fn export_data(config: &CliConfig, output: &Path, password: Option<&str>) -> Result<()> {
     let wb = open_vauchi(config)?;
     let export = export_all_data(wb.storage())?;
 
     let json = serde_json::to_string_pretty(&export)?;
-    fs::write(output, &json)?;
 
-    display::success(&format!("GDPR data export saved to {:?}", output));
+    if let Some(pw) = password {
+        // Generate random salt
+        let rng = SystemRandom::new();
+        let mut salt = [0u8; GDPR_SALT_LEN];
+        rng.fill(&mut salt)
+            .map_err(|_| anyhow::anyhow!("Failed to generate random salt"))?;
+
+        // Derive key from password
+        let key = derive_key_argon2id(pw.as_bytes(), &salt)
+            .map_err(|e| anyhow::anyhow!("Key derivation failed: {:?}", e))?;
+
+        // Encrypt the JSON
+        let ciphertext = vauchi_core::encrypt(&key, json.as_bytes())
+            .map_err(|e| anyhow::anyhow!("Encryption failed: {:?}", e))?;
+
+        // Write: version || salt || ciphertext
+        let mut encrypted = Vec::with_capacity(1 + GDPR_SALT_LEN + ciphertext.len());
+        encrypted.push(GDPR_EXPORT_VERSION);
+        encrypted.extend_from_slice(&salt);
+        encrypted.extend_from_slice(&ciphertext);
+
+        fs::write(output, &encrypted)?;
+        display::success(&format!("Encrypted GDPR data export saved to {:?}", output));
+    } else {
+        fs::write(output, &json)?;
+        display::success(&format!("GDPR data export saved to {:?}", output));
+    }
+
     display::info(&format!(
         "Export version: {}, contacts: {}, exported at: {}",
         export.version,

@@ -52,6 +52,9 @@ enum Commands {
     Init {
         /// Your display name
         name: String,
+        /// Overwrite existing identity (destructive)
+        #[arg(long)]
+        force: bool,
     },
 
     /// Manage your contact card
@@ -218,10 +221,13 @@ enum TorBridgesCommands {
 
 #[derive(Subcommand)]
 enum GdprCommands {
-    /// Export all personal data as JSON
+    /// Export all personal data as JSON (encrypted by default when --password is given)
     Export {
         /// Output file path
         output: PathBuf,
+        /// Encrypt export with this password
+        #[arg(long)]
+        password: Option<String>,
     },
 
     /// Schedule account deletion (7-day grace period)
@@ -609,8 +615,8 @@ async fn main() -> Result<()> {
     };
 
     match cli.command {
-        Commands::Init { name } => {
-            commands::init::run(&name, &config)?;
+        Commands::Init { name, force } => {
+            commands::init::run(&name, force, &config)?;
         }
         Commands::Card(cmd) => match cmd {
             CardCommands::Show => commands::card::show(&config)?,
@@ -762,8 +768,8 @@ async fn main() -> Result<()> {
             generate(shell, &mut cmd, "vauchi", &mut io::stdout());
         }
         Commands::Gdpr(cmd) => match cmd {
-            GdprCommands::Export { output } => {
-                commands::gdpr::export_data(&config, &output)?;
+            GdprCommands::Export { output, password } => {
+                commands::gdpr::export_data(&config, &output, password.as_deref())?;
             }
             GdprCommands::ExecuteDeletion => {
                 commands::gdpr::execute_deletion(&config).await?;

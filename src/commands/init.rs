@@ -16,10 +16,10 @@ use crate::config::CliConfig;
 use crate::display;
 
 /// Creates a new identity.
-pub fn run(name: &str, config: &CliConfig) -> Result<()> {
+pub fn run(name: &str, force: bool, config: &CliConfig) -> Result<()> {
     // Check if already initialized
-    if config.is_initialized() {
-        bail!("Vauchi is already initialized in {:?}. Use --data-dir to specify a different location.", config.data_dir);
+    if config.is_initialized() && !force {
+        bail!("Vauchi is already initialized in {:?}. Use --force to overwrite or --data-dir for a different location.", config.data_dir);
     }
 
     // Create data directory

@@ -145,6 +145,21 @@ mod identity_management {
         assert!(stderr.contains("already initialized"));
     }
 
+    /// Trace: identity_management.feature - Re-initialize with --force
+    #[test]
+    fn test_init_force_overwrites_existing_identity() {
+        let ctx = CliTestContext::new();
+        ctx.init("Alice Smith");
+
+        // Re-init with --force should succeed
+        let output = ctx.run_success(&["init", "--force", "Bob Jones"]);
+        assert!(output.contains("Identity created: Bob Jones"));
+
+        // Verify the new identity is active
+        let card_output = ctx.run_success(&["card", "show"]);
+        assert!(card_output.contains("Bob Jones"));
+    }
+
     /// Trace: identity_management.feature - "Create encrypted identity backup"
     /// Note: Skipped - export requires interactive password input via dialoguer
     #[test]
@@ -904,6 +919,37 @@ mod gdpr {
         let parsed: serde_json::Value =
             serde_json::from_str(&contents).expect("Export should be valid JSON");
         assert!(parsed.is_object(), "Export should be a JSON object");
+    }
+
+    /// Trace: privacy_compliance.feature - "Export encrypted personal data"
+    #[test]
+    fn test_gdpr_export_encrypted() {
+        let ctx = CliTestContext::new();
+        ctx.init("Alice Smith");
+
+        let export_path = ctx.data_dir.path().join("gdpr-export.enc");
+        let output = ctx.run_success(&[
+            "gdpr",
+            "export",
+            "--password",
+            "MyStr0ngP@ssword!",
+            export_path.to_str().unwrap(),
+        ]);
+        assert!(
+            output.contains("export") || output.contains("Export"),
+            "Expected export confirmation, got: {}",
+            output
+        );
+        assert!(export_path.exists(), "Export file should be created");
+
+        // Verify it's NOT plain JSON (it's encrypted binary)
+        let contents = std::fs::read(&export_path).unwrap();
+        assert_eq!(contents[0], 0x01, "First byte should be version 0x01");
+        // Should not be parseable as JSON
+        assert!(
+            serde_json::from_slice::<serde_json::Value>(&contents).is_err(),
+            "Encrypted export should not be valid JSON"
+        );
     }
 
     /// Trace: privacy_compliance.feature - "Invalid consent type"
