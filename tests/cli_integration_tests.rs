@@ -86,6 +86,7 @@ mod identity_management {
     use super::*;
 
     /// Trace: identity_management.feature - "Create new identity on first launch"
+    // @scenario: identity_management:Create new identity on first launch
     #[test]
     fn test_init_creates_identity() {
         let ctx = CliTestContext::new();
@@ -96,6 +97,7 @@ mod identity_management {
     }
 
     /// Trace: identity_management.feature - "Set display name during identity setup"
+    // @scenario: identity_management:Set display name during identity setup
     #[test]
     fn test_init_sets_display_name() {
         let ctx = CliTestContext::new();
@@ -106,6 +108,7 @@ mod identity_management {
     }
 
     /// Trace: identity_management.feature - "Display name validation"
+    // @scenario: identity_management:Display name validation
     /// M-1: Verify that empty-name init either fails or creates empty identity.
     #[test]
     fn test_init_empty_name_behavior() {
@@ -136,6 +139,7 @@ mod identity_management {
     }
 
     /// Trace: identity_management.feature - Cannot re-initialize
+    // @scenario: identity_management:Cannot re-initialize without force
     #[test]
     fn test_init_already_initialized_fails() {
         let ctx = CliTestContext::new();
@@ -146,6 +150,7 @@ mod identity_management {
     }
 
     /// Trace: identity_management.feature - Re-initialize with --force
+    // @scenario: identity_management:Re-initialize with force flag
     #[test]
     fn test_init_force_overwrites_existing_identity() {
         let ctx = CliTestContext::new();
@@ -161,6 +166,7 @@ mod identity_management {
     }
 
     /// Trace: identity_management.feature - "Create encrypted identity backup"
+    // @scenario: identity_management:Create encrypted identity backup
     /// Note: Skipped - export requires interactive password input via dialoguer
     #[test]
     #[ignore = "requires interactive terminal for password input"]
@@ -176,6 +182,7 @@ mod identity_management {
     }
 
     /// Trace: identity_management.feature - "Restore identity from backup"
+    // @scenario: identity_management:Restore identity from backup
     /// Note: Skipped - import requires interactive password input via dialoguer
     #[test]
     #[ignore = "requires interactive terminal for password input"]
@@ -203,6 +210,7 @@ mod identity_management {
     }
 
     /// Trace: identity_management.feature - "Identity verification via public key fingerprint"
+    // @scenario: identity_management:Identity verification via public key fingerprint
     #[test]
     fn test_device_info_shows_fingerprint() {
         let ctx = CliTestContext::new();
@@ -227,6 +235,7 @@ mod contact_card_management {
     use super::*;
 
     /// Trace: contact_card_management.feature - "Add a phone number field"
+    // @scenario: contact_card_management:Add a phone number field
     #[test]
     fn test_card_add_phone_field() {
         let ctx = CliTestContext::new();
@@ -241,6 +250,7 @@ mod contact_card_management {
     }
 
     /// Trace: contact_card_management.feature - "Add an email field"
+    // @scenario: contact_card_management:Add an email field
     #[test]
     fn test_card_add_email_field() {
         let ctx = CliTestContext::new();
@@ -254,6 +264,7 @@ mod contact_card_management {
     }
 
     /// Trace: contact_card_management.feature - "Add a website field"
+    // @scenario: contact_card_management:Add a website field
     #[test]
     fn test_card_add_website_field() {
         let ctx = CliTestContext::new();
@@ -273,6 +284,7 @@ mod contact_card_management {
     }
 
     /// Trace: contact_card_management.feature - "Edit an existing field value"
+    // @scenario: contact_card_management:Edit an existing field value
     #[test]
     fn test_card_edit_field() {
         let ctx = CliTestContext::new();
@@ -287,6 +299,7 @@ mod contact_card_management {
     }
 
     /// Trace: contact_card_management.feature - "Remove a field from contact card"
+    // @scenario: contact_card_management:Remove a field from contact card
     #[test]
     fn test_card_remove_field() {
         let ctx = CliTestContext::new();
@@ -300,6 +313,7 @@ mod contact_card_management {
     }
 
     /// Trace: contact_card_management.feature - "Update display name"
+    // @scenario: contact_card_management:Update display name
     #[test]
     fn test_card_edit_name() {
         let ctx = CliTestContext::new();
@@ -312,6 +326,7 @@ mod contact_card_management {
     }
 
     /// Trace: contact_card_management.feature - Multiple fields
+    // @scenario: contact_card_management:Add multiple fields to contact card
     #[test]
     fn test_card_multiple_fields() {
         let ctx = CliTestContext::new();
@@ -328,6 +343,7 @@ mod contact_card_management {
     }
 
     /// Trace: contact_card_management.feature - "Add social media fields"
+    // @scenario: contact_card_management:Add social media fields
     #[test]
     fn test_card_add_social_field() {
         let ctx = CliTestContext::new();
@@ -349,6 +365,7 @@ mod contact_exchange {
     use super::*;
 
     /// Trace: contact_exchange.feature - "Generate exchange QR code"
+    // @scenario: contact_exchange:Generate exchange QR code
     #[test]
     fn test_exchange_start_generates_data() {
         let ctx = CliTestContext::new();
@@ -364,6 +381,7 @@ mod contact_exchange {
     }
 
     /// Trace: contact_exchange.feature - "Successful QR code exchange"
+    // @scenario: contact_exchange:Successful QR code exchange
     #[test]
     fn test_exchange_complete_flow() {
         // Alice generates exchange data
@@ -402,6 +420,7 @@ mod contact_exchange {
     }
 
     /// Trace: contact_exchange.feature - "Handle malformed QR code"
+    // @scenario: contact_exchange:Handle malformed QR code
     #[test]
     fn test_exchange_complete_invalid_data() {
         let ctx = CliTestContext::new();
@@ -428,6 +447,7 @@ mod contacts_management {
     use super::*;
 
     /// Trace: contacts_management.feature - "List all contacts"
+    // @scenario: contacts_management:View all contacts
     #[test]
     fn test_contacts_list_empty() {
         let ctx = CliTestContext::new();
@@ -445,6 +465,7 @@ mod contacts_management {
     }
 
     /// Trace: contacts_management.feature - "Search contacts"
+    // @scenario: contacts_management:Search contacts by name
     #[test]
     fn test_contacts_search() {
         let ctx = CliTestContext::new();
@@ -472,6 +493,7 @@ mod visibility_labels {
     use super::*;
 
     /// Trace: visibility_labels.feature - "Create a new visibility label"
+    // @scenario: visibility_control:Create a new visibility label
     #[test]
     fn test_labels_create() {
         let ctx = CliTestContext::new();
@@ -486,6 +508,7 @@ mod visibility_labels {
     }
 
     /// Trace: visibility_labels.feature - "List labels"
+    // @scenario: visibility_control:List visibility labels
     #[test]
     fn test_labels_list() {
         let ctx = CliTestContext::new();
@@ -500,6 +523,7 @@ mod visibility_labels {
     }
 
     /// Trace: visibility_labels.feature - "Cannot create duplicate label names"
+    // @scenario: visibility_control:Cannot create duplicate label names
     #[test]
     fn test_labels_create_duplicate_fails() {
         let ctx = CliTestContext::new();
@@ -516,6 +540,7 @@ mod visibility_labels {
     }
 
     /// Trace: visibility_labels.feature - "Rename an existing label"
+    // @scenario: visibility_control:Rename an existing label
     #[test]
     fn test_labels_rename() {
         let ctx = CliTestContext::new();
@@ -530,6 +555,7 @@ mod visibility_labels {
     }
 
     /// Trace: visibility_labels.feature - "Delete a label"
+    // @scenario: visibility_control:Delete a label
     #[test]
     fn test_labels_delete() {
         let ctx = CliTestContext::new();
@@ -547,6 +573,7 @@ mod visibility_labels {
     }
 
     /// Trace: visibility_labels.feature - "Show label details"
+    // @scenario: visibility_control:Show label details
     #[test]
     fn test_labels_show() {
         let ctx = CliTestContext::new();
@@ -568,6 +595,7 @@ mod device_management {
     use super::*;
 
     /// Trace: device_management.feature - "List linked devices"
+    // @scenario: device_management:View linked devices
     #[test]
     fn test_device_list() {
         let ctx = CliTestContext::new();
@@ -583,6 +611,7 @@ mod device_management {
     }
 
     /// Trace: device_management.feature - "Generate device linking QR code"
+    // @scenario: device_management:Generate device linking QR code
     /// M-5: Verify QR data structure, not just length.
     #[test]
     fn test_device_link_generates_qr() {
@@ -609,6 +638,7 @@ mod recovery {
     use super::*;
 
     /// Trace: Recovery settings
+    // @scenario: identity_management:Configure recovery settings
     #[test]
     fn test_recovery_settings_show() {
         let ctx = CliTestContext::new();
@@ -626,6 +656,7 @@ mod recovery {
     }
 
     /// Trace: Recovery settings can be configured
+    // @scenario: identity_management:Configure recovery settings
     #[test]
     fn test_recovery_settings_set() {
         let ctx = CliTestContext::new();
@@ -648,6 +679,7 @@ mod recovery {
     }
 
     /// Trace: Recovery status shows pending state
+    // @scenario: identity_management:View recovery status
     #[test]
     fn test_recovery_status_no_claim() {
         let ctx = CliTestContext::new();
@@ -674,6 +706,7 @@ mod social {
     use super::*;
 
     /// Trace: contact_card_management.feature - "List available social networks"
+    // @scenario: contact_card_management:List available social networks
     #[test]
     fn test_social_list() {
         let ctx = CliTestContext::new();
@@ -688,6 +721,7 @@ mod social {
     }
 
     /// Trace: contact_card_management.feature - "Generate profile URL"
+    // @scenario: contact_card_management:Generate social profile URL
     #[test]
     fn test_social_url() {
         let ctx = CliTestContext::new();
@@ -697,6 +731,7 @@ mod social {
     }
 
     /// Trace: contact_card_management.feature - Search social networks
+    // @scenario: contact_card_management:Search social networks
     #[test]
     fn test_social_list_search() {
         let ctx = CliTestContext::new();
@@ -720,6 +755,7 @@ mod sync {
     use super::*;
 
     /// Trace: sync_updates.feature - Sync command runs (may fail without relay)
+    // @scenario: sync_updates:Client initiates sync with relay
     /// M-3: Tightened assertion — must show sync-specific or relay-specific output.
     #[test]
     fn test_sync_command_executes() {
@@ -997,6 +1033,7 @@ mod tor {
     use super::*;
 
     /// Trace: privacy_compliance.feature - "View Tor status"
+    // @scenario: tor_mode:View Tor connection status
     #[test]
     fn test_tor_status_default() {
         let ctx = CliTestContext::new();
@@ -1011,6 +1048,7 @@ mod tor {
     }
 
     /// Trace: privacy_compliance.feature - "Enable Tor mode"
+    // @scenario: tor_mode:Enable and disable Tor mode
     #[test]
     fn test_tor_enable_disable_cycle() {
         let ctx = CliTestContext::new();
@@ -1050,6 +1088,7 @@ mod tor {
     }
 
     /// Trace: privacy_compliance.feature - "Enable Tor when already enabled"
+    // @scenario: tor_mode:Enable Tor when already enabled
     #[test]
     fn test_tor_enable_idempotent() {
         let ctx = CliTestContext::new();
@@ -1065,6 +1104,7 @@ mod tor {
     }
 
     /// Trace: privacy_compliance.feature - "Request new Tor circuit"
+    // @scenario: tor_mode:Request new Tor circuit
     #[test]
     fn test_tor_new_circuit() {
         let ctx = CliTestContext::new();
@@ -1082,6 +1122,7 @@ mod tor {
     }
 
     /// Trace: privacy_compliance.feature - "Manage bridge addresses"
+    // @scenario: tor_mode:Manage Tor bridge addresses
     #[test]
     fn test_tor_bridges_lifecycle() {
         let ctx = CliTestContext::new();
@@ -1138,6 +1179,7 @@ mod duress {
     use super::*;
 
     /// Trace: duress_mode.feature - "View duress status"
+    // @scenario: duress_pin:View duress PIN status
     #[test]
     fn test_duress_status_default() {
         let ctx = CliTestContext::new();
@@ -1152,6 +1194,7 @@ mod duress {
     }
 
     /// Trace: duress_mode.feature - "Disable when not enabled"
+    // @scenario: duress_pin:Disable duress mode when not enabled
     #[test]
     fn test_duress_disable_when_not_enabled() {
         let ctx = CliTestContext::new();
@@ -1166,6 +1209,7 @@ mod duress {
     }
 
     /// Trace: duress_mode.feature - "Test auth without password"
+    // @scenario: duress_pin:Test duress authentication
     #[test]
     fn test_duress_test_without_password() {
         let ctx = CliTestContext::new();
@@ -1189,6 +1233,7 @@ mod emergency {
     use super::*;
 
     /// Trace: emergency_broadcast.feature - "View emergency status"
+    // @scenario: emergency_broadcast:View emergency broadcast status
     #[test]
     fn test_emergency_status_default() {
         let ctx = CliTestContext::new();
@@ -1203,6 +1248,7 @@ mod emergency {
     }
 
     /// Trace: emergency_broadcast.feature - "Disable when not configured"
+    // @scenario: emergency_broadcast:Disable emergency broadcast
     #[test]
     fn test_emergency_disable_when_not_configured() {
         let ctx = CliTestContext::new();
