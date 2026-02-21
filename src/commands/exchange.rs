@@ -18,8 +18,9 @@ use vauchi_core::exchange::{
 use vauchi_core::network::MockTransport;
 use vauchi_core::sync::delta::CardDelta;
 use vauchi_core::sync::{ContactSyncData, DeviceSyncOrchestrator, SyncItem};
-use vauchi_core::{Contact, Identity, Vauchi, VauchiConfig};
+use vauchi_core::{Contact, Identity, Vauchi};
 
+use crate::commands::common::open_vauchi;
 use crate::config::CliConfig;
 use crate::display;
 use crate::protocol::{
@@ -29,24 +30,6 @@ use crate::protocol::{
 /// Type alias for the async WebSocket stream.
 type WsStream =
     tokio_tungstenite::WebSocketStream<tokio_tungstenite::MaybeTlsStream<tokio::net::TcpStream>>;
-
-/// Opens Vauchi from the config and loads the identity.
-fn open_vauchi(config: &CliConfig) -> Result<Vauchi<MockTransport>> {
-    if !config.is_initialized() {
-        bail!("Vauchi not initialized. Run 'vauchi init <name>' first.");
-    }
-
-    let wb_config = VauchiConfig::with_storage_path(config.storage_path())
-        .with_relay_url(&config.relay_url)
-        .with_storage_key(config.storage_key()?);
-
-    let mut wb = Vauchi::new(wb_config)?;
-
-    let identity = config.import_local_identity()?;
-    wb.set_identity(identity)?;
-
-    Ok(wb)
-}
 
 /// Connect to relay server via async WebSocket with timeout.
 async fn connect_to_relay(relay_url: &str) -> Result<WsStream> {

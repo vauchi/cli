@@ -9,29 +9,12 @@
 use anyhow::{bail, Result};
 use vauchi_core::contact_card::ContactAction;
 use vauchi_core::network::MockTransport;
-use vauchi_core::{Vauchi, VauchiConfig};
+use vauchi_core::Vauchi;
 
+use crate::commands::common::open_vauchi;
 use crate::commands::device_sync_helpers::{record_contact_removed, record_visibility_changed};
 use crate::config::CliConfig;
 use crate::display;
-
-/// Opens Vauchi from the config and loads the identity.
-fn open_vauchi(config: &CliConfig) -> Result<Vauchi<MockTransport>> {
-    if !config.is_initialized() {
-        bail!("Vauchi not initialized. Run 'vauchi init <name>' first.");
-    }
-
-    let wb_config = VauchiConfig::with_storage_path(config.storage_path())
-        .with_relay_url(&config.relay_url)
-        .with_storage_key(config.storage_key()?);
-
-    let mut wb = Vauchi::new(wb_config)?;
-
-    let identity = config.import_local_identity()?;
-    wb.set_identity(identity)?;
-
-    Ok(wb)
-}
 
 /// Lists all contacts.
 pub fn list(config: &CliConfig, offset: usize, limit: usize) -> Result<()> {
