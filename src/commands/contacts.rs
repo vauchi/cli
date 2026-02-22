@@ -532,8 +532,6 @@ pub fn trust(config: &CliConfig, id: &str) -> Result<()> {
 
 /// Removes recovery trust from a contact.
 pub fn untrust(config: &CliConfig, id: &str) -> Result<()> {
-    use vauchi_core::recovery::RecoverySettings;
-
     let wb = open_vauchi(config)?;
 
     let mut contact = wb
@@ -557,18 +555,11 @@ pub fn untrust(config: &CliConfig, id: &str) -> Result<()> {
     display::success(&format!("Removed recovery trust from {}", name));
 
     // Check if trusted count drops below threshold
-    let all_contacts = wb.list_contacts()?;
-    let trusted_count = all_contacts
-        .iter()
-        .filter(|c| c.is_recovery_trusted())
-        .count();
-    let settings = RecoverySettings::default();
-    let threshold = settings.recovery_threshold() as usize;
-
-    if trusted_count < threshold {
+    let readiness = wb.get_recovery_readiness()?;
+    if !readiness.is_ready {
         display::warning(&format!(
             "Only {} trusted contact(s) remaining (recovery needs {})",
-            trusted_count, threshold
+            readiness.trusted_count, readiness.threshold
         ));
     }
 

@@ -473,16 +473,14 @@ pub fn settings_show(config: &CliConfig) -> Result<()> {
     // Show trusted contacts count if initialized
     if config.is_initialized() {
         if let Ok(wb) = open_vauchi(config) {
-            if let Ok(contacts) = wb.list_contacts() {
-                let trusted_count = contacts.iter().filter(|c| c.is_recovery_trusted()).count();
-                let threshold = settings.recovery_threshold() as usize;
+            if let Ok(readiness) = wb.get_recovery_readiness() {
                 println!();
-                println!("  Trusted Contacts:       {}", trusted_count);
+                println!("  Trusted Contacts:       {}", readiness.trusted_count);
 
-                if trusted_count < threshold {
+                if !readiness.is_ready {
                     display::warning(&format!(
                         "You have fewer trusted contacts ({}) than the recovery threshold ({}).",
-                        trusted_count, threshold
+                        readiness.trusted_count, readiness.threshold
                     ));
                 }
             }
