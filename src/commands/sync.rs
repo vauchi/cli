@@ -14,7 +14,7 @@ use futures_util::{SinkExt, StreamExt};
 use indicatif::{ProgressBar, ProgressStyle};
 use tokio_tungstenite::tungstenite::Message;
 use vauchi_core::exchange::X3DH;
-use vauchi_core::network::WebSocketTransport;
+use vauchi_core::network::{classify_message, MessageType, WebSocketTransport};
 use vauchi_core::sync::{ContactSyncData, DeviceSyncOrchestrator, SyncItem};
 use vauchi_core::{Contact, Identity, Vauchi, VauchiConfig};
 
@@ -147,23 +147,23 @@ async fn receive_pending(
 
         match msg {
             Message::Binary(data) => {
-                match decode_message(&data) {
-                    Ok(envelope) => {
-                        match envelope.payload {
-                            MessagePayload::EncryptedUpdate(update) => {
+                // Use core classify_message() to route by type before full decode
+                let msg_type = classify_message(&data);
+                match msg_type {
+                    MessageType::EncryptedUpdate => {
+                        if let Ok(envelope) = decode_message(&data) {
+                            if let MessagePayload::EncryptedUpdate(update) = envelope.payload {
                                 received += 1;
 
                                 // Check if this is an exchange message
-                                if ExchangeMessage::is_exchange(&update.ciphertext) {
-                                    if let Some(exchange) =
-                                        ExchangeMessage::from_bytes(&update.ciphertext)
-                                    {
-                                        display::info(&format!(
-                                            "Received exchange request from {}",
-                                            exchange.display_name
-                                        ));
-                                        exchange_messages.push(exchange);
-                                    }
+                                if let Some(exchange) =
+                                    ExchangeMessage::from_bytes(&update.ciphertext)
+                                {
+                                    display::info(&format!(
+                                        "Received exchange request from {}",
+                                        exchange.display_name
+                                    ));
+                                    exchange_messages.push(exchange);
                                 } else {
                                     // This is an encrypted card update
                                     display::info(&format!(
@@ -183,13 +183,21 @@ async fn receive_pending(
                                     let _ = socket.send(Message::Binary(ack_data)).await;
                                 }
                             }
-                            MessagePayload::Acknowledgment(ack) => {
+                        }
+                    }
+                    MessageType::Acknowledgment => {
+                        if let Ok(envelope) = decode_message(&data) {
+                            if let MessagePayload::Acknowledgment(ack) = envelope.payload {
                                 display::info(&format!(
                                     "Message {} acknowledged",
                                     &ack.message_id[..8]
                                 ));
                             }
-                            MessagePayload::DeviceSyncMessage(sync_msg) => {
+                        }
+                    }
+                    MessageType::DeviceSync => {
+                        if let Ok(envelope) = decode_message(&data) {
+                            if let MessagePayload::DeviceSyncMessage(sync_msg) = envelope.payload {
                                 received += 1;
                                 display::info(&format!(
                                     "Received device sync from device {}...",
@@ -203,19 +211,23 @@ async fn receive_pending(
                                     let _ = socket.send(Message::Binary(ack_data)).await;
                                 }
                             }
-                            MessagePayload::DeviceSyncAck(ack) => {
+                        }
+                    }
+                    MessageType::DeviceSyncAck => {
+                        if let Ok(envelope) = decode_message(&data) {
+                            if let MessagePayload::DeviceSyncAck(ack) = envelope.payload {
                                 display::info(&format!(
                                     "Device sync {} acknowledged (version {})",
                                     &ack.message_id[..8],
                                     ack.synced_version
                                 ));
                             }
-                            _ => {}
                         }
                     }
-                    Err(e) => {
-                        display::warning(&format!("Failed to decode message: {}", e));
+                    MessageType::Unknown => {
+                        display::warning("Received unrecognized message type");
                     }
+                    _ => {} // Handshake, AccountRevoked — not expected inbound
                 }
             }
             Message::Ping(data) => {
