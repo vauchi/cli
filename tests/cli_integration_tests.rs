@@ -988,6 +988,23 @@ mod gdpr {
         );
     }
 
+    /// Trace: privacy_compliance.feature - "Export personal data without encryption"
+    /// SP-9: Verify that exporting without --password prints a security warning.
+    #[test]
+    fn test_export_data_without_password_prints_warning() {
+        let ctx = CliTestContext::new();
+        ctx.init("Alice Smith");
+
+        let export_path = ctx.data_dir.path().join("gdpr-unencrypted.json");
+        let output = ctx.run_success(&["gdpr", "export", export_path.to_str().unwrap()]);
+
+        assert!(
+            output.contains("without encryption") || output.contains("--password"),
+            "Expected unencrypted export warning mentioning '--password', got: {}",
+            output
+        );
+    }
+
     /// Trace: privacy_compliance.feature - "Invalid consent type"
     #[test]
     fn test_gdpr_grant_invalid_consent_type() {
