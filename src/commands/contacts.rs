@@ -19,31 +19,24 @@ use crate::display;
 /// Lists all contacts.
 pub fn list(config: &CliConfig, offset: usize, limit: usize) -> Result<()> {
     let wb = open_vauchi(config)?;
-    let all_contacts = wb.list_contacts()?;
+    let total = wb.contact_count().unwrap_or(0);
 
-    if all_contacts.is_empty() {
+    if total == 0 {
         display::info("No contacts yet. Exchange with someone using:");
         println!("  vauchi exchange start");
         return Ok(());
     }
 
-    let total = all_contacts.len();
-
-    // Apply pagination if offset or limit specified
-    let contacts: Vec<_> = if offset > 0 || limit > 0 {
-        let end = if limit > 0 {
-            (offset + limit).min(total)
-        } else {
-            total
-        };
-        let start = offset.min(total);
-        all_contacts[start..end].to_vec()
+    // Use core pagination API instead of manual slice
+    let paginated = offset > 0 || limit > 0;
+    let contacts = if paginated {
+        wb.list_contacts_paginated(offset, limit)?
     } else {
-        all_contacts
+        wb.list_contacts()?
     };
 
     println!();
-    if offset > 0 || limit > 0 {
+    if paginated {
         println!(
             "Contacts (showing {}-{} of {}):",
             offset + 1,
