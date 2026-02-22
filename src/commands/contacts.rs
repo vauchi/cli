@@ -177,23 +177,13 @@ fn find_contact(wb: &Vauchi<MockTransport>, id_or_name: &str) -> Result<vauchi_c
         return Ok(contact);
     }
 
-    // Try name search
+    // Use core fuzzy search (name substring + ID prefix matching)
     if let Some(contact) = wb
-        .search_contacts(id_or_name)
+        .find_contact_fuzzy(id_or_name)
         .ok()
         .and_then(|results| results.into_iter().next())
     {
         return Ok(contact);
-    }
-
-    // Try ID prefix match (for truncated IDs from table output)
-    if let Ok(contacts) = wb.list_contacts() {
-        if let Some(contact) = contacts
-            .into_iter()
-            .find(|c| c.id().to_string().starts_with(id_or_name))
-        {
-            return Ok(contact);
-        }
     }
 
     bail!("Contact '{}' not found", id_or_name)
