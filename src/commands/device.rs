@@ -366,18 +366,16 @@ pub fn revoke(config: &CliConfig, device_id_prefix: &str) -> Result<()> {
         .identity()
         .ok_or_else(|| anyhow::anyhow!("No identity found"))?;
 
-    // Try to load device registry
+    // Find device by ID prefix (delegates registry lookup + search to core)
+    let device = wb
+        .find_device_by_prefix(device_id_prefix)?
+        .ok_or_else(|| anyhow::anyhow!("Device not found: {}", device_id_prefix))?;
+
+    // Load registry for revocation update
     let registry = wb
         .storage()
         .load_device_registry()?
         .ok_or_else(|| anyhow::anyhow!("No device registry found"))?;
-
-    // Find device by ID prefix
-    let device = registry
-        .all_devices()
-        .iter()
-        .find(|d| hex::encode(d.device_id).starts_with(device_id_prefix))
-        .ok_or_else(|| anyhow::anyhow!("Device not found: {}", device_id_prefix))?;
 
     if !device.is_active() {
         display::warning("Device is already revoked.");
