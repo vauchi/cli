@@ -564,17 +564,14 @@ fn process_device_sync_messages(
         match orchestrator.process_incoming(items.clone()) {
             Ok(applied) => {
                 if !applied.is_empty() {
-                    display::info(&format!(
-                        "Applied {} sync changes from {}",
-                        applied.len(),
-                        sender.device_name
-                    ));
-
-                    // Apply the changes to storage
-                    for item in &applied {
-                        if let Err(e) = apply_sync_item(wb, item) {
-                            display::warning(&format!("Failed to apply sync item: {}", e));
-                        }
+                    let count = applied.len();
+                    // Delegate storage mutations to core
+                    match wb.apply_sync_items(applied) {
+                        Ok(n) => display::info(&format!(
+                            "Applied {} of {} sync changes from {}",
+                            n, count, sender.device_name
+                        )),
+                        Err(e) => display::warning(&format!("Failed to apply sync items: {}", e)),
                     }
                 }
                 processed += 1;
@@ -636,88 +633,6 @@ fn record_contact_for_device_sync(
 
     orchestrator.record_local_change(item)?;
 
-    Ok(())
-}
-
-/// Applies a single sync item to storage.
-fn apply_sync_item(wb: &Vauchi<WebSocketTransport>, item: &SyncItem) -> Result<()> {
-    match item {
-        SyncItem::ContactAdded { contact_data, .. } => {
-            // Check if contact already exists
-            if wb.get_contact(&contact_data.id)?.is_none() {
-                // Reconstruct contact from sync data
-                let card: vauchi_core::ContactCard = serde_json::from_str(&contact_data.card_json)
-                    .unwrap_or_else(|_| vauchi_core::ContactCard::new(&contact_data.display_name));
-                let shared_key =
-                    vauchi_core::crypto::SymmetricKey::from_bytes(contact_data.shared_key);
-                let contact = Contact::from_exchange(contact_data.public_key, card, shared_key);
-                wb.add_contact(contact)?;
-                display::success(&format!(
-                    "Synced new contact: {}",
-                    contact_data.display_name
-                ));
-            }
-        }
-        SyncItem::ContactRemoved { contact_id, .. } => {
-            if wb.get_contact(contact_id)?.is_some() {
-                wb.remove_contact(contact_id)?;
-                display::info(&format!("Removed contact: {}...", &contact_id[..8]));
-            }
-        }
-        SyncItem::CardUpdated {
-            field_label,
-            new_value,
-            ..
-        } => {
-            // Update own card field
-            if let Some(mut card) = wb.storage().load_own_card()? {
-                // Find and update the field, or add it
-                if card.update_field_value(field_label, new_value).is_ok() {
-                    wb.storage().save_own_card(&card)?;
-                    display::info(&format!("Synced card field: {}", field_label));
-                }
-            }
-        }
-        SyncItem::VisibilityChanged {
-            contact_id,
-            field_label,
-            is_visible,
-            ..
-        } => {
-            // Update visibility for a specific field to a contact
-            display::info(&format!(
-                "Synced visibility for contact {}... field {} = {}",
-                &contact_id[..8],
-                field_label,
-                is_visible
-            ));
-            // Note: Visibility is per-field per-contact, handled by labels system
-            // This requires label management which is a more complex operation
-        }
-        SyncItem::LabelChange { .. } => {
-            display::info("Synced label change");
-        }
-        SyncItem::ContactTrustChanged {
-            contact_id,
-            recovery_trusted,
-            ..
-        } => {
-            display::info(&format!(
-                "Synced trust change for contact {}... = {}",
-                &contact_id[..8.min(contact_id.len())],
-                recovery_trusted
-            ));
-        }
-        SyncItem::DeletionScheduled { execute_at, .. } => {
-            display::info(&format!(
-                "Synced deletion schedule (executes at {})",
-                execute_at
-            ));
-        }
-        SyncItem::DeletionCancelled { .. } => {
-            display::info("Synced deletion cancellation");
-        }
-    }
     Ok(())
 }
 
