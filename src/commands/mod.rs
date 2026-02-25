@@ -17,5 +17,6 @@ pub mod gdpr;
 pub mod init;
 pub mod labels;
 pub mod recovery;
+pub mod support;
 pub mod sync;
 pub mod tor;

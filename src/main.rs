@@ -126,6 +126,9 @@ enum Commands {
     /// Display FAQ and help information
     #[command(subcommand)]
     Faq(FaqCommands),
+
+    /// Show how to support Vauchi
+    SupportUs,
 }
 
 #[derive(Subcommand)]
@@ -835,6 +838,7 @@ async fn main() -> Result<()> {
                 display::display_faq_by_id(&id, &cli.locale);
             }
         },
+        Commands::SupportUs => commands::support::run(),
     }
 
     Ok(())
