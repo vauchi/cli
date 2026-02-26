@@ -14,3 +14,7 @@ Thumbs.db
 # CLI data
 .vauchi/
 .cargo/
+
+# CI local testing
+.gitlab-ci-local/
+.gitlab-ci-local/
