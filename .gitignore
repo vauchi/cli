@@ -1,11 +1,13 @@
 # Rust
 /target/
+*.log
 
 # IDE
 .idea/
 .vscode/
 *.swp
 *.swo
+.claude/
 
 # OS
 .DS_Store
@@ -16,5 +18,4 @@ Thumbs.db
 .cargo/
 
 # CI local testing
-.gitlab-ci-local/
 .gitlab-ci-local/
