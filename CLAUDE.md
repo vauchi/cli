@@ -17,7 +17,8 @@ Command-line interface for testing and development.
 ```bash
 cargo run -p vauchi-cli -- init "Name"      # Initialize identity
 cargo run -p vauchi-cli -- --help           # Show help
-cargo test -p vauchi-cli                    # Run tests
+just test cli                               # Run tests
+just check cli                              # Format + lint + test
 ```
 
 ## Usage
