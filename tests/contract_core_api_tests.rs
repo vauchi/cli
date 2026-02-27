@@ -17,6 +17,7 @@
 //!   - ContactCard serializes/deserializes via serde_json
 //!   - FieldType variants that CLI's parse_field_type depends on exist
 
+use vauchi_core::contact_card::ContactAction;
 use vauchi_core::network::MockTransport;
 use vauchi_core::{Contact, ContactCard, ContactField, FieldType, Vauchi};
 
@@ -175,6 +176,83 @@ fn contract_add_field_to_own_card() {
     let card = wb.own_card().unwrap().unwrap();
     assert_eq!(card.fields().len(), 1);
     assert_eq!(card.fields()[0].value(), "+1234567890");
+}
+
+// ============================================================
+// Contract: Secondary actions API (SP-12a)
+// ============================================================
+
+#[test]
+fn contract_phone_field_secondary_actions_include_sms() {
+    let field = ContactField::new(FieldType::Phone, "Mobile", "+1234567890");
+    let actions = field.to_secondary_actions();
+
+    // Phone fields must offer Call, SendSms, and CopyToClipboard
+    assert!(
+        actions.len() >= 3,
+        "phone field must have at least 3 secondary actions, got {}",
+        actions.len()
+    );
+    assert!(
+        actions.iter().any(|a| matches!(a, ContactAction::Call(_))),
+        "phone secondary actions must include Call"
+    );
+    assert!(
+        actions
+            .iter()
+            .any(|a| matches!(a, ContactAction::SendSms(_))),
+        "phone secondary actions must include SendSms"
+    );
+    assert!(
+        actions
+            .iter()
+            .any(|a| matches!(a, ContactAction::CopyToClipboard)),
+        "phone secondary actions must include CopyToClipboard"
+    );
+}
+
+#[test]
+fn contract_address_field_secondary_actions_include_directions() {
+    let field = ContactField::new(FieldType::Address, "Home", "123 Main St, Zurich");
+    let actions = field.to_secondary_actions();
+
+    assert!(
+        actions
+            .iter()
+            .any(|a| matches!(a, ContactAction::OpenMap(_))),
+        "address secondary actions must include OpenMap"
+    );
+    assert!(
+        actions
+            .iter()
+            .any(|a| matches!(a, ContactAction::GetDirections(_))),
+        "address secondary actions must include GetDirections"
+    );
+}
+
+#[test]
+fn contract_directions_uri_exists_for_address() {
+    let field = ContactField::new(FieldType::Address, "Office", "Bahnhofstrasse 1, Zurich");
+    let uri = field.to_directions_uri();
+    assert!(
+        uri.is_some(),
+        "to_directions_uri() must return Some for address fields"
+    );
+    let uri_str = uri.unwrap();
+    assert!(
+        uri_str.contains("directions"),
+        "directions URI must contain 'directions'"
+    );
+    assert!(
+        uri_str.contains("Bahnhofstrasse"),
+        "directions URI must contain the address"
+    );
+}
+
+#[test]
+fn contract_get_directions_variant_exists() {
+    // allow(zero_assertions): Compile-time shape check — fails to compile if variant removed
+    let _action = ContactAction::GetDirections("test".to_string());
 }
 
 // ============================================================

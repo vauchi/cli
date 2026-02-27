@@ -36,7 +36,7 @@ pub fn info(msg: &str) {
 }
 
 /// Returns the icon for a field type.
-fn field_icon(field_type: FieldType) -> &'static str {
+pub fn field_icon(field_type: FieldType) -> &'static str {
     match field_type {
         FieldType::Email => "mail",
         FieldType::Phone => "phone",

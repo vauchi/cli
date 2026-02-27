@@ -351,6 +351,7 @@ pub fn open_field(config: &CliConfig, contact_id_or_name: &str, field_label: &st
                         ContactAction::SendEmail(_) => "Opened email client",
                         ContactAction::OpenUrl(_) => "Opened browser",
                         ContactAction::OpenMap(_) => "Opened maps",
+                        ContactAction::GetDirections(_) => "Opened directions",
                         ContactAction::CopyToClipboard => "Copied to clipboard",
                     };
                     display::success(action_desc);
@@ -374,6 +375,8 @@ pub fn open_field(config: &CliConfig, contact_id_or_name: &str, field_label: &st
 }
 
 /// Lists openable fields for a contact and lets user select one interactively.
+/// For fields with multiple actions (e.g. phone: Call/SMS/Copy), shows a
+/// secondary action menu using to_secondary_actions().
 pub fn open_interactive(config: &CliConfig, contact_id_or_name: &str) -> Result<()> {
     use dialoguer::Select;
 
@@ -389,31 +392,125 @@ pub fn open_interactive(config: &CliConfig, contact_id_or_name: &str) -> Result<
         return Ok(());
     }
 
-    // Build selection items
-    let items: Vec<String> = fields
+    // Step 1: Select a field
+    let field_items: Vec<String> = fields
         .iter()
         .map(|f| {
-            let action = f.to_action();
-            let action_icon = match action {
-                ContactAction::Call(_) => "phone",
-                ContactAction::SendSms(_) => "sms",
-                ContactAction::SendEmail(_) => "mail",
-                ContactAction::OpenUrl(_) => "web",
-                ContactAction::OpenMap(_) => "map",
-                ContactAction::CopyToClipboard => "copy",
-            };
-            format!("[{}] {}: {}", action_icon, f.label(), f.value())
+            let icon = display::field_icon(f.field_type());
+            format!("{} {}: {}", icon, f.label(), f.value())
         })
         .collect();
 
-    let selection = Select::new()
-        .with_prompt(format!("Select field to open for {}", contact_name))
-        .items(&items)
+    let field_idx = Select::new()
+        .with_prompt(format!("Select field for {}", contact_name))
+        .items(&field_items)
         .default(0)
         .interact()?;
 
-    let selected_field = &fields[selection];
-    open_field(config, contact.id(), selected_field.label())
+    let selected_field = &fields[field_idx];
+    let actions = selected_field.to_secondary_actions();
+
+    // If only one action (CopyToClipboard), skip the action menu
+    if actions.len() <= 1 {
+        return open_field(config, contact.id(), selected_field.label());
+    }
+
+    // Step 2: Select an action from secondary actions
+    let action_items: Vec<String> = actions.iter().map(action_label).collect();
+
+    let action_idx = Select::new()
+        .with_prompt(format!("Action for {}", selected_field.label()))
+        .items(&action_items)
+        .default(0)
+        .interact()?;
+
+    execute_action(&actions[action_idx])
+}
+
+/// Returns a human-readable label for a ContactAction.
+fn action_label(action: &ContactAction) -> String {
+    match action {
+        ContactAction::Call(v) => format!("Call {}", v),
+        ContactAction::SendSms(v) => format!("Send SMS to {}", v),
+        ContactAction::SendEmail(v) => format!("Email {}", v),
+        ContactAction::OpenUrl(v) => format!("Open {}", truncate_value(v, 40)),
+        ContactAction::OpenMap(v) => format!("Open in Maps: {}", truncate_value(v, 30)),
+        ContactAction::GetDirections(v) => format!("Get Directions to {}", truncate_value(v, 30)),
+        ContactAction::CopyToClipboard => "Copy to Clipboard".to_string(),
+    }
+}
+
+/// Truncates a string for display, appending "..." if too long.
+fn truncate_value(s: &str, max: usize) -> &str {
+    if s.len() <= max {
+        s
+    } else {
+        &s[..max]
+    }
+}
+
+/// Executes a ContactAction by opening the appropriate URI.
+fn execute_action(action: &ContactAction) -> Result<()> {
+    let uri = match action {
+        ContactAction::Call(v) => Some(format!("tel:{}", v)),
+        ContactAction::SendSms(v) => Some(format!("sms:{}", v)),
+        ContactAction::SendEmail(v) => Some(format!("mailto:{}", v)),
+        ContactAction::OpenUrl(v) => Some(v.clone()),
+        ContactAction::OpenMap(v) => {
+            let encoded = url_encode_value(v);
+            Some(format!(
+                "https://www.openstreetmap.org/search?query={encoded}"
+            ))
+        }
+        ContactAction::GetDirections(v) => {
+            let encoded = url_encode_value(v);
+            Some(format!(
+                "https://www.openstreetmap.org/directions?route=&to={encoded}"
+            ))
+        }
+        ContactAction::CopyToClipboard => None,
+    };
+
+    match uri {
+        Some(uri_str) => match open::that(&uri_str) {
+            Ok(_) => {
+                let desc = match action {
+                    ContactAction::Call(_) => "Opened dialer",
+                    ContactAction::SendSms(_) => "Opened messaging",
+                    ContactAction::SendEmail(_) => "Opened email client",
+                    ContactAction::OpenUrl(_) => "Opened browser",
+                    ContactAction::OpenMap(_) => "Opened maps",
+                    ContactAction::GetDirections(_) => "Opened directions",
+                    ContactAction::CopyToClipboard => unreachable!(),
+                };
+                display::success(desc);
+                Ok(())
+            }
+            Err(e) => {
+                display::error(&format!("Failed to open: {}", e));
+                bail!("Failed to open URI: {}", e)
+            }
+        },
+        None => {
+            display::info("Value copied to clipboard (not yet implemented)");
+            Ok(())
+        }
+    }
+}
+
+/// URL-encodes a value for use in map/directions URIs.
+fn url_encode_value(value: &str) -> String {
+    value
+        .chars()
+        .map(|c| match c {
+            ' ' => "%20".to_string(),
+            '&' => "%26".to_string(),
+            '?' => "%3F".to_string(),
+            '#' => "%23".to_string(),
+            _ if c.is_ascii_alphanumeric() || "-._~,+/".contains(c) => c.to_string(),
+            _ => format!("%{:02X}", c as u32),
+        })
+        .collect()
 }
 
 /// Validates a contact's field value (social proof).

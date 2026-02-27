@@ -11,7 +11,9 @@ use std::fs;
 use anyhow::{bail, Result};
 use base64::{engine::general_purpose::STANDARD as BASE64, Engine as _};
 use dialoguer::Input;
-use vauchi_core::exchange::{DeviceLinkQR, DeviceLinkResponder, DeviceLinkResponse};
+use vauchi_core::exchange::{
+    compute_confirmation_mac, DeviceLinkQR, DeviceLinkResponder, DeviceLinkResponse, ProximityProof,
+};
 use vauchi_core::sync::{DeviceSyncOrchestrator, DeviceSyncPayload};
 use vauchi_core::{Identity, Vauchi, VauchiConfig};
 
@@ -225,7 +227,7 @@ pub fn complete(config: &CliConfig, request_data: &str) -> Result<()> {
         .unwrap_or_else(|| identity.initial_device_registry());
 
     // Restore the initiator with the saved QR
-    let mut initiator = identity.restore_device_link_initiator(registry.clone(), saved_qr);
+    let initiator = identity.restore_device_link_initiator(registry.clone(), saved_qr);
 
     // Create sync payload with all existing contacts and own card
     let sync_orchestrator =
@@ -246,12 +248,20 @@ pub fn complete(config: &CliConfig, request_data: &str) -> Result<()> {
         confirmation.device_name, confirmation.confirmation_code
     ));
 
-    // CLI uses manual data exchange (copy-paste), which is implicit proximity proof
-    initiator.set_proximity_verified();
+    // CLI uses manual data exchange (copy-paste) — construct manual confirmation proof
+    let confirmation_code_mac =
+        compute_confirmation_mac(initiator.qr().link_key(), &confirmation.confirmation_code);
+    let proof = ProximityProof::ManualConfirmation {
+        confirmation_code_mac,
+        confirmed_at: std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap_or_default()
+            .as_secs(),
+    };
 
     // Create response with sync payload
     let (encrypted_response, updated_registry, new_device) =
-        initiator.confirm_link_with_sync(&request, &sync_json)?;
+        initiator.confirm_link_with_sync(&request, &sync_json, &proof)?;
 
     // Save the updated registry
     wb.storage().save_device_registry(&updated_registry)?;
