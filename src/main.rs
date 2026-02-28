@@ -85,6 +85,10 @@ enum Commands {
     #[command(subcommand)]
     Recovery(RecoveryCommands),
 
+    /// Message delivery management
+    #[command(subcommand)]
+    Delivery(DeliveryCommands),
+
     /// Sync with the relay server
     Sync,
 
@@ -129,6 +133,31 @@ enum Commands {
 
     /// Show how to support Vauchi
     SupportUs,
+}
+
+#[derive(Subcommand)]
+enum DeliveryCommands {
+    /// Show delivery status (record counts, retries, queue state)
+    Status,
+
+    /// List delivery records
+    List {
+        /// Filter by status: failed, pending, or all (default)
+        #[arg(long)]
+        status: Option<String>,
+    },
+
+    /// Process due delivery retries
+    Retry,
+
+    /// Run delivery cleanup (expire old records, remove terminal records)
+    Cleanup,
+
+    /// Translate a failure reason to a user-friendly message
+    Translate {
+        /// Failure reason code (e.g. connection_timeout, key_mismatch)
+        reason: String,
+    },
 }
 
 #[derive(Subcommand)]
@@ -756,6 +785,15 @@ async fn main() -> Result<()> {
                     commands::recovery::settings_set(&config, recovery, verification)?;
                 }
             },
+        },
+        Commands::Delivery(cmd) => match cmd {
+            DeliveryCommands::Status => commands::delivery::status(&config)?,
+            DeliveryCommands::List { status } => {
+                commands::delivery::list(&config, status.as_deref())?
+            }
+            DeliveryCommands::Retry => commands::delivery::retry(&config)?,
+            DeliveryCommands::Cleanup => commands::delivery::cleanup(&config)?,
+            DeliveryCommands::Translate { reason } => commands::delivery::translate(&reason)?,
         },
         Commands::Sync => {
             commands::sync::run(&config).await?;

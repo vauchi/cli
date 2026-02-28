@@ -10,35 +10,148 @@
 use anyhow::Result;
 
 use crate::config::CliConfig;
+use crate::display;
+
+use super::common::open_vauchi;
 
 /// Shows overall delivery status: record counts by status, pending retries, queue state.
-pub fn status(_config: &CliConfig) -> Result<()> {
-    todo!("Implement delivery status command")
+pub fn status(config: &CliConfig) -> Result<()> {
+    let wb = open_vauchi(config)?;
+    let storage = wb.storage();
+
+    let diagnostics = vauchi_core::delivery::ConnectivityDiagnostics::new();
+    let report = diagnostics
+        .run()
+        .map_err(|e| anyhow::anyhow!("Diagnostics failed: {}", e))?;
+
+    let queued =
+        storage.count_deliveries_by_status(&vauchi_core::storage::DeliveryStatus::Queued)?;
+    let sent = storage.count_deliveries_by_status(&vauchi_core::storage::DeliveryStatus::Sent)?;
+    let stored =
+        storage.count_deliveries_by_status(&vauchi_core::storage::DeliveryStatus::Stored)?;
+    let delivered =
+        storage.count_deliveries_by_status(&vauchi_core::storage::DeliveryStatus::Delivered)?;
+    let failed =
+        storage.count_deliveries_by_status(&vauchi_core::storage::DeliveryStatus::Failed {
+            reason: String::new(),
+        })?;
+
+    display::info("Delivery Status");
+    println!();
+    println!("  Queued:     {}", queued);
+    println!("  Sent:       {}", sent);
+    println!("  Stored:     {}", stored);
+    println!("  Delivered:  {}", delivered);
+    println!("  Failed:     {}", failed);
+    println!();
+    println!("  Pending retries:      {}", report.pending_retries);
+    println!("  Offline queue depth:  {}", report.offline_queue_depth);
+    println!("  Queue capacity:       {}", report.offline_queue_capacity);
+
+    if !report.next_retry_at.is_empty() {
+        println!("  Next retry:           {}", report.next_retry_at);
+    }
+
+    Ok(())
 }
 
 /// Lists delivery records, optionally filtered by status.
-pub fn list(_config: &CliConfig, _filter: Option<&str>) -> Result<()> {
-    todo!("Implement delivery list command")
+pub fn list(config: &CliConfig, filter: Option<&str>) -> Result<()> {
+    let wb = open_vauchi(config)?;
+    let storage = wb.storage();
+
+    let records = match filter {
+        Some("failed") => storage.get_delivery_records_by_status(
+            &vauchi_core::storage::DeliveryStatus::Failed {
+                reason: String::new(),
+            },
+        )?,
+        Some("pending") => storage.get_pending_deliveries()?,
+        _ => storage.get_all_delivery_records()?,
+    };
+
+    if records.is_empty() {
+        display::info("No delivery records found.");
+        return Ok(());
+    }
+
+    display::info(&format!("{} delivery record(s):", records.len()));
+    println!();
+
+    for record in &records {
+        let status_str = format_delivery_status(&record.status);
+        let id_prefix = &record.message_id[..8.min(record.message_id.len())];
+        println!(
+            "  {} -> {} [{}]",
+            id_prefix, record.recipient_id, status_str
+        );
+    }
+
+    Ok(())
 }
 
 /// Runs the retry scheduler tick, processing due retries.
-pub fn retry(_config: &CliConfig) -> Result<()> {
-    todo!("Implement delivery retry command")
+pub fn retry(config: &CliConfig) -> Result<()> {
+    let wb = open_vauchi(config)?;
+    let storage = wb.storage();
+
+    let scheduler = vauchi_core::delivery::RetryScheduler::new();
+    let result = scheduler.tick(storage)?;
+
+    if result.due == 0 {
+        display::info("No retries due.");
+    } else {
+        display::success(&format!(
+            "Processed {} due retries: {} rescheduled, {} expired",
+            result.due, result.rescheduled, result.expired
+        ));
+
+        if !result.ready_ids.is_empty() {
+            println!("  Ready for resend:");
+            for id in &result.ready_ids {
+                println!("    {}", id);
+            }
+        }
+    }
+
+    Ok(())
 }
 
 /// Runs delivery cleanup: expires old records, removes terminal records.
-pub fn cleanup(_config: &CliConfig) -> Result<()> {
-    todo!("Implement delivery cleanup command")
+pub fn cleanup(config: &CliConfig) -> Result<()> {
+    let wb = open_vauchi(config)?;
+    let storage = wb.storage();
+
+    let service = vauchi_core::delivery::DeliveryService::new();
+    let result = service.run_cleanup(storage)?;
+
+    display::success(&format!(
+        "Cleanup complete: {} expired, {} removed",
+        result.expired, result.cleaned_up
+    ));
+
+    Ok(())
 }
 
 /// Translates a failure reason code to a user-friendly message.
-pub fn translate(_reason: &str) -> Result<()> {
-    todo!("Implement delivery translate command")
+pub fn translate(reason: &str) -> Result<()> {
+    let message = vauchi_core::delivery::failure_to_user_message(reason);
+    println!("{}", message);
+    Ok(())
 }
 
 /// Formats a DeliveryStatus for display.
-fn format_delivery_status(_status: &vauchi_core::storage::DeliveryStatus) -> String {
-    todo!("Implement format_delivery_status")
+fn format_delivery_status(status: &vauchi_core::storage::DeliveryStatus) -> String {
+    match status {
+        vauchi_core::storage::DeliveryStatus::Queued => "queued".to_string(),
+        vauchi_core::storage::DeliveryStatus::Sent => "sent".to_string(),
+        vauchi_core::storage::DeliveryStatus::Stored => "stored".to_string(),
+        vauchi_core::storage::DeliveryStatus::Delivered => "delivered".to_string(),
+        vauchi_core::storage::DeliveryStatus::Expired => "expired".to_string(),
+        vauchi_core::storage::DeliveryStatus::Failed { reason } => {
+            format!("failed: {}", reason)
+        }
+    }
 }
 
 // INLINE_TEST_REQUIRED: Binary crate without lib.rs - tests cannot be external
@@ -68,7 +181,6 @@ mod tests {
     #[test]
     fn test_status_shows_delivery_counts() {
         let (_dir, config) = setup_test_config();
-        // Should succeed with empty delivery records
         let result = status(&config);
         assert!(
             result.is_ok(),
