@@ -43,6 +43,7 @@ pub fn field_icon(field_type: FieldType) -> &'static str {
         FieldType::Website => "web",
         FieldType::Address => "home",
         FieldType::Social => "share",
+        FieldType::Birthday => "cake",
         FieldType::Custom => "note",
     }
 }

@@ -8,6 +8,7 @@ pub mod backup;
 pub mod card;
 pub(crate) mod common;
 pub mod contacts;
+pub mod delivery;
 pub mod device;
 pub mod device_sync_helpers;
 pub mod duress;
