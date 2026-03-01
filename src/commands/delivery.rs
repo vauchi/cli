@@ -271,6 +271,7 @@ mod tests {
     }
 
     // @scenario: message_delivery:ConnectivityDiagnostics report is accessible
+    // @scenario: message_delivery.feature:Debug connectivity issues
     #[test]
     fn test_connectivity_diagnostics_returns_report() {
         let diagnostics = vauchi_core::delivery::ConnectivityDiagnostics::new();
