@@ -445,6 +445,21 @@ enum ContactCommands {
         /// Contact ID or name
         id: String,
     },
+
+    /// Hide a contact from the default contact list
+    HideContact {
+        /// Contact ID or name
+        id: String,
+    },
+
+    /// Unhide a previously hidden contact
+    UnhideContact {
+        /// Contact ID or name
+        id: String,
+    },
+
+    /// List hidden contacts
+    ListHidden,
 }
 
 #[derive(Subcommand)]
@@ -713,6 +728,15 @@ async fn main() -> Result<()> {
             }
             ContactCommands::Untrust { id } => {
                 commands::contacts::untrust(&config, &id)?;
+            }
+            ContactCommands::HideContact { id } => {
+                commands::contacts::hide_contact(&config, &id)?;
+            }
+            ContactCommands::UnhideContact { id } => {
+                commands::contacts::unhide_contact(&config, &id)?;
+            }
+            ContactCommands::ListHidden => {
+                commands::contacts::list_hidden(&config)?;
             }
         },
         Commands::Social(cmd) => match cmd {
