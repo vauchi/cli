@@ -2,6 +2,7 @@
 //
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+/// Prints funding links and fund allocation info to the terminal.
 pub fn run() {
     println!("Support Vauchi");
     println!();
