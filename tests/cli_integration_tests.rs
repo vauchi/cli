@@ -1431,3 +1431,200 @@ mod recovery_additional {
         );
     }
 }
+
+// ===========================================================================
+// Block/Unblock Contact Tests
+// Trace: features/contacts_management.feature
+// ===========================================================================
+
+mod block_unblock {
+    use super::*;
+
+    /// Trace: contacts_management.feature - "Block a contact"
+    /// Tests that the block command requires initialization.
+    #[test]
+    fn test_block_contact_requires_init() {
+        let ctx = CliTestContext::new();
+        let stderr = ctx.run_failure(&["contacts", "block", "some-id"]);
+        assert!(
+            stderr.contains("not initialized"),
+            "Expected 'not initialized' message, got: {}",
+            stderr
+        );
+    }
+
+    /// Trace: contacts_management.feature - "Block a contact"
+    /// Tests that block reports contact not found for unknown ID.
+    #[test]
+    fn test_block_contact_not_found() {
+        let ctx = CliTestContext::new();
+        ctx.init("Alice");
+
+        let stderr = ctx.run_failure(&["contacts", "block", "nonexistent"]);
+        assert!(
+            stderr.contains("not found"),
+            "Expected 'not found' message, got: {}",
+            stderr
+        );
+    }
+
+    /// Trace: contacts_management.feature - "Unblock a contact"
+    /// Tests that the unblock command requires initialization.
+    #[test]
+    fn test_unblock_contact_requires_init() {
+        let ctx = CliTestContext::new();
+        let stderr = ctx.run_failure(&["contacts", "unblock", "some-id"]);
+        assert!(
+            stderr.contains("not initialized"),
+            "Expected 'not initialized' message, got: {}",
+            stderr
+        );
+    }
+
+    /// Trace: contacts_management.feature - "Unblock a contact"
+    /// Tests that unblock reports contact not found for unknown ID.
+    #[test]
+    fn test_unblock_contact_not_found() {
+        let ctx = CliTestContext::new();
+        ctx.init("Alice");
+
+        let stderr = ctx.run_failure(&["contacts", "unblock", "nonexistent"]);
+        assert!(
+            stderr.contains("not found"),
+            "Expected 'not found' message, got: {}",
+            stderr
+        );
+    }
+
+    /// Trace: contacts_management.feature - "View blocked contacts"
+    /// Tests that list-blocked requires initialization.
+    #[test]
+    fn test_list_blocked_requires_init() {
+        let ctx = CliTestContext::new();
+        let stderr = ctx.run_failure(&["contacts", "list-blocked"]);
+        assert!(
+            stderr.contains("not initialized"),
+            "Expected 'not initialized' message, got: {}",
+            stderr
+        );
+    }
+
+    /// Trace: contacts_management.feature - "View blocked contacts"
+    /// Tests that list-blocked shows empty message when no contacts are blocked.
+    #[test]
+    fn test_list_blocked_shows_empty_when_none_blocked() {
+        let ctx = CliTestContext::new();
+        ctx.init("Alice");
+
+        let output = ctx.run_success(&["contacts", "list-blocked"]);
+        assert!(
+            output.contains("No blocked contacts"),
+            "Expected 'No blocked contacts' message, got: {}",
+            output
+        );
+    }
+
+    /// Tests that the help includes block/unblock/list-blocked subcommands.
+    #[test]
+    fn test_block_unblock_in_help() {
+        let ctx = CliTestContext::new();
+        let output = ctx.run_success(&["contacts", "help"]);
+        assert!(
+            output.contains("block") || output.contains("Block"),
+            "Help should mention block, got: {}",
+            output
+        );
+        assert!(
+            output.contains("unblock") || output.contains("Unblock"),
+            "Help should mention unblock, got: {}",
+            output
+        );
+        assert!(
+            output.contains("list-blocked") || output.contains("ListBlocked"),
+            "Help should mention list-blocked, got: {}",
+            output
+        );
+    }
+}
+
+// ===========================================================================
+// Favorite/Unfavorite Contact Tests
+// Trace: features/contacts_management.feature
+// ===========================================================================
+
+mod favorite_unfavorite {
+    use super::*;
+
+    /// Trace: contacts_management.feature - "Favorite a contact"
+    /// Tests that the favorite command requires initialization.
+    #[test]
+    fn test_favorite_contact_requires_init() {
+        let ctx = CliTestContext::new();
+        let stderr = ctx.run_failure(&["contacts", "favorite", "some-id"]);
+        assert!(
+            stderr.contains("not initialized"),
+            "Expected 'not initialized' message, got: {}",
+            stderr
+        );
+    }
+
+    /// Trace: contacts_management.feature - "Favorite a contact"
+    /// Tests that favorite reports contact not found for unknown ID.
+    #[test]
+    fn test_favorite_contact_not_found() {
+        let ctx = CliTestContext::new();
+        ctx.init("Alice");
+
+        let stderr = ctx.run_failure(&["contacts", "favorite", "nonexistent"]);
+        assert!(
+            stderr.contains("not found"),
+            "Expected 'not found' message, got: {}",
+            stderr
+        );
+    }
+
+    /// Trace: contacts_management.feature - "Unfavorite a contact"
+    /// Tests that the unfavorite command requires initialization.
+    #[test]
+    fn test_unfavorite_contact_requires_init() {
+        let ctx = CliTestContext::new();
+        let stderr = ctx.run_failure(&["contacts", "unfavorite", "some-id"]);
+        assert!(
+            stderr.contains("not initialized"),
+            "Expected 'not initialized' message, got: {}",
+            stderr
+        );
+    }
+
+    /// Trace: contacts_management.feature - "Unfavorite a contact"
+    /// Tests that unfavorite reports contact not found for unknown ID.
+    #[test]
+    fn test_unfavorite_contact_not_found() {
+        let ctx = CliTestContext::new();
+        ctx.init("Alice");
+
+        let stderr = ctx.run_failure(&["contacts", "unfavorite", "nonexistent"]);
+        assert!(
+            stderr.contains("not found"),
+            "Expected 'not found' message, got: {}",
+            stderr
+        );
+    }
+
+    /// Tests that the help includes favorite/unfavorite subcommands.
+    #[test]
+    fn test_favorite_unfavorite_in_help() {
+        let ctx = CliTestContext::new();
+        let output = ctx.run_success(&["contacts", "help"]);
+        assert!(
+            output.contains("favorite") || output.contains("Favorite"),
+            "Help should mention favorite, got: {}",
+            output
+        );
+        assert!(
+            output.contains("unfavorite") || output.contains("Unfavorite"),
+            "Help should mention unfavorite, got: {}",
+            output
+        );
+    }
+}

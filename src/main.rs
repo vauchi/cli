@@ -467,6 +467,33 @@ enum ContactCommands {
 
     /// List hidden contacts
     ListHidden,
+
+    /// Block a contact (stops updates in both directions)
+    Block {
+        /// Contact ID or name
+        id: String,
+    },
+
+    /// Unblock a previously blocked contact
+    Unblock {
+        /// Contact ID or name
+        id: String,
+    },
+
+    /// List all blocked contacts
+    ListBlocked,
+
+    /// Mark a contact as a favorite
+    Favorite {
+        /// Contact ID or name
+        id: String,
+    },
+
+    /// Remove a contact from favorites
+    Unfavorite {
+        /// Contact ID or name
+        id: String,
+    },
 }
 
 #[derive(Subcommand)]
@@ -772,6 +799,21 @@ async fn main() -> Result<()> {
             }
             ContactCommands::ListHidden => {
                 commands::contacts::list_hidden(&config)?;
+            }
+            ContactCommands::Block { id } => {
+                commands::contacts::block(&config, &id)?;
+            }
+            ContactCommands::Unblock { id } => {
+                commands::contacts::unblock(&config, &id)?;
+            }
+            ContactCommands::ListBlocked => {
+                commands::contacts::list_blocked(&config)?;
+            }
+            ContactCommands::Favorite { id } => {
+                commands::contacts::favorite(&config, &id)?;
+            }
+            ContactCommands::Unfavorite { id } => {
+                commands::contacts::unfavorite(&config, &id)?;
             }
         },
         Commands::Social(cmd) => match cmd {

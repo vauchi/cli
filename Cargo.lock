@@ -2507,7 +2507,8 @@ dependencies = [
 
 [[package]]
 name = "vauchi-core"
-version = "0.2.2"
+version = "0.2.3"
+source = "git+https://gitlab.com/vauchi/core.git?branch=main#491c6af000a53449816547d289fb8de476ffff10"
 dependencies = [
  "argon2",
  "async-trait",
@@ -3214,3 +3215,7 @@ dependencies = [
  "wasm-bindgen",
  "web-sys",
 ]
+
+[[patch.unused]]
+name = "vauchi-core"
+version = "0.2.2"

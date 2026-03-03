@@ -742,6 +742,105 @@ pub fn list_hidden(config: &CliConfig) -> Result<()> {
     Ok(())
 }
 
+/// Blocks a contact (stops updates in both directions).
+pub fn block(config: &CliConfig, id: &str) -> Result<()> {
+    let wb = open_vauchi(config)?;
+
+    let contact = find_contact(&wb, id)?;
+    let name = contact.display_name().to_string();
+
+    if contact.is_blocked() {
+        display::info(&format!("{} is already blocked", name));
+        return Ok(());
+    }
+
+    wb.block_contact(contact.id())?;
+    display::success(&format!("Blocked {}", name));
+    display::info("They will no longer receive your updates or send you updates.");
+
+    Ok(())
+}
+
+/// Unblocks a previously blocked contact.
+pub fn unblock(config: &CliConfig, id: &str) -> Result<()> {
+    let wb = open_vauchi(config)?;
+
+    let contact = find_contact(&wb, id)?;
+    let name = contact.display_name().to_string();
+
+    if !contact.is_blocked() {
+        display::info(&format!("{} is not blocked", name));
+        return Ok(());
+    }
+
+    wb.unblock_contact(contact.id())?;
+    display::success(&format!("Unblocked {}", name));
+
+    Ok(())
+}
+
+/// Lists all blocked contacts.
+pub fn list_blocked(config: &CliConfig) -> Result<()> {
+    let wb = open_vauchi(config)?;
+
+    let blocked = wb.list_blocked_contacts()?;
+
+    if blocked.is_empty() {
+        display::info("No blocked contacts.");
+        return Ok(());
+    }
+
+    println!();
+    println!("Blocked contacts ({}):", blocked.len());
+    println!();
+
+    display::display_contacts_table(&blocked);
+
+    println!();
+    display::info("Use 'vauchi contacts unblock <id>' to unblock.");
+    println!();
+
+    Ok(())
+}
+
+/// Marks a contact as a favorite.
+pub fn favorite(config: &CliConfig, id: &str) -> Result<()> {
+    let wb = open_vauchi(config)?;
+
+    let mut contact = find_contact(&wb, id)?;
+    let name = contact.display_name().to_string();
+
+    if contact.is_favorite() {
+        display::info(&format!("{} is already a favorite", name));
+        return Ok(());
+    }
+
+    contact.set_favorite(true);
+    wb.update_contact(&contact)?;
+    display::success(&format!("Marked {} as a favorite", name));
+
+    Ok(())
+}
+
+/// Removes a contact from favorites.
+pub fn unfavorite(config: &CliConfig, id: &str) -> Result<()> {
+    let wb = open_vauchi(config)?;
+
+    let mut contact = find_contact(&wb, id)?;
+    let name = contact.display_name().to_string();
+
+    if !contact.is_favorite() {
+        display::info(&format!("{} is not a favorite", name));
+        return Ok(());
+    }
+
+    contact.set_favorite(false);
+    wb.update_contact(&contact)?;
+    display::success(&format!("Removed {} from favorites", name));
+
+    Ok(())
+}
+
 /// Shows validation status for all of a contact's fields.
 pub fn show_validation_status(config: &CliConfig, contact_id_or_name: &str) -> Result<()> {
     use vauchi_core::social::TrustLevel;
