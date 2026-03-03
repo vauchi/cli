@@ -50,7 +50,7 @@ anyhow = "1"
 qrcode = "0.14"
 
 # Async WebSocket client
-tokio-tungstenite = { version = "0.21", features = ["native-tls"] }
+tokio-tungstenite = { version = "0.24", features = ["native-tls"] }
 # Stream/Sink combinators for async WebSocket
 futures-util = "0.3"
 url = "2"
