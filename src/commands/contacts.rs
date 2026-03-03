@@ -358,7 +358,10 @@ pub fn open_field(config: &CliConfig, contact_id_or_name: &str, field_label: &st
                 }
                 Err(e) => {
                     display::error(&format!("Failed to open: {}", e));
-                    display::info(&format!("Value: {}", field.value()));
+                    println!();
+                    println!("  Value: {}", field.value());
+                    println!();
+                    display::info("You can select and copy the value above manually.");
                 }
             }
         }
@@ -488,11 +491,26 @@ fn execute_action(action: &ContactAction) -> Result<()> {
             }
             Err(e) => {
                 display::error(&format!("Failed to open: {}", e));
-                bail!("Failed to open URI: {}", e)
+                // Extract the raw value from the action for display
+                let value = match action {
+                    ContactAction::Call(v)
+                    | ContactAction::SendSms(v)
+                    | ContactAction::SendEmail(v) => v.as_str(),
+                    ContactAction::OpenUrl(v)
+                    | ContactAction::OpenMap(v)
+                    | ContactAction::GetDirections(v) => v.as_str(),
+                    ContactAction::CopyToClipboard => unreachable!(),
+                };
+                println!();
+                println!("  Value: {}", value);
+                println!();
+                display::info("You can select and copy the value above manually.");
+                Ok(())
             }
         },
         None => {
-            display::info("Value copied to clipboard (not yet implemented)");
+            display::info("Copy to clipboard is not available in CLI mode.");
+            display::info("Use 'vauchi contacts show <name>' to view field values.");
             Ok(())
         }
     }
