@@ -130,11 +130,7 @@ mutation:nightly:
 security:audit:
   extends: [.rust-runner-readonly, .validation-deps, .timeout-quick]
   stage: security
-  needs:
-    - job: lint:format
-      optional: true
-    - job: lint:clippy
-      optional: true
+  needs: []
   script:
     - cargo audit
 
