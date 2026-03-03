@@ -533,6 +533,49 @@ enum ContactCommands {
         /// Contact ID or name
         id: String,
     },
+
+    /// Merge two contacts into one
+    ///
+    /// The first contact is the primary (keeps its name). Unique fields
+    /// from the second contact are added, then the second contact is removed.
+    Merge {
+        /// Primary contact (ID or name) — keeps this contact's name
+        contact1: String,
+        /// Secondary contact (ID or name) — unique fields added, then removed
+        contact2: String,
+    },
+
+    /// List potential duplicate contacts
+    ///
+    /// Shows contacts with high similarity scores. Previously dismissed
+    /// false positives are excluded.
+    Duplicates,
+
+    /// Dismiss a duplicate pair as a false positive
+    DismissDuplicate {
+        /// First contact (ID or name)
+        contact1: String,
+        /// Second contact (ID or name)
+        contact2: String,
+    },
+
+    /// Undo dismissal of a duplicate pair
+    UndismissDuplicate {
+        /// First contact (ID or name)
+        contact1: String,
+        /// Second contact (ID or name)
+        contact2: String,
+    },
+
+    /// Show or set the contact limit
+    ///
+    /// Without --set, shows current limit and usage.
+    /// With --set N, updates the maximum number of contacts.
+    Limit {
+        /// Set the contact limit to this value
+        #[arg(long)]
+        set: Option<usize>,
+    },
 }
 
 #[derive(Subcommand)]
@@ -868,6 +911,21 @@ async fn main() -> Result<()> {
             }
             ContactCommands::DeleteNote { id } => {
                 commands::contacts::delete_note(&config, &id)?;
+            }
+            ContactCommands::Merge { contact1, contact2 } => {
+                commands::contacts::merge(&config, &contact1, &contact2)?;
+            }
+            ContactCommands::Duplicates => {
+                commands::contacts::duplicates(&config)?;
+            }
+            ContactCommands::DismissDuplicate { contact1, contact2 } => {
+                commands::contacts::dismiss_duplicate(&config, &contact1, &contact2)?;
+            }
+            ContactCommands::UndismissDuplicate { contact1, contact2 } => {
+                commands::contacts::undismiss_duplicate(&config, &contact1, &contact2)?;
+            }
+            ContactCommands::Limit { set } => {
+                commands::contacts::limit(&config, set)?;
             }
         },
         Commands::Social(cmd) => match cmd {

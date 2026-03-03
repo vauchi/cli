@@ -1636,7 +1636,9 @@ mod favorite_unfavorite {
 
 mod export_vcard {
     use super::*;
+    #[allow(unused_imports)]
     use std::fs;
+    #[allow(unused_imports)]
     use std::path::Path;
 
     /// Trace: contacts_management.feature - "Export contact to vCard"
@@ -1835,6 +1837,204 @@ mod personal_notes {
         assert!(
             output.contains("delete-note") || output.contains("DeleteNote"),
             "Help should mention delete-note, got: {}",
+            output
+        );
+    }
+}
+
+// ===========================================================================
+// Contact Merge, Duplicates & Limit Tests (SP-12a)
+// Trace: features/contacts_management.feature
+// ===========================================================================
+
+mod contact_merge_duplicates_limit {
+    use super::*;
+
+    // === Merge Command Tests ===
+
+    /// Tests that the merge command requires initialization.
+    #[test]
+    fn test_merge_requires_init() {
+        let ctx = CliTestContext::new();
+        let stderr = ctx.run_failure(&["contacts", "merge", "Alice", "Bob"]);
+        assert!(
+            stderr.contains("not initialized"),
+            "Expected 'not initialized' message, got: {}",
+            stderr
+        );
+    }
+
+    /// Tests that merge reports contact not found for unknown contacts.
+    #[test]
+    fn test_merge_contact_not_found() {
+        let ctx = CliTestContext::new();
+        ctx.init("Alice");
+
+        let stderr = ctx.run_failure(&["contacts", "merge", "nonexistent1", "nonexistent2"]);
+        assert!(
+            stderr.contains("not found"),
+            "Expected 'not found' message, got: {}",
+            stderr
+        );
+    }
+
+    // === Duplicates Command Tests ===
+
+    /// Tests that the duplicates command requires initialization.
+    #[test]
+    fn test_duplicates_requires_init() {
+        let ctx = CliTestContext::new();
+        let stderr = ctx.run_failure(&["contacts", "duplicates"]);
+        assert!(
+            stderr.contains("not initialized"),
+            "Expected 'not initialized' message, got: {}",
+            stderr
+        );
+    }
+
+    /// Tests that duplicates with no contacts returns helpful message.
+    #[test]
+    fn test_duplicates_no_contacts() {
+        let ctx = CliTestContext::new();
+        ctx.init("Alice");
+
+        let output = ctx.run_success(&["contacts", "duplicates"]);
+        assert!(
+            output.contains("at least 2") || output.contains("No potential"),
+            "Expected helpful message about needing contacts, got: {}",
+            output
+        );
+    }
+
+    // === Dismiss Duplicate Tests ===
+
+    /// Tests that dismiss-duplicate requires initialization.
+    #[test]
+    fn test_dismiss_duplicate_requires_init() {
+        let ctx = CliTestContext::new();
+        let stderr = ctx.run_failure(&["contacts", "dismiss-duplicate", "contact1", "contact2"]);
+        assert!(
+            stderr.contains("not initialized"),
+            "Expected 'not initialized' message, got: {}",
+            stderr
+        );
+    }
+
+    /// Tests that dismiss-duplicate reports contact not found.
+    #[test]
+    fn test_dismiss_duplicate_contact_not_found() {
+        let ctx = CliTestContext::new();
+        ctx.init("Alice");
+
+        let stderr = ctx.run_failure(&[
+            "contacts",
+            "dismiss-duplicate",
+            "nonexistent1",
+            "nonexistent2",
+        ]);
+        assert!(
+            stderr.contains("not found"),
+            "Expected 'not found' message, got: {}",
+            stderr
+        );
+    }
+
+    // === Undismiss Duplicate Tests ===
+
+    /// Tests that undismiss-duplicate requires initialization.
+    #[test]
+    fn test_undismiss_duplicate_requires_init() {
+        let ctx = CliTestContext::new();
+        let stderr = ctx.run_failure(&["contacts", "undismiss-duplicate", "contact1", "contact2"]);
+        assert!(
+            stderr.contains("not initialized"),
+            "Expected 'not initialized' message, got: {}",
+            stderr
+        );
+    }
+
+    // === Limit Command Tests ===
+
+    /// Tests that the limit command requires initialization.
+    #[test]
+    fn test_limit_requires_init() {
+        let ctx = CliTestContext::new();
+        let stderr = ctx.run_failure(&["contacts", "limit"]);
+        assert!(
+            stderr.contains("not initialized"),
+            "Expected 'not initialized' message, got: {}",
+            stderr
+        );
+    }
+
+    /// Tests that limit shows current limit after initialization.
+    #[test]
+    fn test_limit_show_default() {
+        let ctx = CliTestContext::new();
+        ctx.init("Alice");
+
+        let output = ctx.run_success(&["contacts", "limit"]);
+        assert!(
+            output.contains("10000") || output.contains("0 / 10000") || output.contains("limit"),
+            "Expected contact limit info, got: {}",
+            output
+        );
+    }
+
+    /// Tests that limit --set updates the limit.
+    #[test]
+    fn test_limit_set_value() {
+        let ctx = CliTestContext::new();
+        ctx.init("Alice");
+
+        let output = ctx.run_success(&["contacts", "limit", "--set", "500"]);
+        assert!(
+            output.contains("500") || output.contains("set"),
+            "Expected confirmation of new limit, got: {}",
+            output
+        );
+    }
+
+    /// Tests that limit --set 0 is rejected.
+    #[test]
+    fn test_limit_set_zero_rejected() {
+        let ctx = CliTestContext::new();
+        ctx.init("Alice");
+
+        let stderr = ctx.run_failure(&["contacts", "limit", "--set", "0"]);
+        assert!(
+            stderr.contains("at least 1") || stderr.contains("must be"),
+            "Expected validation error for limit=0, got: {}",
+            stderr
+        );
+    }
+
+    // === Help Text Tests ===
+
+    /// Tests that help includes the new SP-12a subcommands.
+    #[test]
+    fn test_sp12a_commands_in_help() {
+        let ctx = CliTestContext::new();
+        let output = ctx.run_success(&["contacts", "help"]);
+
+        assert!(
+            output.contains("merge") || output.contains("Merge"),
+            "Help should mention merge, got: {}",
+            output
+        );
+        assert!(
+            output.contains("duplicates") || output.contains("Duplicates"),
+            "Help should mention duplicates, got: {}",
+            output
+        );
+        assert!(
+            output.contains("dismiss-duplicate") || output.contains("DismissDuplicate"),
+            "Help should mention dismiss-duplicate, got: {}",
+            output
+        );
+        assert!(
+            output.contains("limit") || output.contains("Limit"),
+            "Help should mention limit, got: {}",
             output
         );
     }

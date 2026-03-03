@@ -271,3 +271,248 @@ fn contract_consent_api_shape() {
         .expect("check_consent must return bool");
     assert!(granted);
 }
+
+// ============================================================
+// Contract: Contact Merge API (SP-12a)
+// ============================================================
+
+#[test]
+fn contract_find_duplicates_returns_pairs() {
+    use vauchi_core::contact::merge::{find_duplicates, DuplicatePair};
+    use vauchi_core::crypto::SymmetricKey;
+
+    // Create contacts with similar names
+    let card1 = vauchi_core::ContactCard::new("Alice Johnson");
+    let card2 = vauchi_core::ContactCard::new("Alice Johnson"); // exact match
+    let card3 = vauchi_core::ContactCard::new("Bob Smith");
+
+    let c1 = Contact::from_exchange([1u8; 32], card1, SymmetricKey::generate());
+    let c2 = Contact::from_exchange([2u8; 32], card2, SymmetricKey::generate());
+    let c3 = Contact::from_exchange([3u8; 32], card3, SymmetricKey::generate());
+
+    let duplicates: Vec<DuplicatePair> = find_duplicates(&[c1, c2, c3]);
+
+    // Exact name match should produce a duplicate pair
+    assert!(
+        !duplicates.is_empty(),
+        "find_duplicates must detect exact name matches"
+    );
+    assert!(
+        duplicates[0].similarity >= 0.7,
+        "similarity must be >= 0.7 threshold, got {}",
+        duplicates[0].similarity
+    );
+}
+
+#[test]
+fn contract_merge_contacts_preserves_primary_name() {
+    use vauchi_core::contact::merge::merge_contacts;
+    use vauchi_core::crypto::SymmetricKey;
+
+    let card1 = vauchi_core::ContactCard::new("Primary Contact");
+    let card2 = vauchi_core::ContactCard::new("Secondary Contact");
+
+    let primary = Contact::from_exchange([1u8; 32], card1, SymmetricKey::generate());
+    let secondary = Contact::from_exchange([2u8; 32], card2, SymmetricKey::generate());
+
+    let merged = merge_contacts(&primary, &secondary);
+
+    assert_eq!(
+        merged.display_name(),
+        "Primary Contact",
+        "merged contact must keep primary's display name"
+    );
+    assert_eq!(
+        merged.id(),
+        primary.id(),
+        "merged contact must keep primary's ID"
+    );
+}
+
+#[test]
+fn contract_merge_contacts_adds_unique_fields() {
+    use vauchi_core::contact::merge::merge_contacts;
+    use vauchi_core::crypto::SymmetricKey;
+
+    let mut card1 = vauchi_core::ContactCard::new("Primary");
+    card1
+        .add_field(ContactField::new(FieldType::Email, "Work", "p@example.com"))
+        .unwrap();
+
+    let mut card2 = vauchi_core::ContactCard::new("Secondary");
+    card2
+        .add_field(ContactField::new(FieldType::Phone, "Mobile", "+1234567890"))
+        .unwrap();
+
+    let primary = Contact::from_exchange([1u8; 32], card1, SymmetricKey::generate());
+    let secondary = Contact::from_exchange([2u8; 32], card2, SymmetricKey::generate());
+
+    let merged = merge_contacts(&primary, &secondary);
+
+    assert_eq!(
+        merged.card().fields().len(),
+        2,
+        "merged card must contain fields from both contacts"
+    );
+    assert!(
+        merged.card().fields().iter().any(|f| f.label() == "Work"),
+        "merged card must keep primary's email field"
+    );
+    assert!(
+        merged.card().fields().iter().any(|f| f.label() == "Mobile"),
+        "merged card must add secondary's phone field"
+    );
+}
+
+#[test]
+fn contract_filter_dismissed_excludes_dismissed_pairs() {
+    use vauchi_core::contact::merge::{filter_dismissed, normalize_pair_key, DuplicatePair};
+
+    let pairs = vec![
+        DuplicatePair {
+            id1: "aaa".to_string(),
+            id2: "bbb".to_string(),
+            similarity: 0.9,
+        },
+        DuplicatePair {
+            id1: "ccc".to_string(),
+            id2: "ddd".to_string(),
+            similarity: 0.8,
+        },
+    ];
+
+    let mut dismissed = std::collections::HashSet::new();
+    dismissed.insert(normalize_pair_key("aaa", "bbb"));
+
+    let filtered = filter_dismissed(pairs, &dismissed);
+
+    assert_eq!(
+        filtered.len(),
+        1,
+        "filter_dismissed must exclude dismissed pairs"
+    );
+    assert_eq!(
+        filtered[0].id1, "ccc",
+        "remaining pair must be the non-dismissed one"
+    );
+}
+
+#[test]
+fn contract_normalize_pair_key_is_commutative() {
+    use vauchi_core::contact::merge::normalize_pair_key;
+
+    let (a1, b1) = normalize_pair_key("xxx", "yyy");
+    let (a2, b2) = normalize_pair_key("yyy", "xxx");
+
+    assert_eq!(a1, a2, "normalize_pair_key must be commutative (id1)");
+    assert_eq!(b1, b2, "normalize_pair_key must be commutative (id2)");
+    assert!(a1 <= b1, "normalized id1 must be <= id2 lexicographically");
+}
+
+// ============================================================
+// Contract: Contact Limit API (SP-12a)
+// ============================================================
+
+#[test]
+fn contract_storage_get_contact_limit_has_default() {
+    let wb = setup();
+    let limit = wb
+        .storage()
+        .get_contact_limit()
+        .expect("get_contact_limit must return a default");
+    assert_eq!(limit, 10_000, "default contact limit must be 10,000");
+}
+
+#[test]
+fn contract_storage_set_and_get_contact_limit() {
+    let wb = setup();
+    wb.storage()
+        .set_contact_limit(500)
+        .expect("set_contact_limit must accept usize");
+
+    let limit = wb.storage().get_contact_limit().unwrap();
+    assert_eq!(
+        limit, 500,
+        "get_contact_limit must return the value that was set"
+    );
+}
+
+// ============================================================
+// Contract: Dismissed Duplicates API (SP-12a)
+// ============================================================
+
+#[test]
+fn contract_storage_dismiss_and_load_duplicates() {
+    let wb = setup();
+
+    // Initially no dismissed duplicates
+    let dismissed = wb
+        .storage()
+        .load_dismissed_duplicates()
+        .expect("load_dismissed_duplicates must return HashSet");
+    assert!(
+        dismissed.is_empty(),
+        "initially there should be no dismissed duplicates"
+    );
+
+    // Dismiss a pair
+    wb.storage()
+        .dismiss_duplicate("aaa", "bbb")
+        .expect("dismiss_duplicate must accept two IDs");
+
+    let dismissed = wb.storage().load_dismissed_duplicates().unwrap();
+    assert_eq!(
+        dismissed.len(),
+        1,
+        "dismissed set must contain the dismissed pair"
+    );
+
+    // Pair should be normalized (aaa < bbb)
+    assert!(
+        dismissed.contains(&("aaa".to_string(), "bbb".to_string())),
+        "dismissed pair must be stored normalized"
+    );
+}
+
+#[test]
+fn contract_storage_dismiss_is_order_independent() {
+    let wb = setup();
+
+    // Dismiss (bbb, aaa) — should normalize to (aaa, bbb)
+    wb.storage().dismiss_duplicate("bbb", "aaa").unwrap();
+
+    let dismissed = wb.storage().load_dismissed_duplicates().unwrap();
+    assert!(
+        dismissed.contains(&("aaa".to_string(), "bbb".to_string())),
+        "dismiss_duplicate must normalize pair order"
+    );
+}
+
+#[test]
+fn contract_storage_undismiss_duplicate() {
+    let wb = setup();
+
+    wb.storage().dismiss_duplicate("aaa", "bbb").unwrap();
+    assert_eq!(wb.storage().load_dismissed_duplicates().unwrap().len(), 1);
+
+    wb.storage()
+        .undismiss_duplicate("aaa", "bbb")
+        .expect("undismiss_duplicate must accept two IDs");
+
+    let dismissed = wb.storage().load_dismissed_duplicates().unwrap();
+    assert!(
+        dismissed.is_empty(),
+        "undismiss_duplicate must remove the dismissed pair"
+    );
+}
+
+// ============================================================
+// Contract: Vauchi storage() accessor (SP-12a)
+// ============================================================
+
+#[test]
+fn contract_vauchi_storage_accessor_exists() {
+    let wb = setup();
+    // Verify that storage() returns a reference to Storage
+    let _storage: &vauchi_core::Storage = wb.storage();
+}
