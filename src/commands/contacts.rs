@@ -130,6 +130,30 @@ pub fn remove(config: &CliConfig, id: &str) -> Result<()> {
     Ok(())
 }
 
+/// Exports a contact as vCard (.vcf format).
+pub fn export(config: &CliConfig, id_or_name: &str, output_path: &str) -> Result<()> {
+    use std::fs::File;
+    use std::io::Write;
+    use vauchi_core::contact_card::vcard::export_vcard;
+
+    let wb = open_vauchi(config)?;
+
+    // Find contact by ID or name
+    let contact = find_contact(&wb, id_or_name)?;
+    let contact_name = contact.display_name().to_string();
+
+    // Generate vCard from contact's card
+    let vcard_content = export_vcard(contact.card());
+
+    // Write to file
+    let mut file = File::create(output_path)?;
+    file.write_all(vcard_content.as_bytes())?;
+
+    display::success(&format!("Exported {} to {}", contact_name, output_path));
+
+    Ok(())
+}
+
 /// Marks a contact's fingerprint as verified.
 pub fn verify(config: &CliConfig, id: &str) -> Result<()> {
     let wb = open_vauchi(config)?;
@@ -887,6 +911,99 @@ pub fn show_validation_status(config: &CliConfig, contact_id_or_name: &str) -> R
     println!();
     display::info("Legend: ○ unverified, ◐ low, ◑ partial, ● high confidence");
     println!();
+
+    Ok(())
+}
+
+/// Adds a personal note to a contact.
+pub fn add_note(config: &CliConfig, id_or_name: &str, note_text: &str) -> Result<()> {
+    use vauchi_core::crypto::encrypt;
+
+    let wb = open_vauchi(config)?;
+
+    // Find contact
+    let contact = find_contact(&wb, id_or_name)?;
+    let contact_id = contact.id().to_string();
+    let contact_name = contact.display_name().to_string();
+
+    // Encrypt note with contact's shared key
+    let encrypted = encrypt(contact.shared_key(), note_text.as_bytes())?;
+
+    // Save to storage
+    wb.save_personal_notes(&contact_id, &encrypted)?;
+
+    display::success(&format!("Added note to {}", contact_name));
+
+    Ok(())
+}
+
+/// Shows the personal note for a contact.
+pub fn show_note(config: &CliConfig, id_or_name: &str) -> Result<()> {
+    use vauchi_core::crypto::decrypt;
+
+    let wb = open_vauchi(config)?;
+
+    // Find contact
+    let contact = find_contact(&wb, id_or_name)?;
+    let contact_id = contact.id().to_string();
+    let contact_name = contact.display_name().to_string();
+
+    // Load encrypted note
+    let encrypted_opt = wb.load_personal_notes(&contact_id)?;
+
+    match encrypted_opt {
+        Some(encrypted) => {
+            let decrypted = decrypt(contact.shared_key(), &encrypted)?;
+            let note_text = String::from_utf8(decrypted)?;
+
+            println!();
+            println!("Note for {}:", contact_name);
+            println!("{}", note_text);
+            println!();
+        }
+        None => {
+            display::info(&format!("No note for {}", contact_name));
+        }
+    }
+
+    Ok(())
+}
+
+/// Edits the personal note for a contact.
+pub fn edit_note(config: &CliConfig, id_or_name: &str, note_text: &str) -> Result<()> {
+    use vauchi_core::crypto::encrypt;
+
+    let wb = open_vauchi(config)?;
+
+    // Find contact
+    let contact = find_contact(&wb, id_or_name)?;
+    let contact_id = contact.id().to_string();
+    let contact_name = contact.display_name().to_string();
+
+    // Encrypt new note with contact's shared key
+    let encrypted = encrypt(contact.shared_key(), note_text.as_bytes())?;
+
+    // Save to storage (overwrites existing)
+    wb.save_personal_notes(&contact_id, &encrypted)?;
+
+    display::success(&format!("Updated note for {}", contact_name));
+
+    Ok(())
+}
+
+/// Deletes the personal note for a contact.
+pub fn delete_note(config: &CliConfig, id_or_name: &str) -> Result<()> {
+    let wb = open_vauchi(config)?;
+
+    // Find contact
+    let contact = find_contact(&wb, id_or_name)?;
+    let contact_id = contact.id().to_string();
+    let contact_name = contact.display_name().to_string();
+
+    // Delete note from storage
+    wb.delete_personal_notes(&contact_id)?;
+
+    display::success(&format!("Deleted note for {}", contact_name));
 
     Ok(())
 }

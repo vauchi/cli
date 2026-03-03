@@ -1628,3 +1628,214 @@ mod favorite_unfavorite {
         );
     }
 }
+
+// ===========================================================================
+// Export Contact vCard Tests
+// Trace: contacts_management.feature lines 277-282
+// ===========================================================================
+
+mod export_vcard {
+    use super::*;
+    use std::fs;
+    use std::path::Path;
+
+    /// Trace: contacts_management.feature - "Export contact to vCard"
+    /// Tests that the export command requires initialization.
+    #[test]
+    fn test_export_contact_requires_init() {
+        let ctx = CliTestContext::new();
+        let output_path = ctx.data_dir.path().join("contact.vcf");
+        let stderr = ctx.run_failure(&[
+            "contacts",
+            "export",
+            "some-id",
+            output_path.to_str().unwrap(),
+        ]);
+        assert!(
+            stderr.contains("not initialized"),
+            "Expected 'not initialized' message, got: {}",
+            stderr
+        );
+    }
+
+    /// Trace: contacts_management.feature - "Export contact to vCard"
+    /// Tests that export reports contact not found for unknown ID.
+    #[test]
+    fn test_export_contact_not_found() {
+        let ctx = CliTestContext::new();
+        ctx.init("Alice");
+
+        let output_path = ctx.data_dir.path().join("contact.vcf");
+        let stderr = ctx.run_failure(&[
+            "contacts",
+            "export",
+            "nonexistent",
+            output_path.to_str().unwrap(),
+        ]);
+        assert!(
+            stderr.contains("not found"),
+            "Expected 'not found' message, got: {}",
+            stderr
+        );
+    }
+
+    /// Tests that the help includes export subcommand.
+    #[test]
+    fn test_export_in_help() {
+        let ctx = CliTestContext::new();
+        let output = ctx.run_success(&["contacts", "help"]);
+        assert!(
+            output.contains("export") || output.contains("Export"),
+            "Help should mention export, got: {}",
+            output
+        );
+    }
+}
+
+// ===========================================================================
+// Personal Notes Tests
+// Trace: features/contacts_management.feature @notes @implemented
+// ===========================================================================
+
+mod personal_notes {
+    use super::*;
+
+    /// Trace: contacts_management.feature - "Add personal note to contact"
+    /// Tests that add-note requires initialization.
+    #[test]
+    fn test_add_note_requires_init() {
+        let ctx = CliTestContext::new();
+        let stderr = ctx.run_failure(&["contacts", "add-note", "some-id", "My note"]);
+        assert!(
+            stderr.contains("not initialized"),
+            "Expected 'not initialized' message, got: {}",
+            stderr
+        );
+    }
+
+    /// Trace: contacts_management.feature - "Add personal note to contact"
+    /// Tests that add-note reports contact not found for unknown ID.
+    #[test]
+    fn test_add_note_contact_not_found() {
+        let ctx = CliTestContext::new();
+        ctx.init("Alice");
+
+        let stderr = ctx.run_failure(&["contacts", "add-note", "nonexistent", "My note"]);
+        assert!(
+            stderr.contains("not found"),
+            "Expected 'not found' message, got: {}",
+            stderr
+        );
+    }
+
+    /// Trace: contacts_management.feature - "Show personal note for contact"
+    /// Tests that show-note requires initialization.
+    #[test]
+    fn test_show_note_requires_init() {
+        let ctx = CliTestContext::new();
+        let stderr = ctx.run_failure(&["contacts", "show-note", "some-id"]);
+        assert!(
+            stderr.contains("not initialized"),
+            "Expected 'not initialized' message, got: {}",
+            stderr
+        );
+    }
+
+    /// Trace: contacts_management.feature - "Show personal note for contact"
+    /// Tests that show-note reports contact not found for unknown ID.
+    #[test]
+    fn test_show_note_contact_not_found() {
+        let ctx = CliTestContext::new();
+        ctx.init("Alice");
+
+        let stderr = ctx.run_failure(&["contacts", "show-note", "nonexistent"]);
+        assert!(
+            stderr.contains("not found"),
+            "Expected 'not found' message, got: {}",
+            stderr
+        );
+    }
+
+    /// Trace: contacts_management.feature - "Edit contact note"
+    /// Tests that edit-note requires initialization.
+    #[test]
+    fn test_edit_note_requires_init() {
+        let ctx = CliTestContext::new();
+        let stderr = ctx.run_failure(&["contacts", "edit-note", "some-id", "New note"]);
+        assert!(
+            stderr.contains("not initialized"),
+            "Expected 'not initialized' message, got: {}",
+            stderr
+        );
+    }
+
+    /// Trace: contacts_management.feature - "Edit contact note"
+    /// Tests that edit-note reports contact not found for unknown ID.
+    #[test]
+    fn test_edit_note_contact_not_found() {
+        let ctx = CliTestContext::new();
+        ctx.init("Alice");
+
+        let stderr = ctx.run_failure(&["contacts", "edit-note", "nonexistent", "New note"]);
+        assert!(
+            stderr.contains("not found"),
+            "Expected 'not found' message, got: {}",
+            stderr
+        );
+    }
+
+    /// Trace: contacts_management.feature - "Delete contact note"
+    /// Tests that delete-note requires initialization.
+    #[test]
+    fn test_delete_note_requires_init() {
+        let ctx = CliTestContext::new();
+        let stderr = ctx.run_failure(&["contacts", "delete-note", "some-id"]);
+        assert!(
+            stderr.contains("not initialized"),
+            "Expected 'not initialized' message, got: {}",
+            stderr
+        );
+    }
+
+    /// Trace: contacts_management.feature - "Delete contact note"
+    /// Tests that delete-note reports contact not found for unknown ID.
+    #[test]
+    fn test_delete_note_contact_not_found() {
+        let ctx = CliTestContext::new();
+        ctx.init("Alice");
+
+        let stderr = ctx.run_failure(&["contacts", "delete-note", "nonexistent"]);
+        assert!(
+            stderr.contains("not found"),
+            "Expected 'not found' message, got: {}",
+            stderr
+        );
+    }
+
+    /// Tests that the help includes personal note subcommands.
+    #[test]
+    fn test_personal_notes_in_help() {
+        let ctx = CliTestContext::new();
+        let output = ctx.run_success(&["contacts", "help"]);
+        assert!(
+            output.contains("add-note") || output.contains("AddNote"),
+            "Help should mention add-note, got: {}",
+            output
+        );
+        assert!(
+            output.contains("show-note") || output.contains("ShowNote"),
+            "Help should mention show-note, got: {}",
+            output
+        );
+        assert!(
+            output.contains("edit-note") || output.contains("EditNote"),
+            "Help should mention edit-note, got: {}",
+            output
+        );
+        assert!(
+            output.contains("delete-note") || output.contains("DeleteNote"),
+            "Help should mention delete-note, got: {}",
+            output
+        );
+    }
+}

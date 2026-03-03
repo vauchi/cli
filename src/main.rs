@@ -494,6 +494,45 @@ enum ContactCommands {
         /// Contact ID or name
         id: String,
     },
+
+    /// Export a contact as vCard
+    Export {
+        /// Contact ID or name
+        id: String,
+
+        /// Output file path (e.g., contact.vcf)
+        output: PathBuf,
+    },
+
+    /// Add a personal note to a contact
+    AddNote {
+        /// Contact ID or name
+        id: String,
+
+        /// Note text
+        note: String,
+    },
+
+    /// Show personal note for a contact
+    ShowNote {
+        /// Contact ID or name
+        id: String,
+    },
+
+    /// Edit personal note for a contact
+    EditNote {
+        /// Contact ID or name
+        id: String,
+
+        /// New note text
+        note: String,
+    },
+
+    /// Delete personal note for a contact
+    DeleteNote {
+        /// Contact ID or name
+        id: String,
+    },
 }
 
 #[derive(Subcommand)]
@@ -814,6 +853,21 @@ async fn main() -> Result<()> {
             }
             ContactCommands::Unfavorite { id } => {
                 commands::contacts::unfavorite(&config, &id)?;
+            }
+            ContactCommands::Export { id, output } => {
+                commands::contacts::export(&config, &id, output.to_str().unwrap())?;
+            }
+            ContactCommands::AddNote { id, note } => {
+                commands::contacts::add_note(&config, &id, &note)?;
+            }
+            ContactCommands::ShowNote { id } => {
+                commands::contacts::show_note(&config, &id)?;
+            }
+            ContactCommands::EditNote { id, note } => {
+                commands::contacts::edit_note(&config, &id, &note)?;
+            }
+            ContactCommands::DeleteNote { id } => {
+                commands::contacts::delete_note(&config, &id)?;
             }
         },
         Commands::Social(cmd) => match cmd {
