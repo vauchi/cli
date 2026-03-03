@@ -76,6 +76,87 @@ pub fn add(config: &CliConfig, field_type: &str, label: &str, value: &str) -> Re
     Ok(())
 }
 
+/// Interactively prompts for a social network and username, then adds the field.
+///
+/// Displays a numbered list of available social networks from the registry,
+/// lets the user select by number, then prompts for the username.
+pub fn add_social_interactive(config: &CliConfig) -> Result<()> {
+    use dialoguer::{Input, Select};
+    use vauchi_core::SocialNetworkRegistry;
+
+    let wb = open_vauchi(config)?;
+
+    // Ensure a card exists before prompting
+    let old_card = wb
+        .own_card()?
+        .ok_or_else(|| anyhow::anyhow!("No contact card found. Run 'vauchi init' first."))?;
+
+    // Load the social network registry
+    let registry = SocialNetworkRegistry::with_defaults();
+    let networks = registry.all();
+
+    if networks.is_empty() {
+        bail!("No social networks available in the registry");
+    }
+
+    // Build display items for the selector
+    let items: Vec<String> = networks
+        .iter()
+        .map(|n| format!("{} ({})", n.display_name(), n.id()))
+        .collect();
+
+    println!();
+
+    // Select allows arrow-key navigation through the list
+    let selection = Select::new()
+        .with_prompt("Select a social network")
+        .items(&items)
+        .default(0)
+        .interact()?;
+
+    let selected = networks[selection];
+    let network_id = selected.id().to_string();
+    let network_name = selected.display_name().to_string();
+
+    // Prompt for username
+    let username: String = Input::new()
+        .with_prompt(format!("{} username", network_name))
+        .interact_text()?;
+
+    let username = username.trim().to_string();
+    if username.is_empty() {
+        bail!("Username cannot be empty");
+    }
+
+    // Show preview with profile URL
+    if let Some(url) = registry.profile_url(&network_id, &username) {
+        display::info(&format!("Profile URL: {}", url));
+    }
+
+    // Create and add the field (label = network id, value = username)
+    let field = ContactField::new(FieldType::Social, &network_id, &username);
+    wb.add_own_field(field)?;
+
+    display::success(&format!(
+        "Added social field '{}' with username '{}'",
+        network_id, username
+    ));
+
+    // Propagate update to contacts
+    let new_card = wb.own_card()?.unwrap();
+    let queued = wb.propagate_card_update(&old_card, &new_card)?;
+    if queued > 0 {
+        display::info(&format!("Update queued to {} contact(s)", queued));
+    }
+
+    // Record for inter-device sync
+    if let Err(e) = record_card_update(&wb, &network_id, &username) {
+        display::warning(&format!("Failed to record for device sync: {}", e));
+    }
+
+    Ok(())
+}
+
 /// Removes a field from the contact card.
 pub fn remove(config: &CliConfig, label: &str) -> Result<()> {
     let wb = open_vauchi(config)?;

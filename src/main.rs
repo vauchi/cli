@@ -299,16 +299,19 @@ enum CardCommands {
     Show,
 
     /// Add a field to your card
+    ///
+    /// For social fields, omit label and value to interactively select a
+    /// network from the registry and enter a username.
     Add {
         /// Field type (email, phone, website, address, social, other)
         #[arg(value_name = "TYPE")]
         field_type: String,
 
-        /// Field label (e.g., "work", "personal", "mobile")
-        label: String,
+        /// Field label (e.g., "work", "personal", "mobile"; optional for social)
+        label: Option<String>,
 
-        /// Field value
-        value: String,
+        /// Field value (optional for social — prompts interactively)
+        value: Option<String>,
     },
 
     /// Remove a field from your card
@@ -672,7 +675,31 @@ async fn main() -> Result<()> {
                 label,
                 value,
             } => {
-                commands::card::add(&config, &field_type, &label, &value)?;
+                // Social fields support interactive prompting when label/value
+                // are omitted: `vauchi card add social`
+                let is_social = matches!(
+                    field_type.to_lowercase().as_str(),
+                    "social" | "twitter" | "instagram" | "linkedin"
+                );
+
+                match (label, value) {
+                    (Some(l), Some(v)) => {
+                        commands::card::add(&config, &field_type, &l, &v)?;
+                    }
+                    (None, None) if is_social => {
+                        commands::card::add_social_interactive(&config)?;
+                    }
+                    _ => {
+                        if is_social {
+                            display::info(
+                                "Tip: run 'vauchi card add social' to select a network interactively",
+                            );
+                        }
+                        anyhow::bail!(
+                            "Missing required arguments. Usage: vauchi card add <TYPE> <LABEL> <VALUE>"
+                        );
+                    }
+                }
             }
             CardCommands::Remove { label } => {
                 commands::card::remove(&config, &label)?;
