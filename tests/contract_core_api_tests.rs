@@ -99,7 +99,7 @@ fn contract_list_contacts_paginated_accepts_offset_limit() {
 
 #[test]
 fn contract_contact_has_required_accessors() {
-    // Verify that Contact exposes the methods CLI depends on.
+    // allow(zero_assertions): Compile-time shape check — fails to compile if API changes
     // We can't easily create a Contact without an exchange, so we verify
     // the type has the expected methods via a compilation check.
     // If any of these methods are renamed/removed, this test fails to compile.
@@ -512,6 +512,7 @@ fn contract_storage_undismiss_duplicate() {
 
 #[test]
 fn contract_vauchi_storage_accessor_exists() {
+    // allow(zero_assertions): Compile-time shape check — fails to compile if accessor removed
     let wb = setup();
     // Verify that storage() returns a reference to Storage
     let _storage: &vauchi_core::Storage = wb.storage();
