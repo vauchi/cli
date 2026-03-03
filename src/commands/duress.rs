@@ -9,7 +9,7 @@
 use anyhow::{bail, Result};
 use dialoguer::Password;
 
-use crate::commands::common::open_vauchi;
+use crate::commands::common::{auth_mode_label, open_vauchi};
 use crate::config::CliConfig;
 use crate::display;
 
@@ -106,11 +106,16 @@ pub fn test(config: &CliConfig, pin: &str) -> Result<()> {
     }
 
     let result = wb.authenticate(pin)?;
+    let label = auth_mode_label(result);
     match result {
-        vauchi_core::AuthMode::Normal => display::success("Authentication result: Normal"),
-        vauchi_core::AuthMode::Duress => display::warning("Authentication result: DURESS"),
+        vauchi_core::AuthMode::Normal => {
+            display::success(&format!("Authentication result: {label}"))
+        }
+        vauchi_core::AuthMode::Duress => {
+            display::warning(&format!("Authentication result: {label}"))
+        }
         vauchi_core::AuthMode::Unauthenticated => {
-            display::warning("Authentication result: Invalid")
+            display::warning(&format!("Authentication result: {label}"))
         }
     }
 

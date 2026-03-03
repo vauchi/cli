@@ -44,6 +44,10 @@ struct Cli {
     /// Locale for output messages (en, de, fr, es)
     #[arg(long, global = true, env = "VAUCHI_LOCALE", default_value = "en")]
     locale: String,
+
+    /// PIN for authentication (required when app password is configured)
+    #[arg(long, global = true, env = "VAUCHI_PIN")]
+    pin: Option<String>,
 }
 
 #[derive(Subcommand)]
@@ -719,10 +723,14 @@ async fn main() -> Result<()> {
         },
         Commands::Contacts(cmd) => match cmd {
             ContactCommands::List { offset, limit } => {
-                commands::contacts::list(&config, offset, limit)?
+                commands::contacts::list(&config, cli.pin.as_deref(), offset, limit)?
             }
-            ContactCommands::Show { id } => commands::contacts::show(&config, &id)?,
-            ContactCommands::Search { query } => commands::contacts::search(&config, &query)?,
+            ContactCommands::Show { id } => {
+                commands::contacts::show(&config, cli.pin.as_deref(), &id)?
+            }
+            ContactCommands::Search { query } => {
+                commands::contacts::search(&config, cli.pin.as_deref(), &query)?
+            }
             ContactCommands::Remove { id } => commands::contacts::remove(&config, &id)?,
             ContactCommands::Verify { id } => commands::contacts::verify(&config, &id)?,
             ContactCommands::Hide { contact, field } => {

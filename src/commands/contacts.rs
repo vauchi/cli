@@ -11,14 +11,14 @@ use vauchi_core::contact_card::ContactAction;
 use vauchi_core::network::MockTransport;
 use vauchi_core::Vauchi;
 
-use crate::commands::common::open_vauchi;
+use crate::commands::common::{open_vauchi, open_vauchi_authenticated};
 use crate::commands::device_sync_helpers::{record_contact_removed, record_visibility_changed};
 use crate::config::CliConfig;
 use crate::display;
 
-/// Lists all contacts.
-pub fn list(config: &CliConfig, offset: usize, limit: usize) -> Result<()> {
-    let wb = open_vauchi(config)?;
+/// Lists all contacts (respects auth mode — duress PIN shows decoys).
+pub fn list(config: &CliConfig, pin: Option<&str>, offset: usize, limit: usize) -> Result<()> {
+    let wb = open_vauchi_authenticated(config, pin)?;
     let total = wb.contact_count().unwrap_or(0);
 
     if total == 0 {
@@ -55,9 +55,9 @@ pub fn list(config: &CliConfig, offset: usize, limit: usize) -> Result<()> {
     Ok(())
 }
 
-/// Shows details for a specific contact.
-pub fn show(config: &CliConfig, id: &str) -> Result<()> {
-    let wb = open_vauchi(config)?;
+/// Shows details for a specific contact (respects auth mode).
+pub fn show(config: &CliConfig, pin: Option<&str>, id: &str) -> Result<()> {
+    let wb = open_vauchi_authenticated(config, pin)?;
 
     // Try to find by ID first, then by name
     let contact = wb.get_contact(id)?.or_else(|| {
@@ -79,9 +79,9 @@ pub fn show(config: &CliConfig, id: &str) -> Result<()> {
     Ok(())
 }
 
-/// Searches contacts by query.
-pub fn search(config: &CliConfig, query: &str) -> Result<()> {
-    let wb = open_vauchi(config)?;
+/// Searches contacts by query (respects auth mode).
+pub fn search(config: &CliConfig, pin: Option<&str>, query: &str) -> Result<()> {
+    let wb = open_vauchi_authenticated(config, pin)?;
     let results = wb.search_contacts(query)?;
 
     if results.is_empty() {
