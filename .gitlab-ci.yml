@@ -70,7 +70,12 @@ test:
     - job: lint:format
       optional: true
   script:
-    - cargo nextest run --all-targets --no-default-features
+    - cargo nextest run --profile ci --all-targets --no-default-features
+  artifacts:
+    when: always
+    reports:
+      junit: target/nextest/ci/junit.xml
+    expire_in: 1 week
 
 # Main: full coverage with llvm-cov
 coverage:
@@ -117,15 +122,6 @@ mutation:nightly:
   variables:
     MUTATION_EXTRA_FLAGS: "--no-default-features"
     MUTATION_TIMEOUT_NIGHTLY: "60"
-
-mutation:incremental:
-  extends: [.mutation-incremental, .rust-runner, .timeout-extended]
-  needs:
-    - job: test
-      optional: true
-  variables:
-    MUTATION_EXTRA_FLAGS: "--no-default-features"
-    MUTATION_TIMEOUT_INCREMENTAL: "120"
 
 # ============================================================
 # Security Stage (runs on dependency changes, gated by lint, parallel with test)
