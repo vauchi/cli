@@ -74,7 +74,7 @@ test:
 
 # Main: full coverage with llvm-cov
 coverage:
-  extends: [.rust-runner, .timeout-standard]
+  extends: [.rust-runner, .timeout-long]
   stage: test
   needs:
     - job: lint:format
