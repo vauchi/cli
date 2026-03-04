@@ -50,7 +50,7 @@ lint:format:
   needs: []
 
 lint:clippy:
-  extends: [.rust-runner-readonly, .lint-clippy, .validation-rust, .timeout-quick]
+  extends: [.rust-runner-readonly, .lint-clippy, .validation-rust, .timeout-standard]
   needs: []
 
 # ============================================================
