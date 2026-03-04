@@ -308,8 +308,12 @@ pub async fn complete(config: &CliConfig, data: &str) -> Result<()> {
         _ => bail!("Session not in expected state after key agreement"),
     };
 
-    // Complete exchange with placeholder card
-    let their_card = ContactCard::new("New Contact");
+    // Use display name from QR payload (v3+), fall back to "New Contact" for older QRs
+    let their_name = session
+        .their_display_name()
+        .filter(|n| !n.is_empty())
+        .unwrap_or("New Contact");
+    let their_card = ContactCard::new(their_name);
     session
         .apply(ExchangeEvent::CompleteExchange(their_card))
         .map_err(|e| anyhow::anyhow!("Card exchange failed: {:?}", e))?;
