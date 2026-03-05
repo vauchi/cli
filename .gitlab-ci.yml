@@ -180,6 +180,37 @@ security:deny:
     - command -v cargo-deny >/dev/null 2>&1 || cargo binstall cargo-deny --no-confirm 2>/dev/null || cargo install cargo-deny
 
 # ============================================================
+# Advisory: Cargo.lock Freshness Check
+# ============================================================
+# Warns when vauchi-core dependency is behind main. Never blocks.
+
+check:core-freshness:
+  stage: lint
+  image: alpine:latest
+  tags: [docker]
+  needs: []
+  allow_failure: true
+  script:
+    - apk add --no-cache git curl
+    - |
+      LOCKED_SHA=$(grep -A1 'source = "git+.*vauchi/core' Cargo.lock | grep -oP '[a-f0-9]{40}' | head -1)
+      LATEST_SHA=$(git ls-remote https://gitlab.com/vauchi/core.git refs/heads/main | cut -f1)
+      if [ -z "$LOCKED_SHA" ]; then
+        echo "Could not find vauchi-core SHA in Cargo.lock"
+        exit 0
+      fi
+      if [ "$LOCKED_SHA" != "$LATEST_SHA" ]; then
+        echo "WARNING: Cargo.lock pins core at $LOCKED_SHA"
+        echo "         Main is at $LATEST_SHA"
+        echo ""
+        echo "Run: cargo update -p vauchi-core"
+      else
+        echo "✓ Cargo.lock is up to date with core main"
+      fi
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+
+# ============================================================
 # Dev Tag Pipeline (lightweight — lint + test only)
 # ============================================================
 # Triggered by v0.2.3-dev.N tags. Fast feedback, no coverage/mutation/publish.
@@ -283,3 +314,14 @@ verify:upstream-compat:
   needs: []
   script:
     - cargo nextest run --all-targets --no-default-features
+
+# Runs when core creates a dev/RC tag and triggers this repo.
+# Verifies this repo builds and tests pass against the core tag.
+verify:upstream-prerelease:
+  extends: [.rust-runner, .timeout-standard]
+  stage: verify
+  needs: []
+  script:
+    - cargo nextest run --all-targets --no-default-features
+  rules:
+    - if: ($CI_PIPELINE_SOURCE == "pipeline" || $CI_PIPELINE_SOURCE == "trigger" || $CI_PIPELINE_SOURCE == "api") && $UPSTREAM_CORE_VERSION
