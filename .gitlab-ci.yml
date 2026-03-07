@@ -193,7 +193,7 @@ check:core-freshness:
   script:
     - apk add --no-cache git curl
     - |
-      LOCKED_SHA=$(grep -A1 'source = "git+.*vauchi/core' Cargo.lock | sed -n 's/.*#\([a-f0-9]\{40\}\).*/\1/p' | head -1)
+      LOCKED_SHA=$(grep -A1 'source = "git+.*vauchi/core' Cargo.lock | sed -n 's/.*#\([a-f0-9]\{40\}\).*/\1/p' | head -1 || true)
       if [ -z "$LOCKED_SHA" ]; then
         echo "Cargo.lock uses path override — no git SHA to check"
         echo "This is normal for local dev (.cargo/config.toml path patch)"
