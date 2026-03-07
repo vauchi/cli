@@ -10,6 +10,7 @@ mod commands;
 mod config;
 mod display;
 mod protocol;
+mod ui;
 
 use std::path::PathBuf;
 
@@ -141,6 +142,9 @@ enum Commands {
     /// Transport diagnostics and debugging tools
     #[command(subcommand)]
     Diag(commands::diag::DiagCommands),
+
+    /// Interactive onboarding flow
+    Onboarding,
 }
 
 #[derive(Subcommand)]
@@ -1105,6 +1109,9 @@ async fn main() -> Result<()> {
                 } => commands::diag::animated_qr_encode(&file, fps, chunk_size)?,
             },
         },
+        Commands::Onboarding => {
+            commands::onboarding::run()?;
+        }
     }
 
     Ok(())

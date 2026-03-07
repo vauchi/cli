@@ -18,6 +18,7 @@ pub mod exchange;
 pub mod gdpr;
 pub mod init;
 pub mod labels;
+pub mod onboarding;
 pub mod recovery;
 pub mod support;
 pub mod sync;
