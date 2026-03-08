@@ -1,0 +1,23 @@
+---
+source: src/ui/screen_renderer.rs
+assertion_line: 758
+expression: output
+---
+
+  [ Step 3/9]
+
+  Set up your card
+  A few more steps to get the most out of Vauchi.
+
+  What you'll set up next
+
+    group Groups
+      Organize contacts into groups like Family, Friends, etc.
+    card Contact info
+      Add phone, email, and other fields to your card.
+    eye Visibility
+      Choose what each group can see.
+
+──────────────────────────────────────────────────
+
+  (1) Continue setup    (2) Skip to finish

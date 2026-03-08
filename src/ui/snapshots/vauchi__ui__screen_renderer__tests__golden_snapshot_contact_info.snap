@@ -1,0 +1,16 @@
+---
+source: src/ui/screen_renderer.rs
+assertion_line: 770
+expression: output
+---
+
+  [ Step 5/9]
+
+  Add contact info
+  Add fields to your contact card.
+
+  (no fields added)
+
+──────────────────────────────────────────────────
+
+  (1) Continue    (2) Skip

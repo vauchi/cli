@@ -1,0 +1,21 @@
+---
+source: src/ui/screen_renderer.rs
+assertion_line: 764
+expression: output
+---
+
+  [ Step 4/9]
+
+  Choose your groups
+  Groups let you share different info with different people.
+
+  Suggested groups
+
+  [ ] (1) Family
+  [ ] (2) Friends
+  [ ] (3) Coworkers
+  [ ] (4) Business
+
+──────────────────────────────────────────────────
+
+  (1) Continue    (2) Skip

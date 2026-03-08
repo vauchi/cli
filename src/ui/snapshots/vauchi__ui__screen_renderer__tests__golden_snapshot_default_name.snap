@@ -1,0 +1,18 @@
+---
+source: src/ui/screen_renderer.rs
+assertion_line: 752
+expression: output
+---
+
+  [ Step 2/9]
+
+  What's your name?
+  This is how contacts will see you.
+
+  Enter the name you'd like to show on your contact card.
+
+  Display name: Enter your name
+
+──────────────────────────────────────────────────
+
+  (1) Continue

@@ -1,0 +1,21 @@
+---
+source: src/ui/screen_renderer.rs
+assertion_line: 794
+expression: output
+---
+
+  [ Step 9/9]
+
+  You're all set!
+  Your Vauchi identity is ready.
+
+  check What's next
+
+    share Share your card
+      Exchange contact cards in person.
+    edit Edit anytime
+      Update your card whenever you like.
+
+──────────────────────────────────────────────────
+
+  (1) Start using Vauchi

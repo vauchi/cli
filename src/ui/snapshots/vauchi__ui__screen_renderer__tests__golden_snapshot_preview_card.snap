@@ -1,0 +1,20 @@
+---
+source: src/ui/screen_renderer.rs
+assertion_line: 776
+expression: output
+---
+
+  [ Step 6/9]
+
+  Preview your card
+  This is how your card will look.
+
+  ──────────────────────────────────────────────
+    Alice
+  ──────────────────────────────────────────────
+    (no fields)
+  ──────────────────────────────────────────────
+
+──────────────────────────────────────────────────
+
+  (1) Continue    (2) Edit

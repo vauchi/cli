@@ -6,6 +6,8 @@
 //!
 //! Maps a core ScreenModel to formatted text output on stdout.
 
+use std::fmt::Write as _;
+
 use console::{style, Style};
 use vauchi_core::ui::{
     ActionStyle, Component, FieldDisplay, GroupCardView, InfoItem, ScreenAction, ScreenModel,
@@ -16,13 +18,21 @@ const LINE_WIDTH: usize = 50;
 
 /// Renders a full screen model to stdout.
 pub fn render(screen: &ScreenModel) {
+    print!("{}", render_to_string(screen));
+}
+
+/// Renders a full screen model to a String.
+pub fn render_to_string(screen: &ScreenModel) -> String {
+    let mut out = String::new();
+
     // Clear some space
-    println!();
+    writeln!(out).unwrap();
 
     // Progress indicator
     if let Some(progress) = &screen.progress {
         let label = progress.label.as_deref().unwrap_or("");
-        println!(
+        writeln!(
+            out,
             "  {} Step {}/{}{}",
             style("[").dim(),
             progress.current_step,
@@ -32,41 +42,44 @@ pub fn render(screen: &ScreenModel) {
             } else {
                 format!(" — {}{}", label, style("]").dim())
             },
-        );
-        println!();
+        )
+        .unwrap();
+        writeln!(out).unwrap();
     }
 
     // Title
-    println!("  {}", style(&screen.title).bold().cyan());
+    writeln!(out, "  {}", style(&screen.title).bold().cyan()).unwrap();
 
     // Subtitle
     if let Some(subtitle) = &screen.subtitle {
-        println!("  {}", style(subtitle).dim());
+        writeln!(out, "  {}", style(subtitle).dim()).unwrap();
     }
 
-    println!();
+    writeln!(out).unwrap();
 
     // Components
     for component in &screen.components {
-        render_component(component);
+        render_component_to(&mut out, component);
     }
 
     // Actions
     if !screen.actions.is_empty() {
-        println!("{}", "─".repeat(LINE_WIDTH));
-        render_actions(&screen.actions);
+        writeln!(out, "{}", "─".repeat(LINE_WIDTH)).unwrap();
+        render_actions_to(&mut out, &screen.actions);
     }
+
+    out
 }
 
-/// Renders a single component.
-fn render_component(component: &Component) {
+/// Renders a single component to a buffer.
+fn render_component_to(out: &mut String, component: &Component) {
     match component {
         Component::Text {
             content,
             style: text_style,
             ..
         } => {
-            render_text(content, text_style);
+            render_text_to(out, content, text_style);
         }
         Component::TextInput {
             label,
@@ -75,7 +88,8 @@ fn render_component(component: &Component) {
             validation_error,
             ..
         } => {
-            render_text_input(
+            render_text_input_to(
+                out,
                 label,
                 value,
                 placeholder.as_deref(),
@@ -83,7 +97,7 @@ fn render_component(component: &Component) {
             );
         }
         Component::ToggleList { label, items, .. } => {
-            render_toggle_list(label, items);
+            render_toggle_list_to(out, label, items);
         }
         Component::FieldList {
             fields,
@@ -91,7 +105,7 @@ fn render_component(component: &Component) {
             available_groups,
             ..
         } => {
-            render_field_list(fields, visibility_mode, available_groups);
+            render_field_list_to(out, fields, visibility_mode, available_groups);
         }
         Component::CardPreview {
             name,
@@ -99,30 +113,32 @@ fn render_component(component: &Component) {
             group_views,
             selected_group,
         } => {
-            render_card_preview(name, fields, group_views, selected_group.as_deref());
+            render_card_preview_to(out, name, fields, group_views, selected_group.as_deref());
         }
         Component::InfoPanel {
             title, items, icon, ..
         } => {
-            render_info_panel(title, items, icon.as_deref());
+            render_info_panel_to(out, title, items, icon.as_deref());
         }
         Component::Divider => {
-            println!("  {}", "─".repeat(LINE_WIDTH - 4));
+            writeln!(out, "  {}", "─".repeat(LINE_WIDTH - 4)).unwrap();
         }
     }
 }
 
-fn render_text(content: &str, text_style: &TextStyle) {
+fn render_text_to(out: &mut String, content: &str, text_style: &TextStyle) {
     match text_style {
-        TextStyle::Title => println!("  {}", style(content).bold()),
-        TextStyle::Subtitle => println!("  {}", style(content).italic()),
-        TextStyle::Body => println!("  {}", content),
-        TextStyle::Caption => println!("  {}", style(content).dim()),
+        TextStyle::Title => writeln!(out, "  {}", style(content).bold()),
+        TextStyle::Subtitle => writeln!(out, "  {}", style(content).italic()),
+        TextStyle::Body => writeln!(out, "  {}", content),
+        TextStyle::Caption => writeln!(out, "  {}", style(content).dim()),
     }
-    println!();
+    .unwrap();
+    writeln!(out).unwrap();
 }
 
-fn render_text_input(
+fn render_text_input_to(
+    out: &mut String,
     label: &str,
     value: &str,
     placeholder: Option<&str>,
@@ -136,39 +152,40 @@ fn render_text_input(
         value.to_string()
     };
 
-    println!("  {}: {}", style(label).bold(), display_value);
+    writeln!(out, "  {}: {}", style(label).bold(), display_value).unwrap();
 
     if let Some(err) = validation_error {
-        println!("  {}", style(err).red());
+        writeln!(out, "  {}", style(err).red()).unwrap();
     }
-    println!();
+    writeln!(out).unwrap();
 }
 
-fn render_toggle_list(label: &str, items: &[ToggleItem]) {
-    println!("  {}", style(label).bold());
-    println!();
+fn render_toggle_list_to(out: &mut String, label: &str, items: &[ToggleItem]) {
+    writeln!(out, "  {}", style(label).bold()).unwrap();
+    writeln!(out).unwrap();
 
     for (i, item) in items.iter().enumerate() {
         let marker = if item.selected { "[x]" } else { "[ ]" };
         let number = i + 1;
-        print!("  {} ({}) {}", marker, number, item.label);
+        write!(out, "  {} ({}) {}", marker, number, item.label).unwrap();
 
         if let Some(subtitle) = &item.subtitle {
-            print!(" {}", style(subtitle).dim());
+            write!(out, " {}", style(subtitle).dim()).unwrap();
         }
-        println!();
+        writeln!(out).unwrap();
     }
-    println!();
+    writeln!(out).unwrap();
 }
 
-fn render_field_list(
+fn render_field_list_to(
+    out: &mut String,
     fields: &[FieldDisplay],
     visibility_mode: &VisibilityMode,
     available_groups: &[String],
 ) {
     if fields.is_empty() {
-        println!("  {}", style("(no fields added)").dim());
-        println!();
+        writeln!(out, "  {}", style("(no fields added)").dim()).unwrap();
+        writeln!(out).unwrap();
         return;
     }
 
@@ -190,22 +207,30 @@ fn render_field_list(
             VisibilityMode::PerGroup => format!(" -> {}", vis),
         };
 
-        println!(
+        writeln!(
+            out,
             "  {:12} {:20} {}",
             style(&field.label).dim(),
             field.value,
             style(mode_label).dim(),
-        );
+        )
+        .unwrap();
     }
 
     if *visibility_mode == VisibilityMode::PerGroup && !available_groups.is_empty() {
-        println!();
-        println!("  Groups: {}", style(available_groups.join(", ")).dim());
+        writeln!(out).unwrap();
+        writeln!(
+            out,
+            "  Groups: {}",
+            style(available_groups.join(", ")).dim()
+        )
+        .unwrap();
     }
-    println!();
+    writeln!(out).unwrap();
 }
 
-fn render_card_preview(
+fn render_card_preview_to(
+    out: &mut String,
     name: &str,
     fields: &[FieldDisplay],
     group_views: &[GroupCardView],
@@ -214,76 +239,78 @@ fn render_card_preview(
     // Show the view matching the selected group, or the default card
     if let Some(group_name) = selected_group {
         if let Some(view) = group_views.iter().find(|v| v.group_name == group_name) {
-            render_card_box(&view.display_name, &view.visible_fields);
-            render_group_tabs(group_views, Some(group_name));
+            render_card_box_to(out, &view.display_name, &view.visible_fields);
+            render_group_tabs_to(out, group_views, Some(group_name));
             return;
         }
     }
 
     // Default: show full card
-    render_card_box(name, fields);
+    render_card_box_to(out, name, fields);
 
     if !group_views.is_empty() {
-        render_group_tabs(group_views, selected_group);
+        render_group_tabs_to(out, group_views, selected_group);
     }
 }
 
-fn render_card_box(name: &str, fields: &[FieldDisplay]) {
-    println!("  {}", "─".repeat(LINE_WIDTH - 4));
-    println!("    {}", style(name).bold().cyan());
-    println!("  {}", "─".repeat(LINE_WIDTH - 4));
+fn render_card_box_to(out: &mut String, name: &str, fields: &[FieldDisplay]) {
+    writeln!(out, "  {}", "─".repeat(LINE_WIDTH - 4)).unwrap();
+    writeln!(out, "    {}", style(name).bold().cyan()).unwrap();
+    writeln!(out, "  {}", "─".repeat(LINE_WIDTH - 4)).unwrap();
 
     if fields.is_empty() {
-        println!("    {}", style("(no fields)").dim());
+        writeln!(out, "    {}", style("(no fields)").dim()).unwrap();
     } else {
         for field in fields {
-            println!("    {:12} {}", style(&field.label).dim(), field.value);
+            writeln!(out, "    {:12} {}", style(&field.label).dim(), field.value).unwrap();
         }
     }
 
-    println!("  {}", "─".repeat(LINE_WIDTH - 4));
-    println!();
+    writeln!(out, "  {}", "─".repeat(LINE_WIDTH - 4)).unwrap();
+    writeln!(out).unwrap();
 }
 
-fn render_group_tabs(group_views: &[GroupCardView], selected: Option<&str>) {
-    print!("  View as: ");
+fn render_group_tabs_to(out: &mut String, group_views: &[GroupCardView], selected: Option<&str>) {
+    write!(out, "  View as: ").unwrap();
     for (i, view) in group_views.iter().enumerate() {
         let is_selected = selected == Some(view.group_name.as_str());
         if is_selected {
-            print!("[{}] ", style(&view.group_name).bold());
+            write!(out, "[{}] ", style(&view.group_name).bold()).unwrap();
         } else {
-            print!("({}) {} ", i + 1, &view.group_name);
+            write!(out, "({}) {} ", i + 1, &view.group_name).unwrap();
         }
     }
-    println!();
-    println!();
+    writeln!(out).unwrap();
+    writeln!(out).unwrap();
 }
 
-fn render_info_panel(title: &str, items: &[InfoItem], icon: Option<&str>) {
+fn render_info_panel_to(out: &mut String, title: &str, items: &[InfoItem], icon: Option<&str>) {
     let prefix = icon.unwrap_or("");
     if prefix.is_empty() {
-        println!("  {}", style(title).bold());
+        writeln!(out, "  {}", style(title).bold()).unwrap();
     } else {
-        println!("  {} {}", style(prefix).dim(), style(title).bold());
+        writeln!(out, "  {} {}", style(prefix).dim(), style(title).bold()).unwrap();
     }
-    println!();
+    writeln!(out).unwrap();
 
     let bullet_style = Style::new().dim();
 
     for item in items {
         let icon_prefix = item.icon.as_deref().unwrap_or("-");
-        println!(
+        writeln!(
+            out,
             "    {} {}",
             bullet_style.apply_to(icon_prefix),
             style(&item.title).bold(),
-        );
-        println!("      {}", item.detail);
+        )
+        .unwrap();
+        writeln!(out, "      {}", item.detail).unwrap();
     }
-    println!();
+    writeln!(out).unwrap();
 }
 
-fn render_actions(actions: &[ScreenAction]) {
-    println!();
+fn render_actions_to(out: &mut String, actions: &[ScreenAction]) {
+    writeln!(out).unwrap();
     for (i, action) in actions.iter().enumerate() {
         let label = &action.label;
         let number = i + 1;
@@ -295,17 +322,34 @@ fn render_actions(actions: &[ScreenAction]) {
         };
 
         if !action.enabled {
-            print!(
+            write!(
+                out,
                 "  {}",
                 style(format!("({}) {}", number, label)).dim().italic()
-            );
+            )
+            .unwrap();
         } else {
-            print!("  {}", styled);
+            write!(out, "  {}", styled).unwrap();
         }
-        print!("  ");
+        write!(out, "  ").unwrap();
     }
-    println!();
-    println!();
+    writeln!(out).unwrap();
+    writeln!(out).unwrap();
+}
+
+// Convenience wrappers used by existing tests
+#[cfg(test)]
+fn render_text(content: &str, text_style: &TextStyle) {
+    let mut out = String::new();
+    render_text_to(&mut out, content, text_style);
+    print!("{}", out);
+}
+
+#[cfg(test)]
+fn render_actions(actions: &[ScreenAction]) {
+    let mut out = String::new();
+    render_actions_to(&mut out, actions);
+    print!("{}", out);
 }
 
 // INLINE_TEST_REQUIRED: Tests call private render_* helper functions and CLI is a binary crate
@@ -677,5 +721,76 @@ mod tests {
         assert_eq!(actions[3].label, "Disabled");
         assert!(matches!(actions[3].style, ActionStyle::Primary));
         assert!(!actions[3].enabled);
+    }
+
+    // --- Golden fixture snapshot tests ---
+
+    /// Helper: load a golden fixture JSON and render to string.
+    fn render_golden_fixture(fixture_name: &str) -> String {
+        // Disable colors so snapshots are deterministic (no ANSI codes)
+        console::set_colors_enabled(false);
+
+        let fixture_path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("../core/vauchi-core/tests/fixtures/golden")
+            .join(fixture_name);
+        let json = std::fs::read_to_string(&fixture_path)
+            .unwrap_or_else(|e| panic!("Failed to read {}: {}", fixture_path.display(), e));
+        let screen: ScreenModel =
+            serde_json::from_str(&json).expect("Failed to deserialize golden fixture");
+        render_to_string(&screen)
+    }
+
+    #[test]
+    fn golden_snapshot_welcome() {
+        let output = render_golden_fixture("welcome.json");
+        insta::assert_snapshot!(output);
+    }
+
+    #[test]
+    fn golden_snapshot_default_name() {
+        let output = render_golden_fixture("default_name.json");
+        insta::assert_snapshot!(output);
+    }
+
+    #[test]
+    fn golden_snapshot_skip_gate() {
+        let output = render_golden_fixture("skip_gate.json");
+        insta::assert_snapshot!(output);
+    }
+
+    #[test]
+    fn golden_snapshot_groups_setup() {
+        let output = render_golden_fixture("groups_setup.json");
+        insta::assert_snapshot!(output);
+    }
+
+    #[test]
+    fn golden_snapshot_contact_info() {
+        let output = render_golden_fixture("contact_info.json");
+        insta::assert_snapshot!(output);
+    }
+
+    #[test]
+    fn golden_snapshot_preview_card() {
+        let output = render_golden_fixture("preview_card.json");
+        insta::assert_snapshot!(output);
+    }
+
+    #[test]
+    fn golden_snapshot_security_explanation() {
+        let output = render_golden_fixture("security_explanation.json");
+        insta::assert_snapshot!(output);
+    }
+
+    #[test]
+    fn golden_snapshot_backup_prompt() {
+        let output = render_golden_fixture("backup_prompt.json");
+        insta::assert_snapshot!(output);
+    }
+
+    #[test]
+    fn golden_snapshot_ready() {
+        let output = render_golden_fixture("ready.json");
+        insta::assert_snapshot!(output);
     }
 }
