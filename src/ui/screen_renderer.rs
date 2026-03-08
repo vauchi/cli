@@ -326,6 +326,11 @@ mod tests {
         };
         render(&screen);
         assert_eq!(screen.screen_id, "test");
+        assert_eq!(screen.title, "Test");
+        assert!(screen.subtitle.is_none());
+        assert!(screen.components.is_empty());
+        assert!(screen.actions.is_empty());
+        assert!(screen.progress.is_none());
     }
 
     #[test]
@@ -419,6 +424,130 @@ mod tests {
         };
         render(&screen);
         assert_eq!(screen.components.len(), 7);
+
+        // Verify screen-level fields
+        assert_eq!(screen.title, "All Components");
+        assert_eq!(screen.subtitle.as_deref(), Some("subtitle"));
+        assert_eq!(screen.progress.as_ref().unwrap().current_step, 2);
+        assert_eq!(screen.progress.as_ref().unwrap().total_steps, 5);
+        assert_eq!(
+            screen.progress.as_ref().unwrap().label.as_deref(),
+            Some("Name")
+        );
+
+        // Verify each component's content
+        match &screen.components[0] {
+            Component::Text {
+                id,
+                content,
+                style: text_style,
+            } => {
+                assert_eq!(id, "t");
+                assert_eq!(content, "Hello");
+                assert!(matches!(text_style, TextStyle::Body));
+            }
+            other => panic!("Expected Text component, got {:?}", other),
+        }
+
+        match &screen.components[1] {
+            Component::TextInput {
+                id,
+                label,
+                value,
+                placeholder,
+                max_length,
+                validation_error,
+                ..
+            } => {
+                assert_eq!(id, "ti");
+                assert_eq!(label, "Name");
+                assert_eq!(value, "Alice");
+                assert_eq!(placeholder.as_deref(), Some("Enter name"));
+                assert_eq!(*max_length, Some(50));
+                assert!(validation_error.is_none());
+            }
+            other => panic!("Expected TextInput component, got {:?}", other),
+        }
+
+        match &screen.components[2] {
+            Component::ToggleList { id, label, items } => {
+                assert_eq!(id, "tl");
+                assert_eq!(label, "Groups");
+                assert_eq!(items.len(), 2);
+                assert_eq!(items[0].label, "Family");
+                assert!(items[0].selected);
+                assert!(items[0].subtitle.is_none());
+                assert_eq!(items[1].label, "Friends");
+                assert!(!items[1].selected);
+                assert_eq!(items[1].subtitle.as_deref(), Some("close friends"));
+            }
+            other => panic!("Expected ToggleList component, got {:?}", other),
+        }
+
+        match &screen.components[3] {
+            Component::FieldList {
+                id,
+                fields,
+                visibility_mode,
+                available_groups,
+            } => {
+                assert_eq!(id, "fl");
+                assert_eq!(fields.len(), 1);
+                assert_eq!(fields[0].label, "work");
+                assert_eq!(fields[0].value, "a@b.com");
+                assert_eq!(fields[0].field_type, "email");
+                assert!(matches!(fields[0].visibility, UiFieldVisibility::Shown));
+                assert!(matches!(visibility_mode, VisibilityMode::ShowHide));
+                assert!(available_groups.is_empty());
+            }
+            other => panic!("Expected FieldList component, got {:?}", other),
+        }
+
+        match &screen.components[4] {
+            Component::CardPreview {
+                name,
+                fields,
+                group_views,
+                selected_group,
+            } => {
+                assert_eq!(name, "Alice");
+                assert!(fields.is_empty());
+                assert!(group_views.is_empty());
+                assert!(selected_group.is_none());
+            }
+            other => panic!("Expected CardPreview component, got {:?}", other),
+        }
+
+        match &screen.components[5] {
+            Component::InfoPanel {
+                id,
+                icon,
+                title,
+                items,
+            } => {
+                assert_eq!(id, "ip");
+                assert_eq!(icon.as_deref(), Some("shield"));
+                assert_eq!(title, "Security");
+                assert_eq!(items.len(), 1);
+                assert_eq!(items[0].title, "E2E");
+                assert_eq!(items[0].detail, "Encrypted");
+                assert_eq!(items[0].icon.as_deref(), Some("lock"));
+            }
+            other => panic!("Expected InfoPanel component, got {:?}", other),
+        }
+
+        assert!(matches!(screen.components[6], Component::Divider));
+
+        // Verify actions
+        assert_eq!(screen.actions.len(), 2);
+        assert_eq!(screen.actions[0].id, "ok");
+        assert_eq!(screen.actions[0].label, "OK");
+        assert!(matches!(screen.actions[0].style, ActionStyle::Primary));
+        assert!(screen.actions[0].enabled);
+        assert_eq!(screen.actions[1].id, "cancel");
+        assert_eq!(screen.actions[1].label, "Cancel");
+        assert!(matches!(screen.actions[1].style, ActionStyle::Destructive));
+        assert!(!screen.actions[1].enabled);
     }
 
     #[test]
@@ -453,6 +582,31 @@ mod tests {
             progress: None,
         };
         assert_eq!(screen.components.len(), 1);
+        assert_eq!(screen.screen_id, "preview");
+        assert_eq!(screen.title, "Preview");
+
+        match &screen.components[0] {
+            Component::CardPreview {
+                name,
+                fields,
+                group_views,
+                selected_group,
+            } => {
+                assert_eq!(name, "Bob");
+                assert_eq!(fields.len(), 1);
+                assert_eq!(fields[0].label, "mobile");
+                assert_eq!(fields[0].value, "+1234");
+                assert_eq!(fields[0].field_type, "phone");
+                assert_eq!(selected_group.as_deref(), Some("Family"));
+                assert_eq!(group_views.len(), 1);
+                assert_eq!(group_views[0].group_name, "Family");
+                assert_eq!(group_views[0].display_name, "Bob");
+                assert_eq!(group_views[0].visible_fields.len(), 1);
+                assert_eq!(group_views[0].visible_fields[0].label, "mobile");
+                assert_eq!(group_views[0].visible_fields[0].value, "+1234");
+            }
+            other => panic!("Expected CardPreview component, got {:?}", other),
+        }
     }
 
     #[test]
@@ -467,6 +621,10 @@ mod tests {
             render_text("content", text_style);
         }
         assert_eq!(styles.len(), 4);
+        assert!(matches!(styles[0], TextStyle::Title));
+        assert!(matches!(styles[1], TextStyle::Subtitle));
+        assert!(matches!(styles[2], TextStyle::Body));
+        assert!(matches!(styles[3], TextStyle::Caption));
     }
 
     #[test]
@@ -499,5 +657,25 @@ mod tests {
         ];
         render_actions(&actions);
         assert_eq!(actions.len(), 4);
+
+        assert_eq!(actions[0].id, "a");
+        assert_eq!(actions[0].label, "Primary");
+        assert!(matches!(actions[0].style, ActionStyle::Primary));
+        assert!(actions[0].enabled);
+
+        assert_eq!(actions[1].id, "b");
+        assert_eq!(actions[1].label, "Secondary");
+        assert!(matches!(actions[1].style, ActionStyle::Secondary));
+        assert!(actions[1].enabled);
+
+        assert_eq!(actions[2].id, "c");
+        assert_eq!(actions[2].label, "Destructive");
+        assert!(matches!(actions[2].style, ActionStyle::Destructive));
+        assert!(actions[2].enabled);
+
+        assert_eq!(actions[3].id, "d");
+        assert_eq!(actions[3].label, "Disabled");
+        assert!(matches!(actions[3].style, ActionStyle::Primary));
+        assert!(!actions[3].enabled);
     }
 }
