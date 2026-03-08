@@ -65,3 +65,9 @@ SPDX-License-Identifier = "GPL-3.0-or-later"
 path = ["**/CLAUDE.md"]
 SPDX-FileCopyrightText = "2026 Mattia Egloff <mattia.egloff@pm.me>"
 SPDX-License-Identifier = "GPL-3.0-or-later"
+
+# Insta snapshot files (generated test output)
+[[annotations]]
+path = ["**/*.snap"]
+SPDX-FileCopyrightText = "2026 Mattia Egloff <mattia.egloff@pm.me>"
+SPDX-License-Identifier = "GPL-3.0-or-later"
