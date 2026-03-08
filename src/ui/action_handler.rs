@@ -58,40 +58,43 @@ fn prompt_text(label: &str) -> io::Result<String> {
 
 /// Prompts the user to toggle an item or proceed.
 fn prompt_toggle(component_id: &str, item_count: usize) -> io::Result<UserAction> {
-    print!(
-        "  Toggle item (1-{}) or press Enter to continue > ",
-        item_count
-    );
-    io::stdout().flush()?;
+    loop {
+        print!(
+            "  Toggle item (1-{}) or press Enter to continue > ",
+            item_count
+        );
+        io::stdout().flush()?;
 
-    let mut input = String::new();
-    io::stdin().lock().read_line(&mut input)?;
-    let trimmed = input.trim();
+        let mut input = String::new();
+        io::stdin().lock().read_line(&mut input)?;
+        let trimmed = input.trim();
 
-    // Empty input means "continue" — select the first action
-    if trimmed.is_empty() {
-        return Ok(UserAction::ActionPressed {
-            action_id: "continue".into(),
-        });
-    }
-
-    // Try to parse as a number for toggle
-    if let Ok(num) = trimmed.parse::<usize>() {
-        if num >= 1 && num <= item_count {
-            // We need the item_id — the caller passes the screen which has the items.
-            // Since we only have the count here, we construct a placeholder.
-            // The onboarding command will need to look up the actual item_id.
-            return Ok(UserAction::ItemToggled {
-                component_id: component_id.to_string(),
-                item_id: format!("__index_{}", num - 1),
+        // Empty input means "continue" — select the first action
+        if trimmed.is_empty() {
+            return Ok(UserAction::ActionPressed {
+                action_id: "continue".into(),
             });
         }
-    }
 
-    // Unrecognized input — treat as continue
-    Ok(UserAction::ActionPressed {
-        action_id: "continue".into(),
-    })
+        // Try to parse as a number for toggle
+        if let Ok(num) = trimmed.parse::<usize>() {
+            if num >= 1 && num <= item_count {
+                // We need the item_id — the caller passes the screen which has the items.
+                // Since we only have the count here, we construct a placeholder.
+                // The onboarding command will need to look up the actual item_id.
+                return Ok(UserAction::ItemToggled {
+                    component_id: component_id.to_string(),
+                    item_id: format!("__index_{}", num - 1),
+                });
+            }
+        }
+
+        // Unrecognized or out-of-range input — re-prompt
+        println!(
+            "  Invalid input. Enter a number 1-{} or press Enter.",
+            item_count
+        );
+    }
 }
 
 /// Prompts the user to select an action from the list.
@@ -107,40 +110,46 @@ fn prompt_action_selection(actions: &[ScreenAction]) -> io::Result<UserAction> {
         });
     }
 
-    if actions.len() == 1 {
-        print!("  Press Enter for '{}' > ", actions[0].label);
-    } else {
-        print!("  Choose (1-{}) > ", actions.len());
-    }
-    io::stdout().flush()?;
+    loop {
+        if actions.len() == 1 {
+            print!("  Press Enter for '{}' > ", actions[0].label);
+        } else {
+            print!("  Choose (1-{}) > ", actions.len());
+        }
+        io::stdout().flush()?;
 
-    let mut input = String::new();
-    io::stdin().lock().read_line(&mut input)?;
-    let trimmed = input.trim();
+        let mut input = String::new();
+        io::stdin().lock().read_line(&mut input)?;
+        let trimmed = input.trim();
 
-    // Empty input selects the first (primary) action
-    if trimmed.is_empty() {
-        return Ok(UserAction::ActionPressed {
-            action_id: actions[0].id.clone(),
-        });
-    }
+        // Empty input selects the first (primary) action
+        if trimmed.is_empty() {
+            return Ok(UserAction::ActionPressed {
+                action_id: actions[0].id.clone(),
+            });
+        }
 
-    // Try to parse as number
-    if let Ok(num) = trimmed.parse::<usize>() {
-        if num >= 1 && num <= actions.len() {
-            let action = &actions[num - 1];
-            if action.enabled {
-                return Ok(UserAction::ActionPressed {
-                    action_id: action.id.clone(),
-                });
+        // Try to parse as number
+        if let Ok(num) = trimmed.parse::<usize>() {
+            if num >= 1 && num <= actions.len() {
+                let action = &actions[num - 1];
+                if action.enabled {
+                    return Ok(UserAction::ActionPressed {
+                        action_id: action.id.clone(),
+                    });
+                }
+                // Disabled action — re-prompt
+                println!("  That action is disabled. Choose another.");
+                continue;
             }
         }
-    }
 
-    // Invalid input — select first action as default
-    Ok(UserAction::ActionPressed {
-        action_id: actions[0].id.clone(),
-    })
+        // Invalid or out-of-range input — re-prompt
+        println!(
+            "  Invalid input. Enter a number 1-{} or press Enter.",
+            actions.len()
+        );
+    }
 }
 
 /// Resolves a toggle action with placeholder item_id to the real item_id.
