@@ -137,6 +137,10 @@ enum Commands {
 
     /// Show how to support Vauchi
     SupportUs,
+
+    /// Transport diagnostics and debugging tools
+    #[command(subcommand)]
+    Diag(commands::diag::DiagCommands),
 }
 
 #[derive(Subcommand)]
@@ -1090,6 +1094,17 @@ async fn main() -> Result<()> {
             }
         },
         Commands::SupportUs => commands::support::run(),
+        Commands::Diag(cmd) => match cmd {
+            commands::diag::DiagCommands::Transport => commands::diag::transport()?,
+            commands::diag::DiagCommands::Trace { file } => commands::diag::trace(&file)?,
+            commands::diag::DiagCommands::AnimatedQr(qr_cmd) => match qr_cmd {
+                commands::diag::AnimatedQrCommands::Encode {
+                    file,
+                    fps,
+                    chunk_size,
+                } => commands::diag::animated_qr_encode(&file, fps, chunk_size)?,
+            },
+        },
     }
 
     Ok(())
