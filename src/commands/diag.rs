@@ -63,7 +63,7 @@ pub fn transport() -> Result<()> {
     let results = diag.probe_all();
 
     println!("Transport Availability");
-    println!("{:<16} {:<12} {}", "Transport", "Available", "Note");
+    println!("{:<16} {:<12} Note", "Transport", "Available");
     println!("{:-<16} {:-<12} {:-<30}", "", "", "");
 
     for result in &results {
