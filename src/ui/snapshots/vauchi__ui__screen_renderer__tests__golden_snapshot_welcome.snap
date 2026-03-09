@@ -1,6 +1,6 @@
 ---
 source: src/ui/screen_renderer.rs
-assertion_line: 746
+assertion_line: 791
 expression: output
 ---
 
@@ -20,4 +20,4 @@ expression: output
 
 ──────────────────────────────────────────────────
 
-  (1) Get Started    (2) Restore Backup
+  (1) Get Started

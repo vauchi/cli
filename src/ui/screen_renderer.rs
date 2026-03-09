@@ -123,6 +123,51 @@ fn render_component_to(out: &mut String, component: &Component) {
         Component::Divider => {
             writeln!(out, "  {}", "─".repeat(LINE_WIDTH - 4)).unwrap();
         }
+        Component::ContactList { contacts, .. } => {
+            for (i, contact) in contacts.iter().enumerate() {
+                writeln!(out, "  {}. {}", i + 1, contact.name).unwrap();
+            }
+        }
+        Component::SettingsGroup { label, items, .. } => {
+            writeln!(out, "  {}:", style(label).bold()).unwrap();
+            for item in items {
+                writeln!(out, "    - {}", item.label).unwrap();
+            }
+        }
+        Component::ActionList { items, .. } => {
+            for item in items {
+                writeln!(out, "  > {}", item.label).unwrap();
+            }
+        }
+        Component::StatusIndicator { title, detail, .. } => {
+            write!(out, "  {}", title).unwrap();
+            if let Some(d) = detail {
+                write!(out, " — {}", d).unwrap();
+            }
+            writeln!(out).unwrap();
+        }
+        Component::PinInput {
+            label,
+            length,
+            validation_error,
+            ..
+        } => {
+            writeln!(out, "  {} [{}]", label, "*".repeat(*length)).unwrap();
+            if let Some(err) = validation_error {
+                writeln!(out, "  {}", style(err).red()).unwrap();
+            }
+        }
+        Component::QrCode { label, .. } => {
+            if let Some(l) = label {
+                writeln!(out, "  [QR Code: {}]", l).unwrap();
+            } else {
+                writeln!(out, "  [QR Code]").unwrap();
+            }
+        }
+        Component::ConfirmationDialog { title, message, .. } => {
+            writeln!(out, "  {}", style(title).bold()).unwrap();
+            writeln!(out, "  {}", message).unwrap();
+        }
     }
 }
 

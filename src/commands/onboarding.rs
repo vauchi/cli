@@ -70,6 +70,16 @@ pub fn run() -> Result<()> {
                 println!();
                 break;
             }
+            ActionResult::ShowAlert { title, message } => {
+                display::warning(&format!("{}: {}", title, message));
+            }
+            ActionResult::OpenUrl { url } => {
+                display::info(&format!("Open: {}", url));
+            }
+            _ => {
+                // StartDeviceLink, StartBackupImport, OpenContact,
+                // RequestCamera, WipeComplete — not applicable in CLI
+            }
         }
     }
 
