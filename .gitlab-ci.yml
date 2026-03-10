@@ -33,6 +33,7 @@ include:
       - '/ci-templates/test-quality.yml'
       - '/ci-templates/mutation.yml'
       - '/ci-templates/freshness.yml'
+      - '/ci-templates/perf.yml'
 
 stages:
   - auto-tag
@@ -65,6 +66,10 @@ lint:clippy:
   extends: [.rust-runner-readonly, .lint-clippy, .validation-rust, .timeout-standard]
   needs: []
 
+# Duplicate dependency check (advisory)
+lint:duplicates:
+  extends: [.rust-runner-nocache, .lint-duplicates-job, .timeout-quick]
+
 # ============================================================
 # Test Stage (runs on Rust code changes, gated by lint)
 # ============================================================
@@ -94,6 +99,16 @@ coverage:
   variables:
     COVERAGE_EXTRA_FLAGS: "--no-default-features"
     COVERAGE_REPO_LABEL: "cli"
+
+# Binary size tracking (main merges + release tags)
+perf:binary-size:
+  extends: [.binary-size-tracking-job, .rust-runner, .timeout-long]
+  before_script:
+    - !reference [.self-hosted, before_script]
+    - !reference [.git-credentials, before_script]
+  variables:
+    BINARY_SIZE_REPO_LABEL: "cli"
+    BINARY_SIZE_EXTRA_FLAGS: "--no-default-features"
 
 # ============================================================
 # Mutation Stage (uses shared template from vauchi/scripts)
