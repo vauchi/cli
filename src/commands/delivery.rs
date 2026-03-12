@@ -19,7 +19,7 @@ pub fn status(config: &CliConfig) -> Result<()> {
     let wb = open_vauchi(config)?;
     let storage = wb.storage();
 
-    let diagnostics = vauchi_core::delivery::ConnectivityDiagnostics::new();
+    let diagnostics = vauchi_core::network::ConnectivityDiagnostics::new();
     let report = diagnostics
         .run()
         .map_err(|e| anyhow::anyhow!("Diagnostics failed: {}", e))?;
@@ -95,7 +95,7 @@ pub fn retry(config: &CliConfig) -> Result<()> {
     let wb = open_vauchi(config)?;
     let storage = wb.storage();
 
-    let scheduler = vauchi_core::delivery::RetryScheduler::new();
+    let scheduler = vauchi_core::network::RetryScheduler::new();
     let result = scheduler.tick(storage)?;
 
     if result.due == 0 {
@@ -122,7 +122,7 @@ pub fn cleanup(config: &CliConfig) -> Result<()> {
     let wb = open_vauchi(config)?;
     let storage = wb.storage();
 
-    let service = vauchi_core::delivery::DeliveryService::new();
+    let service = vauchi_core::network::DeliveryService::new();
     let result = service.run_cleanup(storage)?;
 
     display::success(&format!(
@@ -135,7 +135,7 @@ pub fn cleanup(config: &CliConfig) -> Result<()> {
 
 /// Translates a failure reason code to a user-friendly message.
 pub fn translate(reason: &str) -> Result<()> {
-    let message = vauchi_core::delivery::failure_to_user_message(reason);
+    let message = vauchi_core::network::failure_to_user_message(reason);
     println!("{}", message);
     Ok(())
 }
@@ -274,7 +274,7 @@ mod tests {
     // @scenario: message_delivery.feature:Debug connectivity issues
     #[test]
     fn test_connectivity_diagnostics_returns_report() {
-        let diagnostics = vauchi_core::delivery::ConnectivityDiagnostics::new();
+        let diagnostics = vauchi_core::network::ConnectivityDiagnostics::new();
         let report = diagnostics.run().expect("Diagnostics should succeed");
         assert_eq!(report.offline_queue_capacity, 100);
         assert_eq!(report.offline_queue_depth, 0);

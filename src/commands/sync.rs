@@ -43,8 +43,11 @@ fn open_vauchi(config: &CliConfig) -> Result<Vauchi<WebSocketTransport>> {
 
     let mut wb = Vauchi::with_transport_factory(wb_config, WebSocketTransport::new)?;
 
-    let identity = config.import_local_identity()?;
-    wb.set_identity(identity)?;
+    // Core now auto-loads identity from storage; only set from file if not already loaded
+    if wb.identity().is_none() {
+        let identity = config.import_local_identity()?;
+        wb.set_identity(identity)?;
+    }
 
     Ok(wb)
 }

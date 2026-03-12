@@ -168,6 +168,15 @@ fn render_component_to(out: &mut String, component: &Component) {
             writeln!(out, "  {}", style(title).bold()).unwrap();
             writeln!(out, "  {}", message).unwrap();
         }
+        Component::ShowToast { message, .. } => {
+            writeln!(out, "  {}", style(message).green()).unwrap();
+        }
+        Component::InlineConfirm { warning, .. } => {
+            writeln!(out, "  {}", style(warning).yellow()).unwrap();
+        }
+        Component::EditableText { label, value, .. } => {
+            writeln!(out, "  {}: {}", style(label).bold(), value).unwrap();
+        }
     }
 }
 
@@ -250,6 +259,7 @@ fn render_field_list_to(
         let mode_label = match visibility_mode {
             VisibilityMode::ShowHide => format!(" [{}]", vis),
             VisibilityMode::PerGroup => format!(" -> {}", vis),
+            VisibilityMode::ReadOnly => String::new(),
         };
 
         writeln!(

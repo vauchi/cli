@@ -25,6 +25,14 @@ pub fn run(name: &str, force: bool, config: &CliConfig) -> Result<()> {
     // Create data directory
     fs::create_dir_all(&config.data_dir)?;
 
+    // When forcing, remove old storage so Vauchi::new() starts fresh
+    if force {
+        let storage_path = config.storage_path();
+        if storage_path.exists() {
+            fs::remove_file(&storage_path)?;
+        }
+    }
+
     // Initialize Vauchi with persistent storage key
     let wb_config = VauchiConfig::with_storage_path(config.storage_path())
         .with_relay_url(&config.relay_url)

@@ -26,8 +26,11 @@ pub(crate) fn open_vauchi(config: &CliConfig) -> Result<Vauchi<MockTransport>> {
 
     let mut wb = Vauchi::new(wb_config)?;
 
-    let identity = config.import_local_identity()?;
-    wb.set_identity(identity)?;
+    // Core now auto-loads identity from storage; only set from file if not already loaded
+    if wb.identity().is_none() {
+        let identity = config.import_local_identity()?;
+        wb.set_identity(identity)?;
+    }
 
     Ok(wb)
 }

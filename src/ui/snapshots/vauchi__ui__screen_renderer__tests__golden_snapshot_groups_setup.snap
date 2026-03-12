@@ -1,13 +1,14 @@
 ---
 source: src/ui/screen_renderer.rs
-assertion_line: 764
 expression: output
 ---
 
   [ Step 4/9]
 
   Choose your groups
-  Groups let you share different info with different people.
+  Groups let you share different info with different people. Use [Space] to select.
+
+  Groups are optional, but we strongly recommend them. They let you control exactly who sees what on your card.
 
   Suggested groups
 
@@ -15,6 +16,8 @@ expression: output
   [ ] (2) Friends
   [ ] (3) Coworkers
   [ ] (4) Business
+
+  Add a custom group: Type a group name and press Enter
 
 ──────────────────────────────────────────────────
 

@@ -15,18 +15,15 @@ use crate::config::CliConfig;
 use crate::display;
 
 /// Helper to find a label by name or ID prefix using core fuzzy matching.
-fn find_label(
-    wb: &Vauchi<MockTransport>,
-    label_name: &str,
-) -> Result<vauchi_core::VisibilityLabel> {
-    wb.find_label_fuzzy(label_name)?
+fn find_label(wb: &Vauchi<MockTransport>, label_name: &str) -> Result<vauchi_core::contact::Group> {
+    wb.find_group_fuzzy(label_name)?
         .ok_or_else(|| anyhow!("Label not found: {}", label_name))
 }
 
 /// List all labels.
 pub fn list(config: &CliConfig) -> Result<()> {
     let wb = open_vauchi(config)?;
-    let labels = wb.storage().load_all_labels()?;
+    let labels = wb.storage().load_all_groups()?;
 
     if labels.is_empty() {
         display::info("No labels defined. Create one with 'vauchi labels create <name>'");
@@ -56,7 +53,7 @@ pub fn list(config: &CliConfig) -> Result<()> {
 /// Create a new label.
 pub fn create(config: &CliConfig, name: &str) -> Result<()> {
     let wb = open_vauchi(config)?;
-    let label = wb.storage().create_label(name)?;
+    let label = wb.storage().create_group(name)?;
 
     display::success(&format!(
         "Created label '{}' (ID: {})",
@@ -122,7 +119,7 @@ pub fn rename(config: &CliConfig, label_name: &str, new_name: &str) -> Result<()
     let wb = open_vauchi(config)?;
     let label = find_label(&wb, label_name)?;
 
-    wb.storage().rename_label(label.id(), new_name)?;
+    wb.storage().rename_group(label.id(), new_name)?;
     display::success(&format!("Renamed label to '{}'", new_name));
     Ok(())
 }
@@ -133,7 +130,7 @@ pub fn delete(config: &CliConfig, label_name: &str) -> Result<()> {
     let label = find_label(&wb, label_name)?;
 
     let name = label.name().to_string();
-    wb.storage().delete_label(label.id())?;
+    wb.storage().delete_group(label.id())?;
     display::success(&format!("Deleted label '{}'", name));
     Ok(())
 }
@@ -150,7 +147,7 @@ pub fn add_contact(config: &CliConfig, label_name: &str, contact_name: &str) -> 
         .ok_or_else(|| anyhow!("Contact not found: {}", contact_name))?;
 
     wb.storage()
-        .add_contact_to_label(label.id(), contact.id())?;
+        .add_contact_to_group(label.id(), contact.id())?;
     display::success(&format!(
         "Added '{}' to label '{}'",
         contact.display_name(),
@@ -171,7 +168,7 @@ pub fn remove_contact(config: &CliConfig, label_name: &str, contact_name: &str) 
         .ok_or_else(|| anyhow!("Contact not found: {}", contact_name))?;
 
     wb.storage()
-        .remove_contact_from_label(label.id(), contact.id())?;
+        .remove_contact_from_group(label.id(), contact.id())?;
     display::success(&format!(
         "Removed '{}' from label '{}'",
         contact.display_name(),
@@ -197,7 +194,7 @@ pub fn show_field(config: &CliConfig, label_name: &str, field_label: &str) -> Re
         .ok_or_else(|| anyhow!("Field not found: {}", field_label))?;
 
     wb.storage()
-        .set_label_field_visibility(label.id(), field.id(), true)?;
+        .set_group_field_visibility(label.id(), field.id(), true)?;
     display::success(&format!(
         "Field '{}' is now visible to contacts in '{}'",
         field.label(),
@@ -223,7 +220,7 @@ pub fn hide_field(config: &CliConfig, label_name: &str, field_label: &str) -> Re
         .ok_or_else(|| anyhow!("Field not found: {}", field_label))?;
 
     wb.storage()
-        .set_label_field_visibility(label.id(), field.id(), false)?;
+        .set_group_field_visibility(label.id(), field.id(), false)?;
     display::success(&format!(
         "Field '{}' is now hidden from contacts in '{}'",
         field.label(),
