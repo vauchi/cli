@@ -34,6 +34,7 @@ include:
       - '/ci-templates/mutation.yml'
       - '/ci-templates/freshness.yml'
       - '/ci-templates/perf.yml'
+      - '/ci-templates/design-drift.yml'
 
 stages:
   - auto-tag
@@ -140,6 +141,13 @@ security:deny:
 
 check:core-freshness:
   extends: .check-core-freshness
+
+# Design drift: verify all design-spec components are handled in renderer
+check:design-drift:
+  extends: .design-drift-job
+  variables:
+    DESIGN_DRIFT_MATCH_MODE: "grep"
+    DESIGN_DRIFT_GREP_FILE: "src/ui/screen_renderer.rs"
 
 # ============================================================
 # Dev Tag Pipeline (lightweight — lint + test only)
