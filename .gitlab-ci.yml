@@ -35,6 +35,7 @@ include:
       - '/ci-templates/freshness.yml'
       - '/ci-templates/perf.yml'
       - '/ci-templates/design-drift.yml'
+      - '/ci-templates/badges.yml'
 
 stages:
   - auto-tag
@@ -43,6 +44,7 @@ stages:
   - mutation
   - security
   - verify
+  - deploy
 
 # ============================================================
 # Auto-Tag Stage (main branch only)
@@ -235,3 +237,10 @@ verify:upstream-prerelease:
   needs: []
   script:
     - cargo nextest run --profile ci --all-targets --no-default-features
+
+# ============================================================
+# Deploy Stage — Badge Pages
+# ============================================================
+
+pages:
+  extends: .badges-pages
