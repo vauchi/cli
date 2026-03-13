@@ -292,7 +292,7 @@ enum GdprCommands {
     /// Show consent records
     ConsentStatus,
 
-    /// Grant consent for a type (data_processing, contact_sharing, analytics, recovery_vouching)
+    /// Grant consent for a type (data_processing, contact_sharing, recovery_vouching)
     GrantConsent {
         /// Consent type
         consent_type: String,

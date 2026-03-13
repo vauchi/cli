@@ -264,10 +264,10 @@ fn contract_consent_api_shape() {
     use vauchi_core::api::ConsentType;
 
     let wb = setup();
-    wb.grant_consent(ConsentType::Analytics)
+    wb.grant_consent(ConsentType::RecoveryVouching)
         .expect("grant_consent must accept ConsentType");
     let granted: bool = wb
-        .check_consent(&ConsentType::Analytics)
+        .check_consent(&ConsentType::RecoveryVouching)
         .expect("check_consent must return bool");
     assert!(granted);
 }

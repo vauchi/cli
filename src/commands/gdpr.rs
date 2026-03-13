@@ -422,7 +422,7 @@ fn display_shred_verification(verification: &ShredVerification) {
 fn parse_consent_type(s: &str) -> Result<ConsentType> {
     ConsentType::parse(s).ok_or_else(|| {
         anyhow::anyhow!(
-            "Unknown consent type: '{}'. Valid types: data_processing, contact_sharing, analytics, recovery_vouching",
+            "Unknown consent type: '{}'. Valid types: data_processing, contact_sharing, recovery_vouching",
             s
         )
     })
