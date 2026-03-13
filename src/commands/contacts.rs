@@ -467,12 +467,15 @@ fn action_label(action: &ContactAction) -> String {
     }
 }
 
-/// Truncates a string for display, appending "..." if too long.
+/// Truncates a string for display. Safe for multi-byte UTF-8.
 fn truncate_value(s: &str, max: usize) -> &str {
     if s.len() <= max {
         s
     } else {
-        &s[..max]
+        match s.char_indices().nth(max) {
+            Some((idx, _)) => &s[..idx],
+            None => s,
+        }
     }
 }
 

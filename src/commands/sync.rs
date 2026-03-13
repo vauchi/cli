@@ -171,7 +171,7 @@ async fn receive_pending(
                                     // This is an encrypted card update
                                     display::info(&format!(
                                         "Received encrypted update from {}",
-                                        &update.sender_id[..8]
+                                        update.sender_id.get(..8).unwrap_or(&update.sender_id)
                                     ));
                                     card_updates
                                         .push((update.sender_id.clone(), update.ciphertext));
@@ -193,7 +193,7 @@ async fn receive_pending(
                             if let MessagePayload::Acknowledgment(ack) = envelope.payload {
                                 display::info(&format!(
                                     "Message {} acknowledged",
-                                    &ack.message_id[..8]
+                                    ack.message_id.get(..8).unwrap_or(&ack.message_id)
                                 ));
                             }
                         }
@@ -221,7 +221,7 @@ async fn receive_pending(
                             if let MessagePayload::DeviceSyncAck(ack) = envelope.payload {
                                 display::info(&format!(
                                     "Device sync {} acknowledged (version {})",
-                                    &ack.message_id[..8],
+                                    ack.message_id.get(..8).unwrap_or(&ack.message_id),
                                     ack.synced_version
                                 ));
                             }
@@ -393,7 +393,7 @@ fn process_card_updates(
             None => {
                 display::warning(&format!(
                     "Update from unknown contact: {}...",
-                    &sender_id[..8]
+                    sender_id.get(..8).unwrap_or(&sender_id)
                 ));
                 continue;
             }

@@ -87,7 +87,11 @@ pub fn show(config: &CliConfig, label_name: &str) -> Result<()> {
                 .find(|c| c.id() == contact_id)
                 .map(|c| c.display_name())
                 .unwrap_or("(unknown)");
-            println!("  - {} ({})", name, &contact_id[..8]);
+            println!(
+                "  - {} ({})",
+                name,
+                contact_id.get(..8).unwrap_or(contact_id)
+            );
         }
     }
     println!();
