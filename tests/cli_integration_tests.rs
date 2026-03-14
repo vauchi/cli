@@ -999,8 +999,8 @@ mod gdpr {
         let output = ctx.run_success(&["gdpr", "export", export_path.to_str().unwrap()]);
 
         assert!(
-            output.contains("without encryption") || output.contains("--password"),
-            "Expected unencrypted export warning mentioning '--password', got: {}",
+            output.contains("without encryption") || output.contains("--encrypt"),
+            "Expected unencrypted export warning mentioning '--encrypt', got: {}",
             output
         );
     }
@@ -1232,7 +1232,7 @@ mod duress {
         let ctx = CliTestContext::new();
         ctx.init("Alice Smith");
 
-        let stderr = ctx.run_failure(&["duress", "test", "1234"]);
+        let stderr = ctx.run_failure(&["--pin", "1234", "duress", "test"]);
         assert!(
             stderr.contains("password") || stderr.contains("Password"),
             "Expected password-required error, got: {}",

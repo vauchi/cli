@@ -183,11 +183,8 @@ enum DuressCommands {
     /// Disable duress PIN
     Disable,
 
-    /// Test authentication (shows Normal/Duress result)
-    Test {
-        /// PIN to test
-        pin: String,
-    },
+    /// Test authentication (shows Normal/Duress result, prompts for PIN)
+    Test,
 }
 
 #[derive(Subcommand)]
@@ -265,12 +262,16 @@ enum TorBridgesCommands {
 
 #[derive(Subcommand)]
 enum GdprCommands {
-    /// Export all personal data as JSON (encrypted by default when --password is given)
+    /// Export all personal data as JSON (optionally encrypted)
     Export {
         /// Output file path
         output: PathBuf,
-        /// Encrypt export with this password
+        /// Encrypt export (prompts for password interactively)
         #[arg(long)]
+        encrypt: bool,
+        /// Password for encryption (prefer --encrypt for interactive prompt;
+        /// kept for non-interactive/scripted use via env var VAUCHI_EXPORT_PASSWORD)
+        #[arg(long, env = "VAUCHI_EXPORT_PASSWORD", hide = true)]
         password: Option<String>,
     },
 
@@ -1030,7 +1031,23 @@ async fn main() -> Result<()> {
             generate(shell, &mut cmd, "vauchi", &mut io::stdout());
         }
         Commands::Gdpr(cmd) => match cmd {
-            GdprCommands::Export { output, password } => {
+            GdprCommands::Export {
+                output,
+                encrypt,
+                password,
+            } => {
+                let password = if let Some(pw) = password {
+                    // Hidden --password flag or env var (for scripted/test use)
+                    Some(pw)
+                } else if encrypt {
+                    let pw = dialoguer::Password::new()
+                        .with_prompt("Encryption password")
+                        .with_confirmation("Confirm password", "Passwords don't match")
+                        .interact()?;
+                    Some(pw)
+                } else {
+                    None
+                };
                 commands::gdpr::export_data(&config, &output, password.as_deref())?;
             }
             GdprCommands::ExecuteDeletion => {
@@ -1075,7 +1092,16 @@ async fn main() -> Result<()> {
             DuressCommands::Setup => commands::duress::setup(&config)?,
             DuressCommands::Status => commands::duress::status(&config)?,
             DuressCommands::Disable => commands::duress::disable(&config)?,
-            DuressCommands::Test { pin } => commands::duress::test(&config, &pin)?,
+            DuressCommands::Test => {
+                let pin = if let Some(ref p) = cli.pin {
+                    p.clone()
+                } else {
+                    dialoguer::Password::new()
+                        .with_prompt("Enter PIN to test")
+                        .interact()?
+                };
+                commands::duress::test(&config, &pin)?;
+            }
         },
         Commands::Emergency(cmd) => match cmd {
             EmergencyCommands::Configure => commands::emergency::configure(&config)?,

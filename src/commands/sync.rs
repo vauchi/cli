@@ -204,7 +204,10 @@ async fn receive_pending(
                                 received += 1;
                                 display::info(&format!(
                                     "Received device sync from device {}...",
-                                    &sync_msg.sender_device_id[..16]
+                                    sync_msg
+                                        .sender_device_id
+                                        .get(..16)
+                                        .unwrap_or(&sync_msg.sender_device_id)
                                 ));
                                 device_sync_messages.push(sync_msg);
 
@@ -531,7 +534,9 @@ fn process_device_sync_messages(
             None => {
                 display::warning(&format!(
                     "Sync from unknown device: {}...",
-                    &msg.sender_device_id[..16]
+                    msg.sender_device_id
+                        .get(..16)
+                        .unwrap_or(&msg.sender_device_id)
                 ));
                 continue;
             }
@@ -703,7 +708,10 @@ pub async fn run(config: &CliConfig) -> Result<()> {
 
     // Send exchange responses
     for recipient_id in &response_recipients {
-        display::info(&format!("Sending our name to {}...", &recipient_id[..16]));
+        display::info(&format!(
+            "Sending our name to {}...",
+            recipient_id.get(..16).unwrap_or(recipient_id)
+        ));
         match send_exchange_response(config, identity, recipient_id).await {
             Ok(()) => display::success("Response sent"),
             Err(e) => display::warning(&format!("Could not send response: {}", e)),

@@ -10,7 +10,7 @@ use std::fs;
 
 use anyhow::{bail, Result};
 use base64::{engine::general_purpose::STANDARD as BASE64, Engine as _};
-use dialoguer::Input;
+use dialoguer::{Confirm, Input};
 use vauchi_core::exchange::{
     compute_confirmation_mac, DeviceLinkQR, DeviceLinkResponder, DeviceLinkResponse, ProximityProof,
 };
@@ -247,6 +247,16 @@ pub fn complete(config: &CliConfig, request_data: &str) -> Result<()> {
         "Device '{}' wants to link. Confirmation code: {}",
         confirmation.device_name, confirmation.confirmation_code
     ));
+
+    // Require explicit user confirmation before approving the link
+    let confirmed = Confirm::new()
+        .with_prompt("Does this confirmation code match the other device? Approve link?")
+        .default(false)
+        .interact()?;
+
+    if !confirmed {
+        anyhow::bail!("Device link cancelled by user");
+    }
 
     // CLI uses manual data exchange (copy-paste) — construct manual confirmation proof
     let confirmation_code_mac =
