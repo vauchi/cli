@@ -10,8 +10,8 @@ use std::fs;
 use std::path::Path;
 
 use anyhow::{bail, Result};
+use aws_lc_rs::rand::{SecureRandom, SystemRandom};
 use dialoguer::Input;
-use ring::rand::{SecureRandom, SystemRandom};
 use vauchi_core::api::{
     export_all_data, ConsentManager, ConsentType, DeletionManager, ShredManager, ShredReport,
     ShredToken, ShredVerification,
