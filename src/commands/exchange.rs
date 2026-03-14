@@ -357,7 +357,7 @@ pub async fn complete(config: &CliConfig, data: &str) -> Result<()> {
     println!();
     display::success(&format!(
         "Contact added (ID: {}...)",
-        &their_public_id[..16]
+        their_public_id.get(..16).unwrap_or(&their_public_id)
     ));
     display::info("They need to run 'vauchi sync' to see your contact request.");
     display::info("You should also run 'vauchi sync' to receive their card updates.");

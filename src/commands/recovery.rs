@@ -440,10 +440,11 @@ pub fn verify(config: &CliConfig, proof_data: &str) -> Result<()> {
             .interact()?;
 
         if accept {
-            // Update contact's public key
-            // Note: In full implementation, would update the contact in storage
-            display::success("Recovery accepted. Contact updated.");
-            display::info("The contact's new public key is now active.");
+            // TODO: Implement actual key rotation in storage when core API supports it
+            display::warning(
+                "Recovery acceptance is not yet implemented — contact was NOT updated.",
+            );
+            display::info("The contact's public key remains unchanged.");
         } else {
             display::info("Recovery not accepted.");
         }
@@ -501,13 +502,12 @@ pub fn settings_set(_config: &CliConfig, recovery: u32, verification: u32) -> Re
     // Validate settings
     let _settings = RecoverySettings::new(recovery, verification)?;
 
-    // In full implementation, would persist settings
-    display::success(&format!("Recovery threshold set to {} vouchers.", recovery));
-    display::success(&format!(
-        "Verification threshold set to {} mutual contacts.",
-        verification
+    // TODO: Persist settings via core API when implemented
+    display::warning("Recovery settings persistence is not yet implemented.");
+    display::info(&format!(
+        "Validated: recovery={} vouchers, verification={} mutual contacts.",
+        recovery, verification
     ));
-    display::info("Settings saved.");
 
     Ok(())
 }

@@ -66,7 +66,7 @@ pub fn export_data(config: &CliConfig, output: &Path, password: Option<&str>) ->
         display::success(&format!("Encrypted GDPR data export saved to {:?}", output));
     } else {
         display::warning(
-            "Exporting without encryption. Consider using --password to protect sensitive data.",
+            "Exporting without encryption. Consider using --encrypt to protect sensitive data.",
         );
         fs::write(output, &json)?;
         display::success(&format!("GDPR data export saved to {:?}", output));
