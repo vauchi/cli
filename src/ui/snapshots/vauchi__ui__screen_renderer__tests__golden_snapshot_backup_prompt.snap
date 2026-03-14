@@ -10,7 +10,7 @@ expression: output
 
   backup Why back up?
 
-    warning No identity recovery
+    warning No account recovery
       If you lose your device without a backup, your identity is lost.
     devices Multi-device
       Backups let you use Vauchi on multiple devices.
