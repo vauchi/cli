@@ -275,13 +275,13 @@ enum GdprCommands {
         password: Option<String>,
     },
 
-    /// Schedule account deletion (7-day grace period)
+    /// Schedule identity deletion (7-day grace period)
     ScheduleDeletion,
 
-    /// Cancel a scheduled account deletion
+    /// Cancel a scheduled identity deletion
     CancelDeletion,
 
-    /// Execute a scheduled account deletion (after grace period)
+    /// Execute a scheduled identity deletion (after grace period)
     ExecuteDeletion,
 
     /// Emergency immediate deletion — no grace period

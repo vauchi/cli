@@ -4,7 +4,7 @@
 
 //! GDPR Commands
 //!
-//! Privacy compliance operations: data export, account deletion, consent management.
+//! Privacy compliance operations: data export, identity deletion, consent management.
 
 use std::fs;
 use std::path::Path;
@@ -82,13 +82,13 @@ pub fn export_data(config: &CliConfig, output: &Path, password: Option<&str>) ->
     Ok(())
 }
 
-/// Schedules account deletion with 7-day grace period.
+/// Schedules identity deletion with 7-day grace period.
 pub fn schedule_deletion(config: &CliConfig) -> Result<()> {
     let wb = open_vauchi(config)?;
 
     let confirm: String = Input::new()
         .with_prompt(
-            "This will schedule your account for deletion in 7 days. Type 'delete' to confirm",
+            "This will schedule your identity for deletion in 7 days. Type 'delete' to confirm",
         )
         .interact_text()?;
 
@@ -108,7 +108,7 @@ pub fn schedule_deletion(config: &CliConfig) -> Result<()> {
     {
         let days = (execute_at - scheduled_at) / 86400;
         display::warning(&format!(
-            "Account deletion scheduled. You have {} days to cancel.",
+            "Identity deletion scheduled. You have {} days to cancel.",
             days
         ));
         display::info("Run 'vauchi gdpr cancel-deletion' to cancel.");
@@ -117,13 +117,13 @@ pub fn schedule_deletion(config: &CliConfig) -> Result<()> {
     Ok(())
 }
 
-/// Cancels a scheduled account deletion.
+/// Cancels a scheduled identity deletion.
 pub fn cancel_deletion(config: &CliConfig) -> Result<()> {
     let wb = open_vauchi(config)?;
     let manager = DeletionManager::new(wb.storage());
     manager.cancel_deletion()?;
 
-    display::success("Account deletion cancelled.");
+    display::success("Identity deletion cancelled.");
     Ok(())
 }
 
@@ -156,7 +156,7 @@ pub fn deletion_status(config: &CliConfig) -> Result<()> {
             display::info("Run 'vauchi gdpr cancel-deletion' to cancel.");
         }
         DeletionState::Executed { executed_at } => {
-            display::warning(&format!("Account was deleted at {}.", executed_at));
+            display::warning(&format!("Identity was destroyed at {}.", executed_at));
         }
     }
 
@@ -259,7 +259,7 @@ fn create_relay_client(
     Ok(client)
 }
 
-/// Executes a scheduled account deletion after the grace period.
+/// Executes a scheduled identity deletion after the grace period.
 pub async fn execute_deletion(config: &CliConfig) -> Result<()> {
     let wb = open_vauchi(config)?;
     let identity = config.import_local_identity()?;
@@ -291,7 +291,7 @@ pub async fn execute_deletion(config: &CliConfig) -> Result<()> {
         DeletionState::None => {
             bail!("No deletion scheduled. Run 'vauchi gdpr schedule-deletion' first.")
         }
-        DeletionState::Executed { .. } => bail!("Account has already been deleted."),
+        DeletionState::Executed { .. } => bail!("Identity has already been destroyed."),
     };
 
     // Confirmation prompt
@@ -319,7 +319,7 @@ pub async fn execute_deletion(config: &CliConfig) -> Result<()> {
     let mut purge_client = create_relay_client(&config.relay_url, &identity_id)?;
     let mut revocation_client = create_relay_client(&config.relay_url, &identity_id)?;
 
-    display::info("Executing account deletion...");
+    display::info("Destroying identity...");
 
     let report = shred_manager
         .hard_shred(token, Some(&mut purge_client), Some(&mut revocation_client))
@@ -329,7 +329,7 @@ pub async fn execute_deletion(config: &CliConfig) -> Result<()> {
     let verification = shred_manager.verify_shred();
     display_shred_verification(&verification);
 
-    display::success("Account deletion complete. Goodbye.");
+    display::success("Identity destroyed. Goodbye.");
     Ok(())
 }
 
