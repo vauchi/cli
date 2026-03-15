@@ -5,7 +5,6 @@
 //! Shared helpers for CLI commands.
 
 use anyhow::{bail, Result};
-use vauchi_core::network::MockTransport;
 use vauchi_core::{AuthMode, Vauchi, VauchiConfig};
 
 use crate::config::CliConfig;
@@ -15,7 +14,7 @@ use crate::config::CliConfig;
 /// Checks that Vauchi has been initialized (identity file exists),
 /// builds a [`VauchiConfig`] from the CLI config, creates a [`Vauchi`]
 /// instance, and loads the local identity into it.
-pub(crate) fn open_vauchi(config: &CliConfig) -> Result<Vauchi<MockTransport>> {
+pub(crate) fn open_vauchi(config: &CliConfig) -> Result<Vauchi> {
     if !config.is_initialized() {
         bail!("Vauchi not initialized. Run 'vauchi init <name>' first.");
     }
@@ -46,10 +45,7 @@ pub(crate) fn open_vauchi(config: &CliConfig) -> Result<Vauchi<MockTransport>> {
 ///
 /// When `pin` is `None` but an app password IS configured, returns an error
 /// requiring authentication.
-pub(crate) fn open_vauchi_authenticated(
-    config: &CliConfig,
-    pin: Option<&str>,
-) -> Result<Vauchi<MockTransport>> {
+pub(crate) fn open_vauchi_authenticated(config: &CliConfig, pin: Option<&str>) -> Result<Vauchi> {
     let mut wb = open_vauchi(config)?;
 
     match pin {

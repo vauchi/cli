@@ -11,7 +11,6 @@ use std::path::Path;
 
 use anyhow::Result;
 use dialoguer::{Input, Password};
-use vauchi_core::network::MockTransport;
 use vauchi_core::{Identity, IdentityBackup, Vauchi, VauchiConfig};
 
 use crate::commands::common::open_vauchi;
@@ -86,7 +85,7 @@ pub fn import(config: &CliConfig, input: &Path) -> Result<()> {
         .with_relay_url(&config.relay_url)
         .with_storage_key(config.storage_key()?);
 
-    let mut wb: Vauchi<MockTransport> = Vauchi::new(wb_config)?;
+    let mut wb = Vauchi::new(wb_config)?;
     wb.set_identity(identity)?;
 
     display::success(&format!("Identity restored: {}", name));
