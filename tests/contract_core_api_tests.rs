@@ -18,11 +18,10 @@
 //!   - FieldType variants that CLI's parse_field_type depends on exist
 
 use vauchi_core::contact_card::ContactAction;
-use vauchi_core::network::MockTransport;
 use vauchi_core::{Contact, ContactCard, ContactField, FieldType, Vauchi};
 
 /// Helper: create a Vauchi instance with identity.
-fn setup() -> Vauchi<MockTransport> {
+fn setup() -> Vauchi {
     let mut wb = Vauchi::in_memory().unwrap();
     wb.create_identity("ContractTest").unwrap();
     wb

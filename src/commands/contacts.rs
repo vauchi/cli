@@ -8,7 +8,6 @@
 
 use anyhow::{bail, Result};
 use vauchi_core::contact_card::ContactAction;
-use vauchi_core::network::MockTransport;
 use vauchi_core::Vauchi;
 
 use crate::commands::common::{open_vauchi, open_vauchi_authenticated};
@@ -188,7 +187,7 @@ pub fn verify(config: &CliConfig, id: &str) -> Result<()> {
 }
 
 /// Helper to find contact by ID or name
-fn find_contact(wb: &Vauchi<MockTransport>, id_or_name: &str) -> Result<vauchi_core::Contact> {
+fn find_contact(wb: &Vauchi, id_or_name: &str) -> Result<vauchi_core::Contact> {
     // Try exact ID match first
     if let Some(contact) = wb.get_contact(id_or_name)? {
         return Ok(contact);
@@ -207,7 +206,7 @@ fn find_contact(wb: &Vauchi<MockTransport>, id_or_name: &str) -> Result<vauchi_c
 }
 
 /// Helper to find field ID by label in own card
-fn find_field_id(wb: &Vauchi<MockTransport>, label: &str) -> Result<String> {
+fn find_field_id(wb: &Vauchi, label: &str) -> Result<String> {
     let card = wb
         .own_card()?
         .ok_or_else(|| anyhow::anyhow!("No contact card found"))?;

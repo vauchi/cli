@@ -9,7 +9,6 @@
 use std::fs;
 
 use anyhow::{bail, Result};
-use vauchi_core::network::MockTransport;
 use vauchi_core::{Vauchi, VauchiConfig};
 
 use crate::config::CliConfig;
@@ -38,7 +37,7 @@ pub fn run(name: &str, force: bool, config: &CliConfig) -> Result<()> {
         .with_relay_url(&config.relay_url)
         .with_storage_key(config.storage_key()?);
 
-    let mut wb: Vauchi<MockTransport> = Vauchi::new(wb_config)?;
+    let mut wb = Vauchi::new(wb_config)?;
     wb.create_identity(name)?;
 
     // Save identity to file for persistence

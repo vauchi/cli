@@ -32,7 +32,7 @@ type WsStream =
     tokio_tungstenite::WebSocketStream<tokio_tungstenite::MaybeTlsStream<tokio::net::TcpStream>>;
 
 /// Opens Vauchi from the config and loads the identity.
-fn open_vauchi(config: &CliConfig) -> Result<Vauchi<WebSocketTransport>> {
+fn open_vauchi(config: &CliConfig) -> Result<Vauchi> {
     if !config.is_initialized() {
         bail!("Vauchi not initialized. Run 'vauchi init <name>' first.");
     }
@@ -128,7 +128,7 @@ pub async fn send_exchange_response(
 #[allow(clippy::type_complexity)]
 async fn receive_pending(
     socket: &mut WsStream,
-    _wb: &Vauchi<WebSocketTransport>,
+    _wb: &Vauchi,
 ) -> Result<(
     usize,
     Vec<ExchangeMessage>,
@@ -258,7 +258,7 @@ async fn receive_pending(
 
 /// Processes exchange messages and creates contacts.
 fn process_exchange_messages(
-    wb: &Vauchi<WebSocketTransport>,
+    wb: &Vauchi,
     messages: Vec<ExchangeMessage>,
 ) -> Result<(usize, usize, Vec<String>)> {
     let mut added = 0;
@@ -367,7 +367,7 @@ fn process_exchange_messages(
 
         // Initialize Double Ratchet as responder for forward secrecy
         // Recreate the X3DH keypair since we can't clone it
-        let ratchet_dh = vauchi_core::exchange::X3DHKeyPair::from_bytes(our_x3dh.secret_bytes());
+        let ratchet_dh = vauchi_core::exchange::X3DHKeyPair::from_bytes(*our_x3dh.secret_bytes());
         if let Err(e) = wb.create_ratchet_as_responder(&contact_id, &shared_secret, ratchet_dh) {
             display::warning(&format!("Failed to initialize ratchet: {:?}", e));
         }
@@ -384,7 +384,7 @@ fn process_exchange_messages(
 
 /// Processes encrypted card updates from contacts.
 fn process_card_updates(
-    wb: &Vauchi<WebSocketTransport>,
+    wb: &Vauchi,
     updates: Vec<(String, Vec<u8>)>, // (sender_id, ciphertext)
 ) -> Result<usize> {
     let mut processed = 0;
@@ -431,7 +431,7 @@ fn process_card_updates(
 /// Collects pending outbound updates as serialized envelopes (sync — no await).
 /// Returns (update_id, serialized_envelope) pairs for async sending.
 fn collect_pending_updates_data(
-    wb: &Vauchi<WebSocketTransport>,
+    wb: &Vauchi,
     our_id: &str,
 ) -> Result<Vec<(String, Vec<u8>, String)>> {
     let contacts = wb.list_contacts()?;
@@ -467,7 +467,7 @@ fn collect_pending_updates_data(
 }
 
 /// Builds device sync envelopes (sync — no await).
-fn build_device_sync_data(wb: &Vauchi<WebSocketTransport>, identity: &Identity) -> Vec<Vec<u8>> {
+fn build_device_sync_data(wb: &Vauchi, identity: &Identity) -> Vec<Vec<u8>> {
     match vauchi_core::sync::build_device_sync_envelopes(identity, wb.storage()) {
         Ok(e) => e,
         Err(e) => {
@@ -489,7 +489,7 @@ fn build_device_sync_data(wb: &Vauchi<WebSocketTransport>, identity: &Identity) 
 /// - No structured audit trail for dropped messages — errors are only visible in
 ///   terminal output.
 fn process_device_sync_messages(
-    wb: &Vauchi<WebSocketTransport>,
+    wb: &Vauchi,
     messages: Vec<DeviceSyncMessage>,
     identity: &Identity,
 ) -> Result<usize> {
@@ -602,10 +602,7 @@ fn process_device_sync_messages(
 }
 
 /// Records a contact addition for inter-device sync.
-fn record_contact_for_device_sync(
-    wb: &Vauchi<WebSocketTransport>,
-    contact: &Contact,
-) -> Result<()> {
+fn record_contact_for_device_sync(wb: &Vauchi, contact: &Contact) -> Result<()> {
     // Try to load device registry - if none exists or only one device, skip
     let registry = match wb.storage().load_device_registry()? {
         Some(r) if r.device_count() > 1 => r,

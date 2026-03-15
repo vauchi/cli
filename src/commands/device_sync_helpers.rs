@@ -9,7 +9,6 @@
 //! across the user's own devices.
 
 use anyhow::Result;
-use vauchi_core::network::Transport;
 use vauchi_core::sync::{DeviceSyncOrchestrator, SyncItem};
 use vauchi_core::Vauchi;
 
@@ -24,11 +23,7 @@ fn current_timestamp() -> u64 {
 /// Records a card update for inter-device sync.
 ///
 /// Call this after updating a card field to propagate the change to other devices.
-pub fn record_card_update<T: Transport>(
-    wb: &Vauchi<T>,
-    field_label: &str,
-    new_value: &str,
-) -> Result<()> {
+pub fn record_card_update(wb: &Vauchi, field_label: &str, new_value: &str) -> Result<()> {
     // Try to load device registry - if none exists or only one device, skip
     let registry = match wb.storage().load_device_registry()? {
         Some(r) if r.device_count() > 1 => r,
@@ -64,7 +59,7 @@ pub fn record_card_update<T: Transport>(
 /// Records a card field removal for inter-device sync.
 ///
 /// Call this after removing a card field to propagate the deletion to other devices.
-pub fn record_card_field_removed<T: Transport>(wb: &Vauchi<T>, field_label: &str) -> Result<()> {
+pub fn record_card_field_removed(wb: &Vauchi, field_label: &str) -> Result<()> {
     // Use empty string to indicate removal
     record_card_update(wb, field_label, "")
 }
@@ -72,7 +67,7 @@ pub fn record_card_field_removed<T: Transport>(wb: &Vauchi<T>, field_label: &str
 /// Records a contact removal for inter-device sync.
 ///
 /// Call this after removing a contact to propagate the removal to other devices.
-pub fn record_contact_removed<T: Transport>(wb: &Vauchi<T>, contact_id: &str) -> Result<()> {
+pub fn record_contact_removed(wb: &Vauchi, contact_id: &str) -> Result<()> {
     // Try to load device registry - if none exists or only one device, skip
     let registry = match wb.storage().load_device_registry()? {
         Some(r) if r.device_count() > 1 => r,
@@ -106,8 +101,8 @@ pub fn record_contact_removed<T: Transport>(wb: &Vauchi<T>, contact_id: &str) ->
 /// Records a visibility change for inter-device sync.
 ///
 /// Call this after changing field visibility for a contact to propagate to other devices.
-pub fn record_visibility_changed<T: Transport>(
-    wb: &Vauchi<T>,
+pub fn record_visibility_changed(
+    wb: &Vauchi,
     contact_id: &str,
     field_label: &str,
     is_visible: bool,

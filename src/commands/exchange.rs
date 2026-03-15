@@ -15,7 +15,6 @@ use vauchi_core::contact_card::ContactCard;
 use vauchi_core::exchange::{
     ExchangeEvent, ExchangeQR, ExchangeSession, ExchangeState, ManualConfirmationVerifier,
 };
-use vauchi_core::network::MockTransport;
 use vauchi_core::sync::delta::CardDelta;
 use vauchi_core::sync::{ContactSyncData, DeviceSyncOrchestrator, SyncItem};
 use vauchi_core::{Contact, Identity, Vauchi};
@@ -63,7 +62,7 @@ async fn send_handshake(socket: &mut WsStream, identity: &Identity) -> Result<()
 /// our card immediately after the exchange, we ensure both parties can send.
 async fn send_initial_card_update(
     config: &CliConfig,
-    wb: &Vauchi<MockTransport>,
+    wb: &Vauchi,
     identity: &Identity,
     contact_id: &str,
     recipient_id: &str,
@@ -135,7 +134,7 @@ async fn send_initial_card_update(
 }
 
 /// Records a new contact addition for inter-device sync.
-fn record_contact_added(wb: &Vauchi<MockTransport>, contact: &Contact) -> Result<()> {
+fn record_contact_added(wb: &Vauchi, contact: &Contact) -> Result<()> {
     // Try to load device registry - if none exists, skip (single device)
     let registry = match wb.storage().load_device_registry()? {
         Some(r) if r.device_count() > 1 => r,

@@ -7,7 +7,6 @@
 //! Manage visibility labels for organizing contacts.
 
 use anyhow::{anyhow, Result};
-use vauchi_core::network::MockTransport;
 use vauchi_core::Vauchi;
 
 use crate::commands::common::open_vauchi;
@@ -15,7 +14,7 @@ use crate::config::CliConfig;
 use crate::display;
 
 /// Helper to find a label by name or ID prefix using core fuzzy matching.
-fn find_label(wb: &Vauchi<MockTransport>, label_name: &str) -> Result<vauchi_core::contact::Group> {
+fn find_label(wb: &Vauchi, label_name: &str) -> Result<vauchi_core::contact::Group> {
     wb.find_group_fuzzy(label_name)?
         .ok_or_else(|| anyhow!("Label not found: {}", label_name))
 }
