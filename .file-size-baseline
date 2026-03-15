@@ -1,0 +1,5 @@
+# Generated 2026-03-15. Files above error threshold, grandfathered.
+# These files must not grow beyond their baseline. Reduce over time.
+src/commands/contacts.rs 1308
+src/main.rs 1144
+tests/cli_integration_tests.rs 2041
