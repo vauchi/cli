@@ -14,7 +14,7 @@ use futures_util::{SinkExt, StreamExt};
 use indicatif::{ProgressBar, ProgressStyle};
 use tokio_tungstenite::tungstenite::Message;
 use vauchi_core::exchange::X3DH;
-use vauchi_core::network::{classify_message, MessageType, WebSocketTransport};
+use vauchi_core::network::{classify_message, MessageType};
 use vauchi_core::sync::{ContactSyncData, DeviceSyncOrchestrator, SyncItem};
 use vauchi_core::{Contact, Identity, Vauchi, VauchiConfig};
 
@@ -41,7 +41,7 @@ fn open_vauchi(config: &CliConfig) -> Result<Vauchi> {
         .with_relay_url(&config.relay_url)
         .with_storage_key(config.storage_key()?);
 
-    let mut wb = Vauchi::with_transport_factory(wb_config, WebSocketTransport::new)?;
+    let mut wb = Vauchi::new(wb_config)?;
 
     // Core now auto-loads identity from storage; only set from file if not already loaded
     if wb.identity().is_none() {
