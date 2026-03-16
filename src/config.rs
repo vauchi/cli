@@ -147,7 +147,7 @@ fn load_or_generate_backup_password(data_dir: &std::path::Path) -> Result<String
 impl CliConfig {
     /// Returns the storage path for Vauchi data.
     pub fn storage_path(&self) -> PathBuf {
-        self.data_dir.join("data.db")
+        self.data_dir.join("vauchi.db")
     }
 
     /// Returns the identity file path.
