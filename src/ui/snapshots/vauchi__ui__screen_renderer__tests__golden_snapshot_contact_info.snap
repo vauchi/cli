@@ -1,16 +1,15 @@
 ---
 source: src/ui/screen_renderer.rs
-assertion_line: 770
 expression: output
 ---
 
   [ Step 5/9]
 
   Add contact info
-  Add fields to your contact card.
+  Add phone, email, social profiles, and more to your card. You can always add or change entries later.
 
   (no fields added)
 
 ──────────────────────────────────────────────────
 
-  (1) Continue    (2) Skip
+  (1) Add Entry    (2) Continue    (3) Skip

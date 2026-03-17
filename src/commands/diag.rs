@@ -1,6 +1,9 @@
 // SPDX-FileCopyrightText: 2026 Mattia Egloff <mattia.egloff@pm.me>
 //
 // SPDX-License-Identifier: GPL-3.0-or-later
+//
+// allow(deprecated): MockTransportChannel deprecated by ADR-031, migration pending
+#![allow(deprecated)]
 
 //! Diagnostic commands for transport layer inspection.
 
