@@ -2,8 +2,14 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-# Generated 2026-03-15. Files above error threshold, grandfathered.
-# These files must not grow beyond their baseline. Reduce over time.
+# Generated 2026-03-15. Updated 2026-03-16 with exemptions from PRB-2026-032.
+# Files must not grow beyond baseline. EXEMPT/SPLIT per PRB-2026-032.
+
+# SPLIT — Phase 1: per-subcommand files
 src/commands/contacts.rs 1308
+
+# SPLIT — Phase 4: extract arg parsing
 src/main.rs 1144
+
+# EXEMPT — already 22 internal mod blocks, structurally well-organized
 tests/cli_integration_tests.rs 2041
