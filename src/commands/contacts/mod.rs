@@ -167,6 +167,132 @@ fn execute_action(action: &ContactAction) -> Result<()> {
     }
 }
 
+// ===========================================================================
+// Tests
+// ===========================================================================
+
+// INLINE_TEST_REQUIRED: Binary crate without lib.rs — tests cannot be external
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use proptest::prelude::*;
+
+    #[test]
+    fn test_truncate_value_ascii_within_limit() {
+        assert_eq!(truncate_value("hello", 10), "hello");
+    }
+
+    #[test]
+    fn test_truncate_value_ascii_exact_limit() {
+        assert_eq!(truncate_value("hello", 5), "hello");
+    }
+
+    #[test]
+    fn test_truncate_value_ascii_over_limit() {
+        assert_eq!(truncate_value("hello world", 5), "hello");
+    }
+
+    #[test]
+    fn test_truncate_value_empty() {
+        assert_eq!(truncate_value("", 5), "");
+    }
+
+    #[test]
+    fn test_truncate_value_zero_max() {
+        assert_eq!(truncate_value("hello", 0), "");
+    }
+
+    #[test]
+    fn test_truncate_value_multibyte_emoji() {
+        // 👋 is 4 bytes, should not panic when max falls on char boundary
+        let emoji = "👋hello";
+        let result = truncate_value(emoji, 1);
+        assert_eq!(result, "👋");
+    }
+
+    #[test]
+    fn test_truncate_value_cjk() {
+        // CJK characters are 3 bytes each
+        let cjk = "你好世界";
+        assert_eq!(truncate_value(cjk, 2), "你好");
+    }
+
+    #[test]
+    fn test_truncate_value_mixed_ascii_emoji() {
+        let mixed = "hi 👋 there";
+        let result = truncate_value(mixed, 4);
+        assert_eq!(result, "hi 👋");
+    }
+
+    #[test]
+    fn test_truncate_value_combining_chars() {
+        // é as e + combining acute accent (2 code points)
+        let combining = "e\u{0301}llo";
+        // Truncate at 2 chars = e + combining accent
+        let result = truncate_value(combining, 2);
+        assert_eq!(result, "e\u{0301}");
+    }
+
+    // CC-04: Property-based tests for adversarial Unicode
+    proptest! {
+        /// truncate_value never panics on arbitrary Unicode strings.
+        #[test]
+        fn prop_truncate_never_panics(
+            s in "\\PC{0,200}",
+            max in 0usize..100,
+        ) {
+            // allow(zero_assertions): No-panic fuzz test
+            let _ = truncate_value(&s, max);
+        }
+
+        /// Output char count is at most max.
+        #[test]
+        fn prop_truncate_respects_max_chars(
+            s in "\\PC{0,200}",
+            max in 0usize..100,
+        ) {
+            let result = truncate_value(&s, max);
+            prop_assert!(
+                result.chars().count() <= max,
+                "Result '{}' has {} chars, expected <= {}",
+                result, result.chars().count(), max
+            );
+        }
+
+        /// Output is always valid UTF-8 (guaranteed by &str, but let's confirm
+        /// we never slice mid-codepoint).
+        #[test]
+        fn prop_truncate_valid_utf8(
+            s in "\\PC{0,200}",
+            max in 0usize..100,
+        ) {
+            let result = truncate_value(&s, max);
+            // If we get here without panic, result is valid UTF-8
+            prop_assert!(result.is_char_boundary(result.len()));
+        }
+
+        /// Output is a prefix of the input.
+        #[test]
+        fn prop_truncate_is_prefix(
+            s in "\\PC{0,200}",
+            max in 0usize..100,
+        ) {
+            let result = truncate_value(&s, max);
+            prop_assert!(s.starts_with(result));
+        }
+
+        /// When max >= input char count, output equals input.
+        #[test]
+        fn prop_truncate_noop_when_short(
+            s in "\\PC{0,50}",
+        ) {
+            let char_count = s.chars().count();
+            let result = truncate_value(&s, char_count + 10);
+            prop_assert_eq!(result, s.as_str());
+        }
+    }
+}
+
 /// URL-encodes a value for use in map/directions URIs.
 fn url_encode_value(value: &str) -> String {
     value
