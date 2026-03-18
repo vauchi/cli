@@ -105,7 +105,7 @@ pub async fn send_exchange_response(
     let update = EncryptedUpdate {
         recipient_id: recipient_id.to_string(),
         sender_id: our_id,
-        ciphertext: exchange_msg.to_bytes(),
+        ciphertext: exchange_msg.to_bytes()?,
     };
 
     let envelope = create_envelope(MessagePayload::EncryptedUpdate(update));

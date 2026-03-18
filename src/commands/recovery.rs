@@ -221,7 +221,7 @@ pub fn add_voucher(config: &CliConfig, voucher_data: &str) -> Result<()> {
     proof.add_voucher(voucher)?;
 
     // Save updated proof
-    fs::write(&proof_path, proof.to_bytes())?;
+    fs::write(&proof_path, proof.to_bytes()?)?;
 
     let voucher_count = proof.voucher_count();
     let threshold = proof.threshold();
