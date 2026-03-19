@@ -81,3 +81,13 @@ secure-storage = ["vauchi-core/secure-storage"]
 tempfile = "3"
 proptest = "1"
 insta = "1.41"
+
+# Development profile: fast builds, backtraces work (matches core)
+[profile.dev]
+debug = "line-tables-only"
+split-debuginfo = "unpacked"
+
+# Test profile: skip full debug info, reduce binary size ~60%
+[profile.test]
+debug = "line-tables-only"
+split-debuginfo = "off"
