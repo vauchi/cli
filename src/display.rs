@@ -8,10 +8,10 @@
 
 #![allow(dead_code)] // Utility functions for future use
 
-use console::{style, Style};
+use console::{Style, style};
 use tabled::{
-    settings::{object::Columns, Alignment, Modify, Style as TableStyle},
     Table, Tabled,
+    settings::{Alignment, Modify, Style as TableStyle, object::Columns},
 };
 use vauchi_core::{Contact, ContactCard, FieldType, SocialNetworkRegistry};
 
@@ -159,8 +159,8 @@ pub fn display_contact_details(contact: &Contact) {
 
 /// Displays a QR code in the terminal using Unicode blocks.
 pub fn display_qr_code(data: &str) {
-    use qrcode::render::unicode;
     use qrcode::QrCode;
+    use qrcode::render::unicode;
 
     match QrCode::new(data) {
         Ok(code) => {
@@ -296,8 +296,8 @@ pub fn display_contacts_table(contacts: &[Contact]) {
 // FAQ Display Functions
 // ============================================================
 
-use vauchi_core::help::{get_faqs, get_faqs_by_category, search_faqs, HelpCategory};
-use vauchi_core::i18n::{get_string, Locale};
+use vauchi_core::help::{HelpCategory, get_faqs, get_faqs_by_category, search_faqs};
+use vauchi_core::i18n::{Locale, get_string};
 
 /// Parse locale code to Locale enum
 fn parse_locale(code: &str) -> Locale {

@@ -6,7 +6,7 @@
 //!
 //! Set up and manage duress PIN for plausible deniability.
 
-use anyhow::{bail, Result};
+use anyhow::{Result, bail};
 use dialoguer::Password;
 
 use crate::commands::common::{auth_mode_label, open_vauchi};
@@ -62,19 +62,17 @@ pub fn status(config: &CliConfig) -> Result<()> {
         if duress_enabled { "ENABLED" } else { "NOT SET" }
     );
 
-    if duress_enabled {
-        if let Ok(Some(settings)) = wb.load_duress_settings() {
-            println!(
-                "  Alert Contacts: {}",
-                if settings.alert_contact_ids.is_empty() {
-                    "none configured".to_string()
-                } else {
-                    format!("{} contact(s)", settings.alert_contact_ids.len())
-                }
-            );
-            if !settings.alert_message.is_empty() {
-                println!("  Alert Message:  (custom)");
+    if duress_enabled && let Ok(Some(settings)) = wb.load_duress_settings() {
+        println!(
+            "  Alert Contacts: {}",
+            if settings.alert_contact_ids.is_empty() {
+                "none configured".to_string()
+            } else {
+                format!("{} contact(s)", settings.alert_contact_ids.len())
             }
+        );
+        if !settings.alert_message.is_empty() {
+            println!("  Alert Message:  (custom)");
         }
     }
     println!();

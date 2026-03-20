@@ -103,14 +103,14 @@ pub fn trace(file: &PathBuf) -> Result<()> {
         println!("--- Trace Summary ---");
         println!("Total events: {}", events.len());
 
-        if let (Some(first), Some(last)) = (events.first(), events.last()) {
-            if let (Some(t0), Some(t1)) = (
+        if let (Some(first), Some(last)) = (events.first(), events.last())
+            && let (Some(t0), Some(t1)) = (
                 first.get("timestamp_us").and_then(|v| v.as_u64()),
                 last.get("timestamp_us").and_then(|v| v.as_u64()),
-            ) {
-                let duration_ms = (t1 - t0) as f64 / 1000.0;
-                println!("Duration: {:.2}ms", duration_ms);
-            }
+            )
+        {
+            let duration_ms = (t1 - t0) as f64 / 1000.0;
+            println!("Duration: {:.2}ms", duration_ms);
         }
     }
 

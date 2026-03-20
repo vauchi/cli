@@ -22,23 +22,22 @@ pub fn prompt_for_action(screen: &ScreenModel) -> io::Result<UserAction> {
         if let Component::TextInput {
             id, label, value, ..
         } = component
+            && value.is_empty()
         {
-            if value.is_empty() {
-                let input = prompt_text(label)?;
-                return Ok(UserAction::TextChanged {
-                    component_id: id.clone(),
-                    value: input,
-                });
-            }
+            let input = prompt_text(label)?;
+            return Ok(UserAction::TextChanged {
+                component_id: id.clone(),
+                value: input,
+            });
         }
     }
 
     // Check for toggle lists
     for component in &screen.components {
-        if let Component::ToggleList { id, items, .. } = component {
-            if !items.is_empty() {
-                return prompt_toggle(id, items.len());
-            }
+        if let Component::ToggleList { id, items, .. } = component
+            && !items.is_empty()
+        {
+            return prompt_toggle(id, items.len());
         }
     }
 
@@ -77,16 +76,17 @@ fn prompt_toggle(component_id: &str, item_count: usize) -> io::Result<UserAction
         }
 
         // Try to parse as a number for toggle
-        if let Ok(num) = trimmed.parse::<usize>() {
-            if num >= 1 && num <= item_count {
-                // We need the item_id — the caller passes the screen which has the items.
-                // Since we only have the count here, we construct a placeholder.
-                // The onboarding command will need to look up the actual item_id.
-                return Ok(UserAction::ItemToggled {
-                    component_id: component_id.to_string(),
-                    item_id: format!("__index_{}", num - 1),
-                });
-            }
+        if let Ok(num) = trimmed.parse::<usize>()
+            && num >= 1
+            && num <= item_count
+        {
+            // We need the item_id — the caller passes the screen which has the items.
+            // Since we only have the count here, we construct a placeholder.
+            // The onboarding command will need to look up the actual item_id.
+            return Ok(UserAction::ItemToggled {
+                component_id: component_id.to_string(),
+                item_id: format!("__index_{}", num - 1),
+            });
         }
 
         // Unrecognized or out-of-range input — re-prompt
@@ -130,18 +130,19 @@ fn prompt_action_selection(actions: &[ScreenAction]) -> io::Result<UserAction> {
         }
 
         // Try to parse as number
-        if let Ok(num) = trimmed.parse::<usize>() {
-            if num >= 1 && num <= actions.len() {
-                let action = &actions[num - 1];
-                if action.enabled {
-                    return Ok(UserAction::ActionPressed {
-                        action_id: action.id.clone(),
-                    });
-                }
-                // Disabled action — re-prompt
-                println!("  That action is disabled. Choose another.");
-                continue;
+        if let Ok(num) = trimmed.parse::<usize>()
+            && num >= 1
+            && num <= actions.len()
+        {
+            let action = &actions[num - 1];
+            if action.enabled {
+                return Ok(UserAction::ActionPressed {
+                    action_id: action.id.clone(),
+                });
             }
+            // Disabled action — re-prompt
+            println!("  That action is disabled. Choose another.");
+            continue;
         }
 
         // Invalid or out-of-range input — re-prompt
@@ -169,15 +170,14 @@ pub fn resolve_toggle_item_id(action: UserAction, screen: &ScreenModel) -> UserA
             {
                 // Find the toggle list component
                 for component in &screen.components {
-                    if let Component::ToggleList { id, items, .. } = component {
-                        if id == component_id {
-                            if let Some(item) = items.get(idx) {
-                                return UserAction::ItemToggled {
-                                    component_id: component_id.clone(),
-                                    item_id: item.id.clone(),
-                                };
-                            }
-                        }
+                    if let Component::ToggleList { id, items, .. } = component
+                        && id == component_id
+                        && let Some(item) = items.get(idx)
+                    {
+                        return UserAction::ItemToggled {
+                            component_id: component_id.clone(),
+                            item_id: item.id.clone(),
+                        };
                     }
                 }
             }

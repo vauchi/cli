@@ -8,7 +8,7 @@
 
 use std::time::Duration;
 
-use anyhow::{bail, Result};
+use anyhow::{Result, bail};
 use futures_util::SinkExt;
 use tokio_tungstenite::tungstenite::Message;
 use vauchi_core::contact_card::ContactCard;
@@ -23,7 +23,7 @@ use crate::commands::common::open_vauchi;
 use crate::config::CliConfig;
 use crate::display;
 use crate::protocol::{
-    create_envelope, create_signed_handshake, encode_message, EncryptedUpdate, MessagePayload,
+    EncryptedUpdate, MessagePayload, create_envelope, create_signed_handshake, encode_message,
 };
 
 /// Type alias for the async WebSocket stream.

@@ -6,7 +6,7 @@
 //!
 //! Manage visibility labels for organizing contacts.
 
-use anyhow::{anyhow, Result};
+use anyhow::{Result, anyhow};
 use vauchi_core::Vauchi;
 
 use crate::commands::common::open_vauchi;

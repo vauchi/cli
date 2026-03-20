@@ -6,7 +6,7 @@
 //!
 //! Configure and send emergency alerts to trusted contacts.
 
-use anyhow::{bail, Result};
+use anyhow::{Result, bail};
 use dialoguer::{Confirm, Input};
 
 use crate::commands::common::open_vauchi;

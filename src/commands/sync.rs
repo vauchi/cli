@@ -9,12 +9,12 @@
 use std::fs;
 use std::time::Duration;
 
-use anyhow::{bail, Result};
+use anyhow::{Result, bail};
 use futures_util::{SinkExt, StreamExt};
 use indicatif::{ProgressBar, ProgressStyle};
 use tokio_tungstenite::tungstenite::Message;
 use vauchi_core::exchange::X3DH;
-use vauchi_core::network::{classify_message, MessageType};
+use vauchi_core::network::{MessageType, classify_message};
 use vauchi_core::sync::{ContactSyncData, DeviceSyncOrchestrator, SyncItem};
 use vauchi_core::{Contact, Identity, Vauchi, VauchiConfig};
 
@@ -23,8 +23,8 @@ use vauchi_core::aha_moments::{AhaMomentTracker, AhaMomentType};
 use crate::config::CliConfig;
 use crate::display;
 use crate::protocol::{
-    create_ack, create_device_sync_ack, create_envelope, decode_message, encode_message, AckStatus,
-    DeviceSyncMessage, EncryptedUpdate, ExchangeMessage, MessagePayload,
+    AckStatus, DeviceSyncMessage, EncryptedUpdate, ExchangeMessage, MessagePayload, create_ack,
+    create_device_sync_ack, create_envelope, decode_message, encode_message,
 };
 
 /// Type alias for the async WebSocket stream.
@@ -154,80 +154,76 @@ async fn receive_pending(
                 let msg_type = classify_message(&data);
                 match msg_type {
                     MessageType::EncryptedUpdate => {
-                        if let Ok(envelope) = decode_message(&data) {
-                            if let MessagePayload::EncryptedUpdate(update) = envelope.payload {
-                                received += 1;
+                        if let Ok(envelope) = decode_message(&data)
+                            && let MessagePayload::EncryptedUpdate(update) = envelope.payload
+                        {
+                            received += 1;
 
-                                // Check if this is an exchange message
-                                if let Some(exchange) =
-                                    ExchangeMessage::from_bytes(&update.ciphertext)
-                                {
-                                    display::info(&format!(
-                                        "Received exchange request from {}",
-                                        exchange.display_name
-                                    ));
-                                    exchange_messages.push(exchange);
-                                } else {
-                                    // This is an encrypted card update
-                                    display::info(&format!(
-                                        "Received encrypted update from {}",
-                                        update.sender_id.get(..8).unwrap_or(&update.sender_id)
-                                    ));
-                                    card_updates
-                                        .push((update.sender_id.clone(), update.ciphertext));
-                                }
+                            // Check if this is an exchange message
+                            if let Some(exchange) = ExchangeMessage::from_bytes(&update.ciphertext)
+                            {
+                                display::info(&format!(
+                                    "Received exchange request from {}",
+                                    exchange.display_name
+                                ));
+                                exchange_messages.push(exchange);
+                            } else {
+                                // This is an encrypted card update
+                                display::info(&format!(
+                                    "Received encrypted update from {}",
+                                    update.sender_id.get(..8).unwrap_or(&update.sender_id)
+                                ));
+                                card_updates.push((update.sender_id.clone(), update.ciphertext));
+                            }
 
-                                // Send acknowledgment
-                                let ack = create_ack(
-                                    &envelope.message_id,
-                                    AckStatus::ReceivedByRecipient,
-                                );
-                                if let Ok(ack_data) = encode_message(&ack) {
-                                    let _ = socket.send(Message::Binary(ack_data)).await;
-                                }
+                            // Send acknowledgment
+                            let ack =
+                                create_ack(&envelope.message_id, AckStatus::ReceivedByRecipient);
+                            if let Ok(ack_data) = encode_message(&ack) {
+                                let _ = socket.send(Message::Binary(ack_data)).await;
                             }
                         }
                     }
                     MessageType::Acknowledgment => {
-                        if let Ok(envelope) = decode_message(&data) {
-                            if let MessagePayload::Acknowledgment(ack) = envelope.payload {
-                                display::info(&format!(
-                                    "Message {} acknowledged",
-                                    ack.message_id.get(..8).unwrap_or(&ack.message_id)
-                                ));
-                            }
+                        if let Ok(envelope) = decode_message(&data)
+                            && let MessagePayload::Acknowledgment(ack) = envelope.payload
+                        {
+                            display::info(&format!(
+                                "Message {} acknowledged",
+                                ack.message_id.get(..8).unwrap_or(&ack.message_id)
+                            ));
                         }
                     }
                     MessageType::DeviceSync => {
-                        if let Ok(envelope) = decode_message(&data) {
-                            if let MessagePayload::DeviceSyncMessage(sync_msg) = envelope.payload {
-                                received += 1;
-                                display::info(&format!(
-                                    "Received device sync from device {}...",
-                                    sync_msg
-                                        .sender_device_id
-                                        .get(..16)
-                                        .unwrap_or(&sync_msg.sender_device_id)
-                                ));
-                                device_sync_messages.push(sync_msg);
+                        if let Ok(envelope) = decode_message(&data)
+                            && let MessagePayload::DeviceSyncMessage(sync_msg) = envelope.payload
+                        {
+                            received += 1;
+                            display::info(&format!(
+                                "Received device sync from device {}...",
+                                sync_msg
+                                    .sender_device_id
+                                    .get(..16)
+                                    .unwrap_or(&sync_msg.sender_device_id)
+                            ));
+                            device_sync_messages.push(sync_msg);
 
-                                // Send acknowledgment
-                                let ack = create_device_sync_ack(&envelope.message_id, 0);
-                                if let Ok(ack_data) = encode_message(&ack) {
-                                    let _ = socket.send(Message::Binary(ack_data)).await;
-                                }
+                            // Send acknowledgment
+                            let ack = create_device_sync_ack(&envelope.message_id, 0);
+                            if let Ok(ack_data) = encode_message(&ack) {
+                                let _ = socket.send(Message::Binary(ack_data)).await;
                             }
                         }
                     }
                     MessageType::DeviceSyncAck => {
-                        if let Ok(envelope) = decode_message(&data) {
-                            if let MessagePayload::DeviceSyncAck(ack) = envelope.payload {
-                                display::info(&format!(
-                                    "Device sync {} acknowledged (version {})",
-                                    ack.message_id.get(..8).unwrap_or(&ack.message_id),
-                                    ack.synced_version
-                                ));
-                            }
+                        if let Ok(envelope) = decode_message(&data)
+                            && let MessagePayload::DeviceSyncAck(ack) = envelope.payload
+                        {
+                            display::info(&format!(
+                                "Device sync {} acknowledged (version {})",
+                                ack.message_id.get(..8).unwrap_or(&ack.message_id),
+                                ack.synced_version
+                            ));
                         }
                     }
                     MessageType::Unknown => {
@@ -293,26 +289,32 @@ fn process_exchange_messages(
         // Check if this is a response to our exchange
         if exchange.is_response {
             // Update existing contact's name
-            if let Some(mut contact) = wb.get_contact(&public_id)? {
-                if contact.display_name() != exchange.display_name {
-                    if let Err(e) = contact.set_display_name(&exchange.display_name) {
-                        display::warning(&format!("Failed to update contact name: {:?}", e));
-                        continue;
+            match wb.get_contact(&public_id)? {
+                Some(mut contact) => {
+                    if contact.display_name() != exchange.display_name {
+                        if let Err(e) = contact.set_display_name(&exchange.display_name) {
+                            display::warning(&format!("Failed to update contact name: {:?}", e));
+                            continue;
+                        }
+                        wb.update_contact(&contact)?;
+                        display::success(&format!(
+                            "Updated contact name: {}",
+                            exchange.display_name
+                        ));
+                        updated += 1;
+                    } else {
+                        display::info(&format!(
+                            "Contact {} already has correct name",
+                            exchange.display_name
+                        ));
                     }
-                    wb.update_contact(&contact)?;
-                    display::success(&format!("Updated contact name: {}", exchange.display_name));
-                    updated += 1;
-                } else {
-                    display::info(&format!(
-                        "Contact {} already has correct name",
+                }
+                _ => {
+                    display::warning(&format!(
+                        "Received response from unknown contact: {}",
                         exchange.display_name
                     ));
                 }
-            } else {
-                display::warning(&format!(
-                    "Received response from unknown contact: {}",
-                    exchange.display_name
-                ));
             }
             continue;
         }
@@ -787,20 +789,20 @@ pub async fn run(config: &CliConfig) -> Result<()> {
 
     // Check for aha moments
     let mut tracker = load_aha_tracker(config);
-    if contacts_added > 0 {
-        if let Some(moment) = tracker.try_trigger(AhaMomentType::FirstContactAdded) {
-            display::display_aha_moment(&moment);
-        }
+    if contacts_added > 0
+        && let Some(moment) = tracker.try_trigger(AhaMomentType::FirstContactAdded)
+    {
+        display::display_aha_moment(&moment);
     }
-    if cards_updated > 0 {
-        if let Some(moment) = tracker.try_trigger(AhaMomentType::FirstUpdateReceived) {
-            display::display_aha_moment(&moment);
-        }
+    if cards_updated > 0
+        && let Some(moment) = tracker.try_trigger(AhaMomentType::FirstUpdateReceived)
+    {
+        display::display_aha_moment(&moment);
     }
-    if updates_sent > 0 {
-        if let Some(moment) = tracker.try_trigger(AhaMomentType::FirstOutboundDelivered) {
-            display::display_aha_moment(&moment);
-        }
+    if updates_sent > 0
+        && let Some(moment) = tracker.try_trigger(AhaMomentType::FirstOutboundDelivered)
+    {
+        display::display_aha_moment(&moment);
     }
     save_aha_tracker(config, &tracker);
 

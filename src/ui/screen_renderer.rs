@@ -8,7 +8,7 @@
 
 use std::fmt::Write as _;
 
-use console::{style, Style};
+use console::{Style, style};
 use vauchi_core::ui::{
     ActionStyle, Component, FieldDisplay, GroupCardView, InfoItem, ScreenAction, ScreenModel,
     TextStyle, ToggleItem, UiFieldVisibility, VisibilityMode,
@@ -292,12 +292,12 @@ fn render_card_preview_to(
     selected_group: Option<&str>,
 ) {
     // Show the view matching the selected group, or the default card
-    if let Some(group_name) = selected_group {
-        if let Some(view) = group_views.iter().find(|v| v.group_name == group_name) {
-            render_card_box_to(out, &view.display_name, &view.visible_fields);
-            render_group_tabs_to(out, group_views, Some(group_name));
-            return;
-        }
+    if let Some(group_name) = selected_group
+        && let Some(view) = group_views.iter().find(|v| v.group_name == group_name)
+    {
+        render_card_box_to(out, &view.display_name, &view.visible_fields);
+        render_group_tabs_to(out, group_views, Some(group_name));
+        return;
     }
 
     // Default: show full card

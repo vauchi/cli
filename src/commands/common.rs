@@ -4,7 +4,7 @@
 
 //! Shared helpers for CLI commands.
 
-use anyhow::{bail, Result};
+use anyhow::{Result, bail};
 use vauchi_core::{AuthMode, Vauchi, VauchiConfig};
 
 use crate::config::CliConfig;

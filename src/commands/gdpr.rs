@@ -9,17 +9,17 @@
 use std::fs;
 use std::path::Path;
 
-use anyhow::{bail, Result};
+use anyhow::{Result, bail};
 use aws_lc_rs::rand::{SecureRandom, SystemRandom};
 use dialoguer::Input;
 use vauchi_core::api::{
-    export_all_data, ConsentManager, ConsentType, DeletionManager, ShredManager, ShredReport,
-    ShredToken, ShredVerification,
+    ConsentManager, ConsentType, DeletionManager, ShredManager, ShredReport, ShredToken,
+    ShredVerification, export_all_data,
 };
 use vauchi_core::crypto::derive_key_argon2id;
 use vauchi_core::network::{RelayClient, RelayClientConfig, TransportConfig, WebSocketTransport};
-use vauchi_core::storage::secure::SecureStorage;
 use vauchi_core::storage::DeletionState;
+use vauchi_core::storage::secure::SecureStorage;
 
 use crate::commands::common::open_vauchi;
 use crate::config::CliConfig;

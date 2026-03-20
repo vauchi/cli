@@ -6,7 +6,7 @@
 //!
 //! Manage your contact card.
 
-use anyhow::{bail, Result};
+use anyhow::{Result, bail};
 use vauchi_core::{ContactField, FieldType};
 
 use crate::commands::common::open_vauchi;

@@ -2,7 +2,7 @@
 //
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-use anyhow::{bail, Result};
+use anyhow::{Result, bail};
 
 use super::find_contact;
 use crate::commands::common::open_vauchi;
@@ -171,7 +171,9 @@ pub fn duplicates(config: &CliConfig) -> Result<()> {
 
     println!();
     display::info("Use 'vauchi contacts merge <contact1> <contact2>' to merge a pair.");
-    display::info("Use 'vauchi contacts dismiss-duplicate <contact1> <contact2>' to dismiss a false positive.");
+    display::info(
+        "Use 'vauchi contacts dismiss-duplicate <contact1> <contact2>' to dismiss a false positive.",
+    );
     println!();
 
     Ok(())

@@ -8,8 +8,8 @@
 
 use std::fs;
 
-use anyhow::{bail, Result};
-use base64::{engine::general_purpose::STANDARD as BASE64, Engine as _};
+use anyhow::{Result, bail};
+use base64::{Engine as _, engine::general_purpose::STANDARD as BASE64};
 use dialoguer::{Confirm, Input};
 use vauchi_core::recovery::{
     RecoveryClaim, RecoveryProof, RecoverySettings, RecoveryVoucher, VerificationResult,
@@ -472,19 +472,18 @@ pub fn settings_show(config: &CliConfig) -> Result<()> {
     );
 
     // Show trusted contacts count if initialized
-    if config.is_initialized() {
-        if let Ok(wb) = open_vauchi(config) {
-            if let Ok(readiness) = wb.get_recovery_readiness() {
-                println!();
-                println!("  Trusted Contacts:       {}", readiness.trusted_count);
+    if config.is_initialized()
+        && let Ok(wb) = open_vauchi(config)
+        && let Ok(readiness) = wb.get_recovery_readiness()
+    {
+        println!();
+        println!("  Trusted Contacts:       {}", readiness.trusted_count);
 
-                if !readiness.is_ready {
-                    display::warning(&format!(
-                        "You have fewer trusted contacts ({}) than the recovery threshold ({}).",
-                        readiness.trusted_count, readiness.threshold
-                    ));
-                }
-            }
+        if !readiness.is_ready {
+            display::warning(&format!(
+                "You have fewer trusted contacts ({}) than the recovery threshold ({}).",
+                readiness.trusted_count, readiness.threshold
+            ));
         }
     }
 

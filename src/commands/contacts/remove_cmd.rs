@@ -25,10 +25,10 @@ pub fn remove(config: &CliConfig, id: &str) -> Result<()> {
         ));
 
         // Record for inter-device sync
-        if let Some(cid) = contact_id {
-            if let Err(e) = record_contact_removed(&wb, &cid) {
-                display::warning(&format!("Failed to record for device sync: {}", e));
-            }
+        if let Some(cid) = contact_id
+            && let Err(e) = record_contact_removed(&wb, &cid)
+        {
+            display::warning(&format!("Failed to record for device sync: {}", e));
         }
     } else {
         display::warning(&format!("Contact '{}' not found", id));

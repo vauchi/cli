@@ -2,7 +2,7 @@
 //
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-use anyhow::{bail, Result};
+use anyhow::{Result, bail};
 
 use crate::commands::common::open_vauchi;
 use crate::config::CliConfig;

@@ -6,7 +6,7 @@
 //!
 //! Configure and manage Tor connectivity for enhanced privacy.
 
-use anyhow::{bail, Result};
+use anyhow::{Result, bail};
 use vauchi_core::Storage;
 
 use crate::config::CliConfig;

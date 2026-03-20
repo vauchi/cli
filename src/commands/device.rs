@@ -8,11 +8,11 @@
 
 use std::fs;
 
-use anyhow::{bail, Result};
-use base64::{engine::general_purpose::STANDARD as BASE64, Engine as _};
+use anyhow::{Result, bail};
+use base64::{Engine as _, engine::general_purpose::STANDARD as BASE64};
 use dialoguer::{Confirm, Input};
 use vauchi_core::exchange::{
-    compute_confirmation_mac, DeviceLinkQR, DeviceLinkResponder, DeviceLinkResponse, ProximityProof,
+    DeviceLinkQR, DeviceLinkResponder, DeviceLinkResponse, ProximityProof, compute_confirmation_mac,
 };
 use vauchi_core::sync::{DeviceSyncOrchestrator, DeviceSyncPayload};
 use vauchi_core::{Identity, Vauchi, VauchiConfig};
@@ -44,36 +44,39 @@ pub fn list(config: &CliConfig) -> Result<()> {
     println!();
 
     // Try to load device registry from storage
-    if let Ok(Some(registry)) = wb.storage().load_device_registry() {
-        println!("Linked Devices:");
-        println!("{}", "─".repeat(50));
+    match wb.storage().load_device_registry() {
+        Ok(Some(registry)) => {
+            println!("Linked Devices:");
+            println!("{}", "─".repeat(50));
 
-        for (i, device) in registry.all_devices().iter().enumerate() {
-            let status = if device.is_active() {
-                console::style("active").green()
-            } else {
-                console::style("revoked").red()
-            };
+            for (i, device) in registry.all_devices().iter().enumerate() {
+                let status = if device.is_active() {
+                    console::style("active").green()
+                } else {
+                    console::style("revoked").red()
+                };
 
-            let current = if device.device_id == *device_info.device_id() {
-                " (this device)"
-            } else {
-                ""
-            };
+                let current = if device.device_id == *device_info.device_id() {
+                    " (this device)"
+                } else {
+                    ""
+                };
 
-            println!(
-                "  {}. {} [{}]{}",
-                i + 1,
-                device.device_name,
-                status,
-                current
-            );
-            println!("     ID: {}...", hex::encode(&device.device_id[..8]));
+                println!(
+                    "  {}. {} [{}]{}",
+                    i + 1,
+                    device.device_name,
+                    status,
+                    current
+                );
+                println!("     ID: {}...", hex::encode(&device.device_id[..8]));
+            }
+            println!("{}", "─".repeat(50));
+            println!("Total: {} device(s)", registry.device_count());
         }
-        println!("{}", "─".repeat(50));
-        println!("Total: {} device(s)", registry.device_count());
-    } else {
-        display::info("No device registry found. This is the only device.");
+        _ => {
+            display::info("No device registry found. This is the only device.");
+        }
     }
 
     Ok(())
@@ -350,26 +353,26 @@ pub fn finish(config: &CliConfig, response_data: &str) -> Result<()> {
     let _ = fs::remove_file(&device_name_path);
 
     // Apply sync payload if present
-    if !response.sync_payload_json().is_empty() {
-        if let Ok(payload) = DeviceSyncPayload::from_json(response.sync_payload_json()) {
-            let contact_count = payload.contact_count();
+    if !response.sync_payload_json().is_empty()
+        && let Ok(payload) = DeviceSyncPayload::from_json(response.sync_payload_json())
+    {
+        let contact_count = payload.contact_count();
 
-            // Create orchestrator to apply the sync payload
-            let mut orchestrator = DeviceSyncOrchestrator::new(
-                wb.storage(),
-                identity.create_device_info(),
-                response.registry().clone(),
-            );
+        // Create orchestrator to apply the sync payload
+        let mut orchestrator = DeviceSyncOrchestrator::new(
+            wb.storage(),
+            identity.create_device_info(),
+            response.registry().clone(),
+        );
 
-            // Apply the sync payload to save contacts to storage
-            if let Err(e) = orchestrator.apply_full_sync(payload) {
-                display::warning(&format!("Failed to sync contacts: {}", e));
-            } else if contact_count > 0 {
-                display::success(&format!(
-                    "Synced {} contacts from existing device.",
-                    contact_count
-                ));
-            }
+        // Apply the sync payload to save contacts to storage
+        if let Err(e) = orchestrator.apply_full_sync(payload) {
+            display::warning(&format!("Failed to sync contacts: {}", e));
+        } else if contact_count > 0 {
+            display::success(&format!(
+                "Synced {} contacts from existing device.",
+                contact_count
+            ));
         }
     }
 

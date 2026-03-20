@@ -277,7 +277,7 @@ fn contract_consent_api_shape() {
 
 #[test]
 fn contract_find_duplicates_returns_pairs() {
-    use vauchi_core::contact::merge::{find_duplicates, DuplicatePair};
+    use vauchi_core::contact::merge::{DuplicatePair, find_duplicates};
     use vauchi_core::crypto::SymmetricKey;
 
     // Create contacts with similar names
@@ -365,7 +365,7 @@ fn contract_merge_contacts_adds_unique_fields() {
 
 #[test]
 fn contract_filter_dismissed_excludes_dismissed_pairs() {
-    use vauchi_core::contact::merge::{filter_dismissed, normalize_pair_key, DuplicatePair};
+    use vauchi_core::contact::merge::{DuplicatePair, filter_dismissed, normalize_pair_key};
 
     let pairs = vec![
         DuplicatePair {

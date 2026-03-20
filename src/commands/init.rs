@@ -8,7 +8,7 @@
 
 use std::fs;
 
-use anyhow::{bail, Result};
+use anyhow::{Result, bail};
 use vauchi_core::{Vauchi, VauchiConfig};
 
 use crate::config::CliConfig;
@@ -18,7 +18,10 @@ use crate::display;
 pub fn run(name: &str, force: bool, config: &CliConfig) -> Result<()> {
     // Check if already initialized
     if config.is_initialized() && !force {
-        bail!("Vauchi is already initialized in {:?}. Use --force to overwrite or --data-dir for a different location.", config.data_dir);
+        bail!(
+            "Vauchi is already initialized in {:?}. Use --force to overwrite or --data-dir for a different location.",
+            config.data_dir
+        );
     }
 
     // Create data directory

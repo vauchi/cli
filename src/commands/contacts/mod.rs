@@ -38,9 +38,9 @@ pub use validation_cmd::{revoke_validation, validate_field};
 pub use verify_cmd::verify;
 pub use visibility_cmd::{hide_field, unhide_field};
 
-use anyhow::{bail, Result};
-use vauchi_core::contact_card::ContactAction;
+use anyhow::{Result, bail};
 use vauchi_core::Vauchi;
+use vauchi_core::contact_card::ContactAction;
 
 /// Helper to find contact by ID or name
 fn find_contact(wb: &Vauchi, id_or_name: &str) -> Result<vauchi_core::Contact> {

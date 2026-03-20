@@ -9,8 +9,8 @@
 //! across the user's own devices.
 
 use anyhow::Result;
-use vauchi_core::sync::{DeviceSyncOrchestrator, SyncItem};
 use vauchi_core::Vauchi;
+use vauchi_core::sync::{DeviceSyncOrchestrator, SyncItem};
 
 /// Gets the current Unix timestamp.
 fn current_timestamp() -> u64 {
