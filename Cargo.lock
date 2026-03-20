@@ -803,7 +803,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "39cab71617ae0d63f51a36d69f866391735b51691dbda63cf6f96d042b63efeb"
 dependencies = [
  "libc",
- "windows-sys 0.61.2",
+ "windows-sys 0.59.0",
 ]
 
 [[package]]
@@ -2021,7 +2021,7 @@ dependencies = [
  "errno",
  "libc",
  "linux-raw-sys",
- "windows-sys 0.61.2",
+ "windows-sys 0.59.0",
 ]
 
 [[package]]
@@ -2380,7 +2380,7 @@ dependencies = [
  "getrandom 0.4.2",
  "once_cell",
  "rustix",
- "windows-sys 0.61.2",
+ "windows-sys 0.59.0",
 ]
 
 [[package]]
@@ -2650,20 +2650,18 @@ dependencies = [
  "open",
  "proptest",
  "qrcode",
- "serde",
  "serde_json",
  "tabled",
  "tempfile",
  "tokio",
  "tokio-tungstenite",
- "url",
- "uuid",
  "vauchi-core",
 ]
 
 [[package]]
 name = "vauchi-core"
 version = "0.7.2"
+source = "git+https://gitlab.com/vauchi/core.git?branch=main#0640b8f2c0f84f9d2739a037f6fb8b2fd6aa2afe"
 dependencies = [
  "argon2",
  "async-trait",
