@@ -10,8 +10,8 @@
 // Re-export core protocol types with CLI-friendly names.
 pub use vauchi_core::network::simple_message::{
     LegacyExchangeMessage as ExchangeMessage, SimpleAckStatus as AckStatus,
-    SimpleDeviceSyncMessage as DeviceSyncMessage, SimpleEncryptedUpdate as EncryptedUpdate,
-    SimplePayload as MessagePayload, create_device_sync_ack, create_signed_handshake,
-    create_simple_ack as create_ack, create_simple_envelope as create_envelope,
-    decode_simple_message as decode_message, encode_simple_message as encode_message,
+    SimpleEncryptedUpdate as EncryptedUpdate, SimplePayload as MessagePayload,
+    create_signed_handshake, create_simple_ack as create_ack,
+    create_simple_envelope as create_envelope, decode_simple_message as decode_message,
+    encode_simple_message as encode_message,
 };
