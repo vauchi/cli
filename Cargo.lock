@@ -3054,7 +3054,7 @@ dependencies = [
 [[package]]
 name = "vauchi-app"
 version = "0.9.0"
-source = "git+https://gitlab.com/vauchi/core.git?branch=main#81c6d3909b267d768e8fea1e275be434d799fe81"
+source = "git+https://gitlab.com/vauchi/core.git?branch=main#332d3e266b15b8ef920ce158b358aa66ee5d3e3e"
 dependencies = [
  "hex",
  "reqwest",
@@ -3099,7 +3099,7 @@ dependencies = [
 [[package]]
 name = "vauchi-core"
 version = "0.9.0"
-source = "git+https://gitlab.com/vauchi/core.git?branch=main#81c6d3909b267d768e8fea1e275be434d799fe81"
+source = "git+https://gitlab.com/vauchi/core.git?branch=main#332d3e266b15b8ef920ce158b358aa66ee5d3e3e"
 dependencies = [
  "argon2",
  "async-trait",
