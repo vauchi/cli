@@ -22,4 +22,3 @@ pub mod onboarding;
 pub mod recovery;
 pub mod support;
 pub mod sync;
-pub mod tor;

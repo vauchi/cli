@@ -307,19 +307,6 @@ pub(crate) async fn run(
                 commands::gdpr::revoke_consent(config, &consent_type)?;
             }
         },
-        Commands::Tor(cmd) => match cmd {
-            TorCommands::Enable => commands::tor::enable(config)?,
-            TorCommands::Disable => commands::tor::disable(config)?,
-            TorCommands::Status => commands::tor::status(config)?,
-            TorCommands::NewCircuit => commands::tor::new_circuit(config)?,
-            TorCommands::Bridges(bridges_cmd) => match bridges_cmd {
-                TorBridgesCommands::Add { addr } => {
-                    commands::tor::bridges_add(config, &addr)?;
-                }
-                TorBridgesCommands::List => commands::tor::bridges_list(config)?,
-                TorBridgesCommands::Clear => commands::tor::bridges_clear(config)?,
-            },
-        },
         Commands::Duress(cmd) => match cmd {
             DuressCommands::Setup => commands::duress::setup(config)?,
             DuressCommands::Status => commands::duress::status(config)?,

@@ -107,10 +107,6 @@ pub(crate) enum Commands {
     #[command(subcommand)]
     Gdpr(GdprCommands),
 
-    /// Tor privacy mode configuration
-    #[command(subcommand)]
-    Tor(TorCommands),
-
     /// Duress PIN for plausible deniability
     #[command(subcommand)]
     Duress(DuressCommands),
@@ -211,40 +207,6 @@ pub(crate) enum FaqCommands {
         /// FAQ ID (e.g., faq-phone-lost)
         id: String,
     },
-}
-
-#[derive(Subcommand)]
-pub(crate) enum TorCommands {
-    /// Enable Tor mode
-    Enable,
-
-    /// Disable Tor mode
-    Disable,
-
-    /// Show Tor status
-    Status,
-
-    /// Request a new Tor circuit
-    NewCircuit,
-
-    /// Manage bridge addresses
-    #[command(subcommand)]
-    Bridges(TorBridgesCommands),
-}
-
-#[derive(Subcommand)]
-pub(crate) enum TorBridgesCommands {
-    /// Add a bridge address
-    Add {
-        /// Bridge address (e.g., "obfs4 192.168.1.1:443")
-        addr: String,
-    },
-
-    /// List configured bridges
-    List,
-
-    /// Clear all bridges
-    Clear,
 }
 
 #[derive(Subcommand)]
