@@ -78,6 +78,13 @@ tempfile = "3"
 proptest = "1"
 insta = "1.41"
 
+# Release profile: smaller + safer binaries (matches core)
+[profile.release]
+lto = true
+strip = true
+panic = "abort"
+overflow-checks = true
+
 # Development profile: fast builds, backtraces work (matches core)
 [profile.dev]
 debug = "line-tables-only"
