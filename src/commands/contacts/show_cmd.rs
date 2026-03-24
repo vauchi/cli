@@ -92,7 +92,7 @@ pub fn show_visibility(config: &CliConfig, contact_id_or_name: &str) -> Result<(
 
 /// Shows validation status for all of a contact's fields.
 pub fn show_validation_status(config: &CliConfig, contact_id_or_name: &str) -> Result<()> {
-    use vauchi_core::social::TrustLevel;
+    use vauchi_core::social::ValidationConfidence;
 
     let wb = open_vauchi(config)?;
 
@@ -115,10 +115,10 @@ pub fn show_validation_status(config: &CliConfig, contact_id_or_name: &str) -> R
         let status = wb.get_field_validation_status(&contact_id, field.id(), field.value())?;
 
         let trust_indicator = match status.trust_level {
-            TrustLevel::Unverified => "○",
-            TrustLevel::LowConfidence => "◐",
-            TrustLevel::PartialConfidence => "◑",
-            TrustLevel::HighConfidence => "●",
+            ValidationConfidence::Unverified => "○",
+            ValidationConfidence::LowConfidence => "◐",
+            ValidationConfidence::PartialConfidence => "◑",
+            ValidationConfidence::HighConfidence => "●",
         };
 
         let validated_by_me = if status.validated_by_me { " (you)" } else { "" };
