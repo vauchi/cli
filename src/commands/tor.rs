@@ -4,7 +4,11 @@
 
 //! Tor Privacy Mode Commands
 //!
-//! Configure and manage Tor connectivity for enhanced privacy.
+//! Configure and manage Tor preferences.
+//!
+//! **WARNING**: Tor is NOT wired to the sync path. These commands save
+//! preferences to storage but do NOT route traffic through Tor.
+//! See problem record `2026-03-24-tor-ip-hiding-strategy`.
 
 use anyhow::{Result, bail};
 use vauchi_core::Storage;
@@ -35,7 +39,10 @@ pub fn enable(config: &CliConfig) -> Result<()> {
     tor_config.enabled = true;
     storage.save_tor_config(&tor_config)?;
 
-    display::success("Tor mode enabled");
+    display::success("Tor preference saved (enabled)");
+    display::warning(
+        "Note: Tor is not yet wired to connections — traffic still uses direct WebSocket",
+    );
     if tor_config.prefer_onion {
         display::info(".onion addresses will be preferred when available");
     }
@@ -56,7 +63,7 @@ pub fn disable(config: &CliConfig) -> Result<()> {
     tor_config.enabled = false;
     storage.save_tor_config(&tor_config)?;
 
-    display::success("Tor mode disabled");
+    display::success("Tor preference saved (disabled)");
     Ok(())
 }
 
@@ -67,9 +74,9 @@ pub fn status(config: &CliConfig) -> Result<()> {
 
     println!();
     println!(
-        "  Tor Mode:          {}",
+        "  Tor Preference:    {}",
         if tor_config.enabled {
-            "ENABLED"
+            "ENABLED (preference only — not wired to connections)"
         } else {
             "DISABLED"
         }
@@ -87,6 +94,11 @@ pub fn status(config: &CliConfig) -> Result<()> {
             "none".to_string()
         }
     );
+    if tor_config.enabled {
+        println!();
+        display::warning("Tor transport is not yet wired to the sync path.");
+        display::warning("Traffic currently uses direct WebSocket connections.");
+    }
     println!();
 
     Ok(())
@@ -103,11 +115,10 @@ pub fn new_circuit(config: &CliConfig) -> Result<()> {
         return Ok(());
     }
 
-    // Circuit rotation is handled by the runtime (arti).
-    // This CLI command is a placeholder that will trigger rotation
-    // when the Tor feature is compiled in.
-    display::info("Circuit rotation requested");
-    display::info("A new circuit will be used for the next connection");
+    // Tor transport is not wired to the sync path.
+    // Circuit rotation has no effect until Tor is integrated.
+    display::warning("Tor transport is not yet wired to connections");
+    display::info("Circuit rotation preference saved, but has no effect currently");
     Ok(())
 }
 
