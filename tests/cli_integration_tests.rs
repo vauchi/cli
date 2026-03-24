@@ -1202,12 +1202,6 @@ mod not_initialized_guard {
     }
 
     #[test]
-    fn test_tor_requires_init() {
-        let ctx = CliTestContext::new();
-        assert_not_initialized(&ctx, &["tor", "status"]);
-    }
-
-    #[test]
     fn test_duress_requires_init() {
         let ctx = CliTestContext::new();
         assert_not_initialized(&ctx, &["duress", "status"]);
