@@ -177,6 +177,9 @@ fn render_component_to(out: &mut String, component: &Component) {
         Component::EditableText { label, value, .. } => {
             writeln!(out, "  {}: {}", style(label).bold(), value).unwrap();
         }
+        Component::Banner { text, .. } => {
+            writeln!(out, "  {}", style(text).bold().yellow()).unwrap();
+        }
     }
 }
 
