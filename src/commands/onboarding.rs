@@ -9,7 +9,7 @@
 
 use anyhow::Result;
 
-use vauchi_core::ui::{ActionResult, OnboardingEngine, WorkflowEngine};
+use vauchi_app::ui::{ActionResult, OnboardingEngine, WorkflowEngine};
 
 use crate::display;
 use crate::ui::action_handler;

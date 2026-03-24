@@ -6,8 +6,8 @@
 //!
 //! Provides convenient string lookup using vauchi-core i18n.
 
-use vauchi_core::i18n::{
-    get_available_locales, get_locale_info, get_string, get_string_with_args, Locale, LocaleInfo,
+use vauchi_app::i18n::{
+    Locale, LocaleInfo, get_available_locales, get_locale_info, get_string, get_string_with_args,
 };
 
 /// Current locale state for the CLI.
@@ -67,6 +67,7 @@ impl I18n {
     }
 }
 
+// INLINE_TEST_REQUIRED: tests access private I18n struct fields and Default impl
 #[cfg(test)]
 mod tests {
     use super::*;

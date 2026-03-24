@@ -9,7 +9,7 @@
 use std::fmt::Write as _;
 
 use console::{Style, style};
-use vauchi_core::ui::{
+use vauchi_app::ui::{
     ActionStyle, Component, FieldDisplay, GroupCardView, InfoItem, ScreenAction, ScreenModel,
     TextStyle, ToggleItem, UiFieldVisibility, VisibilityMode,
 };
@@ -411,7 +411,7 @@ fn render_actions(actions: &[ScreenAction]) {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use vauchi_core::ui::Progress;
+    use vauchi_app::ui::Progress;
 
     #[test]
     fn render_does_not_panic_on_minimal_screen() {
@@ -451,7 +451,7 @@ mod tests {
                     placeholder: Some("Enter name".into()),
                     max_length: Some(50),
                     validation_error: None,
-                    input_type: vauchi_core::ui::InputType::Text,
+                    input_type: vauchi_app::ui::InputType::Text,
                 },
                 Component::ToggleList {
                     id: "tl".into(),

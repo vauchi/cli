@@ -8,7 +8,7 @@
 
 use std::io::{self, BufRead, Write};
 
-use vauchi_core::ui::{Component, ScreenAction, ScreenModel, UserAction};
+use vauchi_app::ui::{Component, ScreenAction, ScreenModel, UserAction};
 
 /// Prompts the user based on the current screen and returns the resulting action.
 ///
@@ -192,7 +192,7 @@ pub fn resolve_toggle_item_id(action: UserAction, screen: &ScreenModel) -> UserA
 #[cfg(test)]
 mod tests {
     use super::*;
-    use vauchi_core::ui::ToggleItem;
+    use vauchi_app::ui::ToggleItem;
 
     #[test]
     fn resolve_toggle_item_id_replaces_placeholder() {

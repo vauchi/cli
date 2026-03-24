@@ -296,8 +296,8 @@ pub fn display_contacts_table(contacts: &[Contact]) {
 // FAQ Display Functions
 // ============================================================
 
-use vauchi_core::help::{HelpCategory, get_faqs, get_faqs_by_category, search_faqs};
-use vauchi_core::i18n::{Locale, get_string};
+use vauchi_app::help::{HelpCategory, get_faqs, get_faqs_by_category, search_faqs};
+use vauchi_app::i18n::{Locale, get_string};
 
 /// Parse locale code to Locale enum
 fn parse_locale(code: &str) -> Locale {
@@ -423,7 +423,7 @@ pub fn display_faqs_by_category(category_name: &str, locale: &str) {
 
 /// Displays a specific FAQ by ID.
 pub fn display_faq_by_id(id: &str, locale: &str) {
-    use vauchi_core::help::get_faq_by_id;
+    use vauchi_app::help::get_faq_by_id;
 
     match get_faq_by_id(id) {
         Some(faq) => {
