@@ -36,6 +36,7 @@ include:
       - '/ci-templates/freshness.yml'
       - '/ci-templates/perf.yml'
       - '/ci-templates/design-drift.yml'
+      - '/ci-templates/removed-symbols.yml'
       - '/ci-templates/badges.yml'
 
 stages:
@@ -151,6 +152,10 @@ check:design-drift:
   variables:
     DESIGN_DRIFT_MATCH_MODE: "grep"
     DESIGN_DRIFT_GREP_FILE: "src/ui/screen_renderer.rs"
+
+# Removed symbols: detect stale references to removed features
+check:removed-symbols:
+  extends: .removed-symbols-job
 
 # ============================================================
 # Dev Tag Pipeline (lightweight — lint + test only)
