@@ -61,7 +61,7 @@ hex = "0.4"
 aws-lc-rs = "1.16"
 
 # Base64 encoding
-base64 = "0.21"
+base64 = "0.22"
 
 # Open URLs in system browser/app
 open = "5"
