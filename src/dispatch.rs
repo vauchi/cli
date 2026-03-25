@@ -141,6 +141,9 @@ pub(crate) async fn run(
             ContactCommands::Export { id, output } => {
                 commands::contacts::export(config, &id, output.to_str().unwrap())?;
             }
+            ContactCommands::ImportVcf { file } => {
+                commands::contacts::import_vcf(config, &file)?;
+            }
             ContactCommands::AddNote { id, note } => {
                 commands::contacts::add_note(config, &id, &note)?;
             }

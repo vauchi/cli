@@ -462,6 +462,15 @@ pub(crate) enum ContactCommands {
         output: PathBuf,
     },
 
+    /// Import contacts from a vCard file (.vcf)
+    ///
+    /// Supports vCard 2.1, 3.0, and 4.0. Multi-contact files are handled.
+    /// Malformed contacts are skipped with a warning.
+    ImportVcf {
+        /// Path to the .vcf file to import
+        file: PathBuf,
+    },
+
     /// Add a personal note to a contact
     AddNote {
         /// Contact ID or name
