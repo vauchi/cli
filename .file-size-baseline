@@ -2,14 +2,14 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-# Generated 2026-03-15. Updated 2026-03-16 with exemptions from PRB-2026-032.
+# Generated 2026-03-15. Updated 2026-03-25 after completed splits from PRB-2026-032.
 # Files must not grow beyond baseline. EXEMPT/SPLIT per PRB-2026-032.
 
-# SPLIT — Phase 1: per-subcommand files
-src/commands/contacts.rs 1308
+# COMPLETED — Phase 1 split into src/commands/contacts/{mod,*_cmd}.rs
+# src/commands/contacts.rs — deleted (was 1308 lines)
 
-# SPLIT — Phase 4: extract arg parsing
-src/main.rs 1144
+# COMPLETED — Phase 4 split into src/args.rs + src/dispatch.rs
+# src/main.rs — reduced from 1144 to 42 lines
 
-# EXEMPT — already 22 internal mod blocks, structurally well-organized
+# EXEMPT — 22 internal mod blocks, structurally well-organized
 tests/cli_integration_tests.rs 2041
