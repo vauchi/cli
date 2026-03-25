@@ -106,8 +106,8 @@ fn contract_contact_has_required_accessors() {
         let _id: &str = c.id();
         let _name: &str = c.display_name();
         let _card: &ContactCard = c.card();
-        let _pk: &[u8; 32] = c.public_key();
-        let _ts: u64 = c.exchange_timestamp();
+        let _pk: Option<&[u8; 32]> = c.public_key();
+        let _ts: Option<u64> = c.exchange_timestamp();
         let _hidden: bool = c.is_hidden();
         let _blocked: bool = c.is_blocked();
     }

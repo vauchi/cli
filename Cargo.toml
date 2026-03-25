@@ -95,8 +95,3 @@ split-debuginfo = "unpacked"
 debug = "line-tables-only"
 split-debuginfo = "off"
 
-# Local development path overrides — for use during cross-repo feature branches.
-# Remove this section before merging to main (CI uses the git dependency).
-[patch.'https://gitlab.com/vauchi/core.git']
-vauchi-core = { path = "../core/vauchi-core" }
-vauchi-app = { path = "../core/vauchi-app" }
