@@ -56,7 +56,9 @@ pub fn show_visibility(config: &CliConfig, contact_id_or_name: &str) -> Result<(
         return Ok(());
     }
 
-    let rules = contact.visibility_rules();
+    let rules = contact
+        .visibility_rules()
+        .ok_or_else(|| anyhow::anyhow!("Imported contacts have no visibility rules"))?;
     let mut has_custom_rules = false;
 
     for field in card.fields() {

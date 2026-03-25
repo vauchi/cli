@@ -104,9 +104,10 @@ pub fn vouch(config: &CliConfig, claim_data: &str, auto_confirm: bool) -> Result
 
     // Look up old_pk in contacts
     let contacts = wb.storage().list_contacts()?;
-    let contact = contacts
-        .iter()
-        .find(|c| hex::encode(c.public_key()) == old_pk_hex);
+    let contact = contacts.iter().find(|c| {
+        c.public_key()
+            .is_some_and(|pk| hex::encode(pk) == old_pk_hex)
+    });
 
     println!();
     println!("{}", "─".repeat(60));
@@ -363,9 +364,10 @@ pub fn verify(config: &CliConfig, proof_data: &str) -> Result<()> {
     let contacts = wb.storage().list_contacts()?;
 
     // Check if old_pk matches a contact
-    let contact = contacts
-        .iter()
-        .find(|c| hex::encode(c.public_key()) == old_pk_hex);
+    let contact = contacts.iter().find(|c| {
+        c.public_key()
+            .is_some_and(|pk| hex::encode(pk) == old_pk_hex)
+    });
 
     // Verify against our contacts
     let settings = RecoverySettings::default();

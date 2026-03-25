@@ -23,7 +23,10 @@ pub fn hide_field(config: &CliConfig, contact_id_or_name: &str, field_label: &st
     let field_id = find_field_id(&wb, field_label)?;
 
     // Set visibility to nobody for this field
-    contact.visibility_rules_mut().set_nobody(&field_id);
+    contact
+        .visibility_rules_mut()
+        .ok_or_else(|| anyhow::anyhow!("Imported contacts have no visibility rules"))?
+        .set_nobody(&field_id);
     wb.update_contact(&contact)?;
 
     display::success(&format!(
@@ -53,7 +56,10 @@ pub fn unhide_field(config: &CliConfig, contact_id_or_name: &str, field_label: &
     let field_id = find_field_id(&wb, field_label)?;
 
     // Set visibility to everyone for this field
-    contact.visibility_rules_mut().set_everyone(&field_id);
+    contact
+        .visibility_rules_mut()
+        .ok_or_else(|| anyhow::anyhow!("Imported contacts have no visibility rules"))?
+        .set_everyone(&field_id);
     wb.update_contact(&contact)?;
 
     display::success(&format!(

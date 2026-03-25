@@ -33,7 +33,7 @@ pub fn trust(config: &CliConfig, id: &str) -> Result<()> {
         return Ok(());
     }
 
-    contact.trust_for_recovery();
+    contact.trust_for_recovery()?;
     wb.update_contact(&contact)?;
     display::success(&format!("Marked {} as trusted for recovery", name));
 
@@ -60,7 +60,7 @@ pub fn untrust(config: &CliConfig, id: &str) -> Result<()> {
         return Ok(());
     }
 
-    contact.untrust_for_recovery();
+    contact.untrust_for_recovery()?;
     wb.update_contact(&contact)?;
     display::success(&format!("Removed recovery trust from {}", name));
 

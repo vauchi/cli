@@ -21,7 +21,10 @@ pub fn add_note(config: &CliConfig, id_or_name: &str, note_text: &str) -> Result
     let contact_name = contact.display_name().to_string();
 
     // Encrypt note with contact's shared key
-    let encrypted = encrypt(contact.shared_key(), note_text.as_bytes())?;
+    let shared_key = contact
+        .shared_key()
+        .ok_or_else(|| anyhow::anyhow!("Contact has no shared key (imported contact?)"))?;
+    let encrypted = encrypt(shared_key, note_text.as_bytes())?;
 
     // Save to storage
     wb.save_personal_notes(&contact_id, &encrypted)?;
@@ -47,7 +50,10 @@ pub fn show_note(config: &CliConfig, id_or_name: &str) -> Result<()> {
 
     match encrypted_opt {
         Some(encrypted) => {
-            let decrypted = decrypt(contact.shared_key(), &encrypted)?;
+            let shared_key = contact
+                .shared_key()
+                .ok_or_else(|| anyhow::anyhow!("Contact has no shared key (imported contact?)"))?;
+            let decrypted = decrypt(shared_key, &encrypted)?;
             let note_text = String::from_utf8(decrypted)?;
 
             println!();
@@ -75,7 +81,10 @@ pub fn edit_note(config: &CliConfig, id_or_name: &str, note_text: &str) -> Resul
     let contact_name = contact.display_name().to_string();
 
     // Encrypt new note with contact's shared key
-    let encrypted = encrypt(contact.shared_key(), note_text.as_bytes())?;
+    let shared_key = contact
+        .shared_key()
+        .ok_or_else(|| anyhow::anyhow!("Contact has no shared key (imported contact?)"))?;
+    let encrypted = encrypt(shared_key, note_text.as_bytes())?;
 
     // Save to storage (overwrites existing)
     wb.save_personal_notes(&contact_id, &encrypted)?;

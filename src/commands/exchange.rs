@@ -82,7 +82,12 @@ async fn send_initial_card_update(
     // Create a delta from empty card to our current card
     let empty_card = ContactCard::new(identity.display_name());
     let mut delta = CardDelta::compute(&empty_card, &our_card);
-    delta.sign(identity, contact.public_key());
+    delta.sign(
+        identity,
+        contact
+            .public_key()
+            .expect("exchanged contact has public key"),
+    );
 
     // Serialize delta
     let delta_bytes =
