@@ -191,7 +191,7 @@ async fn receive_pending(
                     MessageType::Unknown => {
                         display::warning("Received unrecognized message type");
                     }
-                    _ => {} // Handshake, AccountRevoked — not expected inbound
+                    _ => {} // Handshake, IdentityRevoked — not expected inbound
                 }
             }
             Message::Ping(data) => {
