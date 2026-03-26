@@ -18,7 +18,7 @@ use vauchi_core::network::{MessageType, classify_message};
 use vauchi_core::sync::{ContactSyncData, DeviceSyncOrchestrator, SyncItem};
 use vauchi_core::{Contact, Identity, Vauchi, VauchiConfig};
 
-use vauchi_core::aha_moments::{AhaMomentTracker, AhaMomentType};
+use vauchi_core::types::{AhaMomentTracker, AhaMomentType};
 
 use crate::config::CliConfig;
 use crate::display;
