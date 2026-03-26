@@ -165,13 +165,6 @@ fn render_component_to(out: &mut String, component: &Component) {
                 writeln!(out, "  [QR Code]").unwrap();
             }
         }
-        Component::ConfirmationDialog { title, message, .. } => {
-            writeln!(out, "  {}", style(title).bold()).unwrap();
-            writeln!(out, "  {}", message).unwrap();
-        }
-        Component::ShowToast { message, .. } => {
-            writeln!(out, "  {}", style(message).green()).unwrap();
-        }
         Component::InlineConfirm { warning, .. } => {
             writeln!(out, "  {}", style(warning).yellow()).unwrap();
         }
@@ -449,8 +442,6 @@ mod tests {
                     id: "t".into(),
                     content: "Hello".into(),
                     style: TextStyle::Body,
-                    accessible_label: None,
-                    accessible_hint: None,
                 },
                 Component::TextInput {
                     id: "ti".into(),
@@ -460,8 +451,6 @@ mod tests {
                     max_length: Some(50),
                     validation_error: None,
                     input_type: vauchi_app::ui::InputType::Text,
-                    accessible_label: None,
-                    accessible_hint: None,
                 },
                 Component::ToggleList {
                     id: "tl".into(),
@@ -472,20 +461,14 @@ mod tests {
                             label: "Family".into(),
                             selected: true,
                             subtitle: None,
-                            accessible_label: None,
-                            accessible_hint: None,
                         },
                         ToggleItem {
                             id: "b".into(),
                             label: "Friends".into(),
                             selected: false,
                             subtitle: Some("close friends".into()),
-                            accessible_label: None,
-                            accessible_hint: None,
                         },
                     ],
-                    accessible_label: None,
-                    accessible_hint: None,
                 },
                 Component::FieldList {
                     id: "fl".into(),
@@ -495,21 +478,15 @@ mod tests {
                         label: "work".into(),
                         value: "a@b.com".into(),
                         visibility: UiFieldVisibility::Shown,
-                        accessible_label: None,
-                        accessible_hint: None,
                     }],
                     visibility_mode: VisibilityMode::ShowHide,
                     available_groups: vec![],
-                    accessible_label: None,
-                    accessible_hint: None,
                 },
                 Component::CardPreview {
                     name: "Alice".into(),
                     fields: vec![],
                     group_views: vec![],
                     selected_group: None,
-                    accessible_label: None,
-                    accessible_hint: None,
                 },
                 Component::InfoPanel {
                     id: "ip".into(),
@@ -519,11 +496,7 @@ mod tests {
                         icon: Some("lock".into()),
                         title: "E2E".into(),
                         detail: "Encrypted".into(),
-                        accessible_label: None,
-                        accessible_hint: None,
                     }],
-                    accessible_label: None,
-                    accessible_hint: None,
                 },
                 Component::Divider,
             ],
@@ -695,8 +668,6 @@ mod tests {
                     label: "mobile".into(),
                     value: "+1234".into(),
                     visibility: UiFieldVisibility::Shown,
-                    accessible_label: None,
-                    accessible_hint: None,
                 }],
                 group_views: vec![GroupCardView {
                     group_name: "Family".into(),
@@ -707,13 +678,9 @@ mod tests {
                         label: "mobile".into(),
                         value: "+1234".into(),
                         visibility: UiFieldVisibility::Shown,
-                        accessible_label: None,
-                        accessible_hint: None,
                     }],
                 }],
                 selected_group: Some("Family".into()),
-                accessible_label: None,
-                accessible_hint: None,
             }],
             actions: vec![],
             progress: None,
