@@ -11,23 +11,13 @@ use crate::display;
 
 /// Adds a personal note to a contact.
 pub fn add_note(config: &CliConfig, id_or_name: &str, note_text: &str) -> Result<()> {
-    use vauchi_core::crypto::encrypt;
-
     let wb = open_vauchi(config)?;
 
-    // Find contact
     let contact = find_contact(&wb, id_or_name)?;
     let contact_id = contact.id().to_string();
     let contact_name = contact.display_name().to_string();
 
-    // Encrypt note with contact's shared key
-    let shared_key = contact
-        .shared_key()
-        .ok_or_else(|| anyhow::anyhow!("Contact has no shared key (imported contact?)"))?;
-    let encrypted = encrypt(shared_key, note_text.as_bytes())?;
-
-    // Save to storage
-    wb.save_personal_notes(&contact_id, &encrypted)?;
+    wb.add_personal_note(&contact_id, note_text)?;
 
     display::success(&format!("Added note to {}", contact_name));
 
@@ -36,26 +26,14 @@ pub fn add_note(config: &CliConfig, id_or_name: &str, note_text: &str) -> Result
 
 /// Shows the personal note for a contact.
 pub fn show_note(config: &CliConfig, id_or_name: &str) -> Result<()> {
-    use vauchi_core::crypto::decrypt;
-
     let wb = open_vauchi(config)?;
 
-    // Find contact
     let contact = find_contact(&wb, id_or_name)?;
     let contact_id = contact.id().to_string();
     let contact_name = contact.display_name().to_string();
 
-    // Load encrypted note
-    let encrypted_opt = wb.load_personal_notes(&contact_id)?;
-
-    match encrypted_opt {
-        Some(encrypted) => {
-            let shared_key = contact
-                .shared_key()
-                .ok_or_else(|| anyhow::anyhow!("Contact has no shared key (imported contact?)"))?;
-            let decrypted = decrypt(shared_key, &encrypted)?;
-            let note_text = String::from_utf8(decrypted)?;
-
+    match wb.read_personal_note(&contact_id)? {
+        Some(note_text) => {
             println!();
             println!("Note for {}:", contact_name);
             println!("{}", note_text);
@@ -71,23 +49,13 @@ pub fn show_note(config: &CliConfig, id_or_name: &str) -> Result<()> {
 
 /// Edits the personal note for a contact.
 pub fn edit_note(config: &CliConfig, id_or_name: &str, note_text: &str) -> Result<()> {
-    use vauchi_core::crypto::encrypt;
-
     let wb = open_vauchi(config)?;
 
-    // Find contact
     let contact = find_contact(&wb, id_or_name)?;
     let contact_id = contact.id().to_string();
     let contact_name = contact.display_name().to_string();
 
-    // Encrypt new note with contact's shared key
-    let shared_key = contact
-        .shared_key()
-        .ok_or_else(|| anyhow::anyhow!("Contact has no shared key (imported contact?)"))?;
-    let encrypted = encrypt(shared_key, note_text.as_bytes())?;
-
-    // Save to storage (overwrites existing)
-    wb.save_personal_notes(&contact_id, &encrypted)?;
+    wb.add_personal_note(&contact_id, note_text)?;
 
     display::success(&format!("Updated note for {}", contact_name));
 
@@ -98,12 +66,10 @@ pub fn edit_note(config: &CliConfig, id_or_name: &str, note_text: &str) -> Resul
 pub fn delete_note(config: &CliConfig, id_or_name: &str) -> Result<()> {
     let wb = open_vauchi(config)?;
 
-    // Find contact
     let contact = find_contact(&wb, id_or_name)?;
     let contact_id = contact.id().to_string();
     let contact_name = contact.display_name().to_string();
 
-    // Delete note from storage
     wb.delete_personal_notes(&contact_id)?;
 
     display::success(&format!("Deleted note for {}", contact_name));
