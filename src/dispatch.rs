@@ -197,7 +197,9 @@ pub(crate) async fn run(
                 device_name,
                 yes,
             } => commands::device::join(config, &qr_data, device_name.as_deref(), yes)?,
-            DeviceCommands::Complete { request } => commands::device::complete(config, &request)?,
+            DeviceCommands::Complete { request, yes } => {
+                commands::device::complete(config, &request, yes)?
+            }
             DeviceCommands::Finish { response } => commands::device::finish(config, &response)?,
             DeviceCommands::Revoke { device_id } => commands::device::revoke(config, &device_id)?,
         },

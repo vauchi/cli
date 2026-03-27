@@ -201,7 +201,7 @@ pub fn join(
 }
 
 /// Completes the device linking on the existing device (processes request, sends response).
-pub fn complete(config: &CliConfig, request_data: &str) -> Result<()> {
+pub fn complete(config: &CliConfig, request_data: &str, auto_confirm: bool) -> Result<()> {
     let wb = open_vauchi(config)?;
 
     let identity = wb
@@ -252,10 +252,15 @@ pub fn complete(config: &CliConfig, request_data: &str) -> Result<()> {
     ));
 
     // Require explicit user confirmation before approving the link
-    let confirmed = Confirm::new()
-        .with_prompt("Does this confirmation code match the other device? Approve link?")
-        .default(false)
-        .interact()?;
+    let confirmed = if auto_confirm {
+        display::info("Auto-confirming device link (--yes)");
+        true
+    } else {
+        Confirm::new()
+            .with_prompt("Does this confirmation code match the other device? Approve link?")
+            .default(false)
+            .interact()?
+    };
 
     if !confirmed {
         anyhow::bail!("Device link cancelled by user");

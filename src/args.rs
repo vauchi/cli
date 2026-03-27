@@ -591,6 +591,10 @@ pub(crate) enum DeviceCommands {
     Complete {
         /// Request data from new device
         request: String,
+
+        /// Skip confirmation prompt (for scripted/E2E use)
+        #[arg(long, short = 'y')]
+        yes: bool,
     },
 
     /// Finish device join (on new device)
