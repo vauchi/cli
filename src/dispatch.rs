@@ -99,15 +99,6 @@ pub(crate) async fn run(
                     commands::contacts::open_interactive(config, &contact)?;
                 }
             }
-            ContactCommands::Validate { contact, field } => {
-                commands::contacts::validate_field(config, &contact, &field)?;
-            }
-            ContactCommands::RevokeValidation { contact, field } => {
-                commands::contacts::revoke_validation(config, &contact, &field)?;
-            }
-            ContactCommands::ValidationStatus { contact } => {
-                commands::contacts::show_validation_status(config, &contact)?;
-            }
             ContactCommands::Trust { id } => {
                 commands::contacts::trust(config, &id)?;
             }

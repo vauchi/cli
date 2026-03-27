@@ -377,28 +377,6 @@ pub(crate) enum ContactCommands {
         field: Option<String>,
     },
 
-    /// Validate a contact's field (social proof)
-    Validate {
-        /// Contact ID or name
-        contact: String,
-        /// Field label to validate
-        field: String,
-    },
-
-    /// Revoke your validation of a contact's field
-    RevokeValidation {
-        /// Contact ID or name
-        contact: String,
-        /// Field label to revoke validation for
-        field: String,
-    },
-
-    /// Show validation status for a contact's fields
-    ValidationStatus {
-        /// Contact ID or name
-        contact: String,
-    },
-
     /// Mark a contact as trusted for recovery
     Trust {
         /// Contact ID or name

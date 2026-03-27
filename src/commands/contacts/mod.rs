@@ -19,7 +19,6 @@ mod open_cmd;
 mod remove_cmd;
 mod show_cmd;
 mod trust_cmd;
-mod validation_cmd;
 mod verify_cmd;
 mod visibility_cmd;
 
@@ -34,9 +33,8 @@ pub use merge_cmd::{dismiss_duplicate, duplicates, merge, undismiss_duplicate};
 pub use notes_cmd::{add_note, delete_note, edit_note, show_note};
 pub use open_cmd::{open_field, open_interactive};
 pub use remove_cmd::remove;
-pub use show_cmd::{show, show_validation_status, show_visibility};
+pub use show_cmd::{show, show_visibility};
 pub use trust_cmd::{trust, untrust};
-pub use validation_cmd::{revoke_validation, validate_field};
 pub use verify_cmd::verify;
 pub use visibility_cmd::{hide_field, unhide_field};
 
