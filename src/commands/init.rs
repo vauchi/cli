@@ -43,6 +43,12 @@ pub fn run(name: &str, force: bool, config: &CliConfig) -> Result<()> {
     let mut wb = Vauchi::new(wb_config)?;
     wb.create_identity(name)?;
 
+    // Initialize demo contact for new users with no contacts
+    if let Err(e) = wb.initialize_demo_contact() {
+        // Non-fatal: demo contact is a nice-to-have, not blocking
+        eprintln!("Note: demo contact setup skipped: {}", e);
+    }
+
     // Save identity to file for persistence
     let identity = wb
         .identity()
