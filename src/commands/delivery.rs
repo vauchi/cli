@@ -151,6 +151,7 @@ fn format_delivery_status(status: &vauchi_core::storage::DeliveryStatus) -> Stri
         vauchi_core::storage::DeliveryStatus::Failed { reason } => {
             format!("failed: {}", reason)
         }
+        _ => "unknown".to_string(),
     }
 }
 

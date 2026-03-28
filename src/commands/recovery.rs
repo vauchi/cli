@@ -428,6 +428,9 @@ pub fn verify(config: &CliConfig, proof_data: &str) -> Result<()> {
             println!();
             display::warning("Only accept if you can verify this person in-person!");
         }
+        _ => {
+            display::info("Unknown verification result.");
+        }
     }
 
     println!();

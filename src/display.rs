@@ -45,6 +45,7 @@ pub fn field_icon(field_type: FieldType) -> &'static str {
         FieldType::Social => "share",
         FieldType::Birthday => "cake",
         FieldType::Custom => "note",
+        _ => "note",
     }
 }
 

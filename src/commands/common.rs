@@ -71,6 +71,7 @@ pub(crate) fn auth_mode_label(mode: AuthMode) -> &'static str {
         AuthMode::Normal => "normal",
         AuthMode::Duress => "duress",
         AuthMode::Unauthenticated => "unauthenticated",
+        _ => "unknown",
     }
 }
 

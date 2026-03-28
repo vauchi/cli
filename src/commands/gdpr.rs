@@ -158,6 +158,9 @@ pub fn deletion_status(config: &CliConfig) -> Result<()> {
         DeletionState::Executed { executed_at } => {
             display::warning(&format!("Identity was destroyed at {}.", executed_at));
         }
+        _ => {
+            display::info("Unknown deletion state.");
+        }
     }
 
     Ok(())
@@ -292,6 +295,7 @@ pub async fn execute_deletion(config: &CliConfig) -> Result<()> {
             bail!("No deletion scheduled. Run 'vauchi gdpr schedule-deletion' first.")
         }
         DeletionState::Executed { .. } => bail!("Identity has already been destroyed."),
+        _ => bail!("Unknown deletion state."),
     };
 
     // Confirmation prompt

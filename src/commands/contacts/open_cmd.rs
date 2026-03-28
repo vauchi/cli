@@ -48,6 +48,7 @@ pub fn open_field(config: &CliConfig, contact_id_or_name: &str, field_label: &st
                         ContactAction::OpenMap(_) => "Opened maps",
                         ContactAction::GetDirections(_) => "Opened directions",
                         ContactAction::CopyToClipboard => "Copied to clipboard",
+                        _ => "Opened",
                     };
                     display::success(action_desc);
                 }

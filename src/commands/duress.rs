@@ -115,6 +115,7 @@ pub fn test(config: &CliConfig, pin: &str) -> Result<()> {
         vauchi_core::AuthMode::Unauthenticated => {
             display::warning(&format!("Authentication result: {label}"))
         }
+        _ => display::info(&format!("Authentication result: {label}")),
     }
 
     Ok(())

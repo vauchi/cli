@@ -73,6 +73,7 @@ pub fn show_visibility(config: &CliConfig, contact_id_or_name: &str) -> Result<(
                     "✗ hidden (restricted)"
                 }
             }
+            _ => "? unknown",
         };
 
         if !matches!(visibility, FieldVisibility::Everyone) {

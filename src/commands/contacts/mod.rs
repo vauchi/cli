@@ -86,6 +86,7 @@ fn action_label(action: &ContactAction) -> String {
         ContactAction::OpenMap(v) => format!("Open in Maps: {}", truncate_value(v, 30)),
         ContactAction::GetDirections(v) => format!("Get Directions to {}", truncate_value(v, 30)),
         ContactAction::CopyToClipboard => "Copy to Clipboard".to_string(),
+        _ => "Unknown Action".to_string(),
     }
 }
 
@@ -123,6 +124,7 @@ fn execute_action(action: &ContactAction) -> Result<()> {
             ))
         }
         ContactAction::CopyToClipboard => None,
+        _ => None,
     };
 
     match uri {
@@ -136,6 +138,7 @@ fn execute_action(action: &ContactAction) -> Result<()> {
                     ContactAction::OpenMap(_) => "Opened maps",
                     ContactAction::GetDirections(_) => "Opened directions",
                     ContactAction::CopyToClipboard => unreachable!(),
+                    _ => "Opened",
                 };
                 display::success(desc);
                 Ok(())
@@ -151,6 +154,7 @@ fn execute_action(action: &ContactAction) -> Result<()> {
                     | ContactAction::OpenMap(v)
                     | ContactAction::GetDirections(v) => v.as_str(),
                     ContactAction::CopyToClipboard => unreachable!(),
+                    _ => "",
                 };
                 println!();
                 println!("  Value: {}", value);

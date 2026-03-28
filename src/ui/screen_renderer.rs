@@ -176,6 +176,9 @@ fn render_component_to(out: &mut String, component: &Component) {
         } => {
             writeln!(out, "  {} [{}]", style(text).cyan(), action_label).unwrap();
         }
+        _ => {
+            // Unknown component variant — skip rendering
+        }
     }
 }
 
@@ -185,6 +188,7 @@ fn render_text_to(out: &mut String, content: &str, text_style: &TextStyle) {
         TextStyle::Subtitle => writeln!(out, "  {}", style(content).italic()),
         TextStyle::Body => writeln!(out, "  {}", content),
         TextStyle::Caption => writeln!(out, "  {}", style(content).dim()),
+        _ => writeln!(out, "  {}", content),
     }
     .unwrap();
     writeln!(out).unwrap();
@@ -253,12 +257,14 @@ fn render_field_list_to(
                     groups.join(", ")
                 }
             }
+            _ => style("unknown").dim().to_string(),
         };
 
         let mode_label = match visibility_mode {
             VisibilityMode::ShowHide => format!(" [{}]", vis),
             VisibilityMode::PerGroup => format!(" -> {}", vis),
             VisibilityMode::ReadOnly => String::new(),
+            _ => String::new(),
         };
 
         writeln!(
@@ -373,6 +379,7 @@ fn render_actions_to(out: &mut String, actions: &[ScreenAction]) {
             ActionStyle::Primary => style(format!("({}) {}", number, label)).green().bold(),
             ActionStyle::Secondary => style(format!("({}) {}", number, label)).dim(),
             ActionStyle::Destructive => style(format!("({}) {}", number, label)).red(),
+            _ => style(format!("({}) {}", number, label)),
         };
 
         if !action.enabled {
