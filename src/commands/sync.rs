@@ -13,7 +13,6 @@ use anyhow::{Result, bail};
 use futures_util::{SinkExt, StreamExt};
 use indicatif::{ProgressBar, ProgressStyle};
 use tokio_tungstenite::tungstenite::Message;
-use vauchi_core::exchange::X3DH;
 use vauchi_core::network::{MessageType, classify_message};
 use vauchi_core::sync::{ContactSyncData, DeviceSyncOrchestrator, SyncItem};
 use vauchi_core::{Contact, Identity, Vauchi, VauchiConfig};
@@ -210,6 +209,9 @@ async fn receive_pending(
 }
 
 /// Processes exchange messages and creates contacts.
+///
+/// Delegates X3DH, contact creation, and ratchet init to core
+/// via `accept_relay_exchange()` (ADR-021: no crypto in frontends).
 fn process_exchange_messages(
     wb: &Vauchi,
     messages: Vec<ExchangeMessage>,
@@ -217,12 +219,6 @@ fn process_exchange_messages(
     let mut added = 0;
     let mut updated = 0;
     let mut response_recipients = Vec::new();
-
-    // Get our identity for X3DH
-    let identity = wb
-        .identity()
-        .ok_or_else(|| anyhow::anyhow!("No identity found"))?;
-    let our_x3dh = identity.x3dh_keypair();
 
     for exchange in messages {
         // Parse the identity public key (signing key)
@@ -245,7 +241,6 @@ fn process_exchange_messages(
 
         // Check if this is a response to our exchange
         if exchange.is_response {
-            // Update existing contact's name
             match wb.get_contact(&public_id)? {
                 Some(mut contact) => {
                     if contact.display_name() != exchange.display_name {
@@ -259,11 +254,6 @@ fn process_exchange_messages(
                             exchange.display_name
                         ));
                         updated += 1;
-                    } else {
-                        display::info(&format!(
-                            "Contact {} already has correct name",
-                            exchange.display_name
-                        ));
                     }
                 }
                 _ => {
@@ -276,7 +266,7 @@ fn process_exchange_messages(
             continue;
         }
 
-        // Parse the ephemeral public key (for X3DH)
+        // Parse the ephemeral public key
         let ephemeral_key = match hex::decode(&exchange.ephemeral_public_key) {
             Ok(bytes) if bytes.len() == 32 => {
                 let mut arr = [0u8; 32];
@@ -292,49 +282,28 @@ fn process_exchange_messages(
             }
         };
 
-        // Check if we already have this contact
-        if wb.get_contact(&public_id)?.is_some() {
-            display::info(&format!("{} is already a contact", exchange.display_name));
-            continue;
-        }
+        // Core handles X3DH + contact creation + ratchet init
+        let contact_id =
+            match wb.accept_relay_exchange(&identity_key, &ephemeral_key, &exchange.display_name) {
+                Ok(id) => id,
+                Err(e) => {
+                    display::warning(&format!(
+                        "Exchange with {} failed: {}",
+                        exchange.display_name, e
+                    ));
+                    continue;
+                }
+            };
 
-        // Perform X3DH as responder to derive shared secret
-        let shared_secret = match X3DH::respond(&our_x3dh, &identity_key, &ephemeral_key) {
-            Ok(secret) => secret,
-            Err(e) => {
-                display::warning(&format!(
-                    "X3DH key agreement failed for {}: {:?}",
-                    exchange.display_name, e
-                ));
-                continue;
-            }
-        };
-
-        // Create contact card
-        let card = vauchi_core::ContactCard::new(&exchange.display_name);
-
-        // Create contact
-        let contact = Contact::from_exchange(identity_key, card, shared_secret.clone());
-        let contact_id = contact.id().to_string();
-        let contact_clone = contact.clone();
-        wb.add_contact(contact)?;
-
-        // Record for inter-device sync (if multiple devices)
-        if let Err(e) = record_contact_for_device_sync(wb, &contact_clone) {
+        // Record for inter-device sync
+        if let Some(contact) = wb.get_contact(&contact_id)?.as_ref()
+            && let Err(e) = record_contact_for_device_sync(wb, contact)
+        {
             display::warning(&format!("Could not record for device sync: {}", e));
-        }
-
-        // Initialize Double Ratchet as responder for forward secrecy
-        // Recreate the X3DH keypair since we can't clone it
-        let ratchet_dh = vauchi_core::exchange::X3DHKeyPair::from_bytes(*our_x3dh.secret_bytes());
-        if let Err(e) = wb.create_ratchet_as_responder(&contact_id, &shared_secret, ratchet_dh) {
-            display::warning(&format!("Failed to initialize ratchet: {:?}", e));
         }
 
         display::success(&format!("Added contact: {}", exchange.display_name));
         added += 1;
-
-        // Collect recipient IDs for async response sending
         response_recipients.push(public_id);
     }
 
