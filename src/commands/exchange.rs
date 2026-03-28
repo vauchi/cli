@@ -15,7 +15,6 @@ use vauchi_core::contact_card::ContactCard;
 use vauchi_core::exchange::{
     ExchangeEvent, ExchangeQR, ExchangeSession, ExchangeState, ManualConfirmationVerifier,
 };
-use vauchi_core::sync::delta::CardDelta;
 use vauchi_core::sync::{ContactSyncData, DeviceSyncOrchestrator, SyncItem};
 use vauchi_core::{Contact, Identity, Vauchi};
 
@@ -60,6 +59,9 @@ async fn send_handshake(socket: &mut WsStream, identity: &Identity) -> Result<()
 /// This is critical for the Double Ratchet protocol: the responder cannot send
 /// messages until they receive at least one message from the initiator. By sending
 /// our card immediately after the exchange, we ensure both parties can send.
+///
+/// Crypto (delta, signing, ratchet encryption) is handled by core's
+/// `prepare_card_update_for_contact()` — CLI only handles transport.
 async fn send_initial_card_update(
     config: &CliConfig,
     wb: &Vauchi,
@@ -67,59 +69,21 @@ async fn send_initial_card_update(
     contact_id: &str,
     recipient_id: &str,
 ) -> Result<()> {
-    // Load our own card
+    // Core handles: delta computation, signing, CEK wrapping, ratchet encrypt+save
     let our_card = wb
         .storage()
         .load_own_card()?
         .ok_or_else(|| anyhow::anyhow!("No own card found"))?;
-
-    // Load contact for signature binding
-    let contact = wb
-        .storage()
-        .load_contact(contact_id)?
-        .ok_or_else(|| anyhow::anyhow!("Contact not found: {}", contact_id))?;
-
-    // Create a delta from empty card to our current card
     let empty_card = ContactCard::new(identity.display_name());
-    let mut delta = CardDelta::compute(&empty_card, &our_card);
-    delta.sign(
-        identity,
-        contact
-            .public_key()
-            .expect("exchanged contact has public key"),
-    );
+    let encrypted = wb.prepare_card_update_for_contact(contact_id, &empty_card, &our_card)?;
 
-    // Serialize delta
-    let delta_bytes =
-        serde_json::to_vec(&delta).map_err(|e| anyhow::anyhow!("Serialization error: {}", e))?;
-
-    // Load ratchet and encrypt
-    let (mut ratchet, is_initiator) = wb
-        .storage()
-        .load_ratchet_state(contact_id)?
-        .ok_or_else(|| anyhow::anyhow!("Ratchet not found for contact"))?;
-
-    let ratchet_msg = ratchet
-        .encrypt(&delta_bytes)
-        .map_err(|e| anyhow::anyhow!("Encryption error: {:?}", e))?;
-    let encrypted = serde_json::to_vec(&ratchet_msg)
-        .map_err(|e| anyhow::anyhow!("Serialization error: {}", e))?;
-
-    // Save updated ratchet state
-    wb.storage()
-        .save_ratchet_state(contact_id, &ratchet, is_initiator)?;
-
-    // Connect to relay and send (async)
+    // CLI handles: relay connection and transport
     let mut socket = connect_to_relay(&config.relay_url).await?;
-
-    // Send handshake
-    let our_id = identity.public_id();
     send_handshake(&mut socket, identity).await?;
 
-    // Create encrypted update message
     let update = EncryptedUpdate {
         recipient_id: recipient_id.to_string(),
-        sender_id: our_id,
+        sender_id: identity.public_id(),
         ciphertext: encrypted,
     };
 
@@ -130,9 +94,7 @@ async fn send_initial_card_update(
         .await
         .map_err(|e| anyhow::anyhow!("Send error: {}", e))?;
 
-    // Wait briefly for acknowledgment
     tokio::time::sleep(Duration::from_millis(100)).await;
-
     let _ = socket.close(None).await;
 
     Ok(())
