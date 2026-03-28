@@ -614,6 +614,6 @@ fn load_aha_tracker(config: &CliConfig) -> AhaMomentTracker {
 fn save_aha_tracker(config: &CliConfig, tracker: &AhaMomentTracker) {
     let path = config.data_dir.join("aha_tracker.json");
     if let Ok(json) = tracker.to_json() {
-        let _ = fs::write(&path, json);
+        let _ = crate::config::write_restricted(&path, json);
     }
 }

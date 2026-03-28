@@ -75,7 +75,7 @@ pub fn claim(config: &CliConfig, old_pk_hex: &str) -> Result<()> {
 
     // Save pending claim for tracking
     let claim_path = config.data_dir.join(".pending_recovery_claim");
-    fs::write(&claim_path, &claim_bytes)?;
+    crate::config::write_restricted(&claim_path, &claim_bytes)?;
     display::info("Claim saved. Use 'vauchi recovery status' to check progress.");
 
     Ok(())
@@ -222,7 +222,7 @@ pub fn add_voucher(config: &CliConfig, voucher_data: &str) -> Result<()> {
     proof.add_voucher(voucher)?;
 
     // Save updated proof
-    fs::write(&proof_path, proof.to_bytes()?)?;
+    crate::config::write_restricted(&proof_path, proof.to_bytes()?)?;
 
     let voucher_count = proof.voucher_count();
     let threshold = proof.threshold();

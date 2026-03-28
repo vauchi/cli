@@ -111,7 +111,7 @@ pub fn link(config: &CliConfig) -> Result<()> {
     let data_string = qr.to_data_string();
     let pending_link_path = config.data_dir.join(".pending_device_link");
     fs::create_dir_all(&config.data_dir)?;
-    fs::write(&pending_link_path, &data_string)?;
+    crate::config::write_restricted(&pending_link_path, &data_string)?;
 
     // Also show the data string for testing
     display::info("Device link data (for testing):");
@@ -191,8 +191,8 @@ pub fn join(
     let link_key_path = config.data_dir.join(".pending_link_key");
     let device_name_path = config.data_dir.join(".pending_device_name");
     fs::create_dir_all(&config.data_dir)?;
-    fs::write(&link_key_path, qr_data)?;
-    fs::write(&device_name_path, &device_name)?;
+    crate::config::write_restricted(&link_key_path, qr_data)?;
+    crate::config::write_restricted(&device_name_path, &device_name)?;
 
     display::info("After the existing device responds, run:");
     println!("  vauchi device finish <response_data>");

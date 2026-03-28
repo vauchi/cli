@@ -4,7 +4,7 @@
 
 //! CLI Configuration
 
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use anyhow::Result;
 use vauchi_core::{Identity, IdentityBackup, SymmetricKey};
@@ -17,6 +17,22 @@ use vauchi_core::storage::secure::{FileKeyStorage, SecureStorage};
 
 /// Legacy hardcoded password used before per-installation backup passwords.
 const LEGACY_BACKUP_PASSWORD: &str = "vauchi-local-storage";
+
+/// Writes data to a file with restrictive permissions (0o600 on Unix).
+///
+/// Prevents other users on shared systems from reading sensitive files
+/// like pending device link keys, recovery claims, and tracker state.
+pub fn write_restricted(path: &Path, data: impl AsRef<[u8]>) -> anyhow::Result<()> {
+    use anyhow::Context;
+    std::fs::write(path, data).with_context(|| format!("Failed to write {}", path.display()))?;
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        std::fs::set_permissions(path, std::fs::Permissions::from_mode(0o600))
+            .with_context(|| format!("Failed to set permissions on {}", path.display()))?;
+    }
+    Ok(())
+}
 
 /// CLI configuration.
 #[derive(Debug, Clone)]
@@ -84,15 +100,7 @@ pub(crate) fn load_or_generate_fallback_key(data_dir: &std::path::Path) -> Resul
     // Ensure parent directory exists
     std::fs::create_dir_all(data_dir).context("Failed to create data directory")?;
 
-    std::fs::write(&key_path, key.as_bytes()).context("Failed to write fallback key")?;
-
-    // Set restrictive permissions on Unix
-    #[cfg(unix)]
-    {
-        use std::os::unix::fs::PermissionsExt;
-        std::fs::set_permissions(&key_path, std::fs::Permissions::from_mode(0o600))
-            .context("Failed to set fallback key permissions")?;
-    }
+    write_restricted(&key_path, key.as_bytes())?;
 
     Ok(key)
 }
@@ -131,15 +139,7 @@ fn load_or_generate_backup_password(data_dir: &std::path::Path) -> Result<String
     // Ensure parent directory exists
     std::fs::create_dir_all(data_dir).context("Failed to create data directory")?;
 
-    std::fs::write(&password_path, &password).context("Failed to write backup password")?;
-
-    // Set restrictive permissions on Unix
-    #[cfg(unix)]
-    {
-        use std::os::unix::fs::PermissionsExt;
-        std::fs::set_permissions(&password_path, std::fs::Permissions::from_mode(0o600))
-            .context("Failed to set backup password permissions")?;
-    }
+    write_restricted(&password_path, &password)?;
 
     Ok(password)
 }
