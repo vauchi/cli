@@ -428,6 +428,7 @@ mod tests {
             components: vec![],
             actions: vec![],
             progress: None,
+            ..Default::default()
         };
         render(&screen);
         assert_eq!(screen.screen_id, "test");
@@ -526,6 +527,7 @@ mod tests {
                 total_steps: 5,
                 label: Some("Name".into()),
             }),
+            ..Default::default()
         };
         render(&screen);
         assert_eq!(screen.components.len(), 7);
@@ -691,6 +693,7 @@ mod tests {
             }],
             actions: vec![],
             progress: None,
+            ..Default::default()
         };
         assert_eq!(screen.components.len(), 1);
         assert_eq!(screen.screen_id, "preview");

@@ -220,6 +220,7 @@ mod tests {
             }],
             actions: vec![],
             progress: None,
+            ..Default::default()
         };
 
         let action = UserAction::ItemToggled {
@@ -249,6 +250,7 @@ mod tests {
             components: vec![],
             actions: vec![],
             progress: None,
+            ..Default::default()
         };
 
         let action = UserAction::ActionPressed {
@@ -282,6 +284,7 @@ mod tests {
             }],
             actions: vec![],
             progress: None,
+            ..Default::default()
         };
 
         let action = UserAction::ItemToggled {
@@ -316,6 +319,7 @@ mod tests {
             }],
             actions: vec![],
             progress: None,
+            ..Default::default()
         };
 
         let action = UserAction::ItemToggled {
