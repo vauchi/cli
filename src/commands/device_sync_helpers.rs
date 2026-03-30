@@ -138,3 +138,61 @@ pub fn record_visibility_changed(
 
     Ok(())
 }
+
+/// Records a contact archive for inter-device sync.
+pub fn record_contact_archived(wb: &Vauchi, contact_id: &str) -> Result<()> {
+    let registry = match wb.storage().load_device_registry()? {
+        Some(r) if r.device_count() > 1 => r,
+        _ => return Ok(()),
+    };
+
+    let identity = wb
+        .identity()
+        .ok_or_else(|| anyhow::anyhow!("No identity found"))?;
+
+    let mut orchestrator =
+        DeviceSyncOrchestrator::load(wb.storage(), identity.create_device_info(), registry)
+            .unwrap_or_else(|_| {
+                DeviceSyncOrchestrator::new(
+                    wb.storage(),
+                    identity.create_device_info(),
+                    identity.initial_device_registry(),
+                )
+            });
+
+    orchestrator.record_local_change(SyncItem::ContactArchived {
+        contact_id: contact_id.to_string(),
+        timestamp: current_timestamp(),
+    })?;
+
+    Ok(())
+}
+
+/// Records a contact unarchive for inter-device sync.
+pub fn record_contact_unarchived(wb: &Vauchi, contact_id: &str) -> Result<()> {
+    let registry = match wb.storage().load_device_registry()? {
+        Some(r) if r.device_count() > 1 => r,
+        _ => return Ok(()),
+    };
+
+    let identity = wb
+        .identity()
+        .ok_or_else(|| anyhow::anyhow!("No identity found"))?;
+
+    let mut orchestrator =
+        DeviceSyncOrchestrator::load(wb.storage(), identity.create_device_info(), registry)
+            .unwrap_or_else(|_| {
+                DeviceSyncOrchestrator::new(
+                    wb.storage(),
+                    identity.create_device_info(),
+                    identity.initial_device_registry(),
+                )
+            });
+
+    orchestrator.record_local_change(SyncItem::ContactUnarchived {
+        contact_id: contact_id.to_string(),
+        timestamp: current_timestamp(),
+    })?;
+
+    Ok(())
+}
