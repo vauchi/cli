@@ -76,8 +76,16 @@ pub(crate) async fn run(
             }
         },
         Commands::Contacts(cmd) => match cmd {
-            ContactCommands::List { offset, limit } => {
-                commands::contacts::list(config, pin, offset, limit)?
+            ContactCommands::List {
+                offset,
+                limit,
+                archived,
+            } => {
+                if archived {
+                    commands::contacts::list_archived(config)?;
+                } else {
+                    commands::contacts::list(config, pin, offset, limit)?;
+                }
             }
             ContactCommands::Show { id } => commands::contacts::show(config, pin, &id)?,
             ContactCommands::Search { query } => commands::contacts::search(config, pin, &query)?,
@@ -161,6 +169,15 @@ pub(crate) async fn run(
             }
             ContactCommands::Limit { set } => {
                 commands::contacts::limit(config, set)?;
+            }
+            ContactCommands::Delete { id, yes } => {
+                commands::contacts::delete(config, &id, yes)?;
+            }
+            ContactCommands::Archive { id } => {
+                commands::contacts::archive(config, &id)?;
+            }
+            ContactCommands::Unarchive { id } => {
+                commands::contacts::unarchive(config, &id)?;
             }
         },
         Commands::Social(cmd) => match cmd {

@@ -6,7 +6,9 @@
 //!
 //! List, view, and manage contacts.
 
+mod archive_cmd;
 mod block_cmd;
+mod delete_cmd;
 mod export_cmd;
 mod favorite_cmd;
 mod hide_cmd;
@@ -22,7 +24,9 @@ mod trust_cmd;
 mod verify_cmd;
 mod visibility_cmd;
 
+pub use archive_cmd::{archive, list_archived, unarchive};
 pub use block_cmd::{block, list_blocked, unblock};
+pub use delete_cmd::delete;
 pub use export_cmd::export;
 pub use favorite_cmd::{favorite, unfavorite};
 pub use hide_cmd::{hide_contact, list_hidden, unhide_contact};

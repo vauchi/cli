@@ -321,6 +321,10 @@ pub(crate) enum ContactCommands {
         /// Maximum number of contacts to show (0 = all)
         #[arg(long, default_value = "0")]
         limit: usize,
+
+        /// Show archived contacts
+        #[arg(long)]
+        archived: bool,
     },
 
     /// Show contact details
@@ -520,6 +524,27 @@ pub(crate) enum ContactCommands {
         /// Set the contact limit to this value
         #[arg(long)]
         set: Option<usize>,
+    },
+
+    /// Delete an imported contact
+    Delete {
+        /// Contact ID or name
+        id: String,
+        /// Skip undo window, delete immediately
+        #[arg(long)]
+        yes: bool,
+    },
+
+    /// Archive an exchanged contact
+    Archive {
+        /// Contact ID or name
+        id: String,
+    },
+
+    /// Unarchive a previously archived contact
+    Unarchive {
+        /// Contact ID or name
+        id: String,
     },
 }
 
