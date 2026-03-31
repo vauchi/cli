@@ -9,6 +9,15 @@
 [semgrep]
   description = "Semgrep with Rust community + vauchi security rules"
 
+  # Disable println-in-lib: this is a binary-only crate (no lib.rs).
+  # All println! calls are intentional user-facing CLI output, not library logging leaks.
+  # See: https://gitlab.com/groups/vauchi/-/security/vulnerabilities?severity=MEDIUM
+  [[semgrep.ruleset]]
+    disable = true
+    [semgrep.ruleset.identifier]
+      type = "semgrep_id"
+      value = "vauchi-no-println-in-lib"
+
   [[semgrep.passthrough]]
     type = "url"
     value = "https://semgrep.dev/c/p/rust"
