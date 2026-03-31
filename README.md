@@ -3,12 +3,13 @@
 
 > **Mirror:** This repo is a read-only mirror of [gitlab.com/vauchi/cli](https://gitlab.com/vauchi/cli). Please open issues and merge requests there.
 
-[![Pipeline](https://vauchi.gitlab.io/cli/badges/pipeline.svg)](https://gitlab.com/vauchi/cli/-/pipelines)
-[![Coverage](https://vauchi.gitlab.io/cli/badges/coverage.svg)](https://gitlab.com/vauchi/cli/-/pipelines)
+[![Pipeline](https://img.shields.io/endpoint?url=https://vauchi.gitlab.io/cli/badges/pipeline.json&label=pipeline)](https://gitlab.com/vauchi/cli/-/pipelines)
+[![Coverage](https://img.shields.io/endpoint?url=https://vauchi.gitlab.io/cli/badges/coverage.json&label=coverage)](https://gitlab.com/vauchi/cli/-/pipelines)
 [![REUSE](https://api.reuse.software/badge/gitlab.com/vauchi/cli)](https://api.reuse.software/info/gitlab.com/vauchi/cli)
 
 > [!WARNING]
-> **Pre-Alpha Software** - This project is under heavy development and not ready for production use.
+> **Pre-Alpha Software** - This project is under heavy
+> development and not ready for production use.
 > APIs may change without notice. Use at your own risk.
 
 # Vauchi CLI
@@ -130,9 +131,11 @@ vauchi --relay ws://relay.example.com:8080 <command>
 
 ## Architecture
 
-The CLI uses `vauchi-core` for all cryptographic operations and data management. Communication with the relay server uses WebSocket with a simple JSON protocol.
+The CLI uses `vauchi-core` for all cryptographic operations
+and data management. Communication with the relay server uses
+WebSocket with a simple JSON protocol.
 
-```
+```text
 vauchi-cli/
 ├── src/
 │   ├── main.rs          # CLI entry point and command routing
