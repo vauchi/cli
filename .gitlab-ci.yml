@@ -142,10 +142,9 @@ security:deny:
 # Supply chain verification (cargo-vet)
 # Path overrides in .cargo/config.toml are gitignored and absent in CI, but the
 # committed Cargo.lock records path sources. Regenerate lockfile so cargo-vet
-# sees git/registry sources, then vet. allow_failure until all deps are audited.
+# sees git/registry sources, then vet.
 security:vet:
   extends: [.rust-runner-readonly, .security-vet-job]
-  allow_failure: true
   script:
     - rm -f .cargo/config.toml
     - cargo generate-lockfile
