@@ -72,7 +72,7 @@ pub(crate) async fn run(
         Commands::Exchange(cmd) => match cmd {
             ExchangeCommands::Start => commands::exchange::start(config)?,
             ExchangeCommands::Complete { data } => {
-                commands::exchange::complete(config, &data).await?;
+                commands::exchange::complete(config, &data)?;
             }
         },
         Commands::Contacts(cmd) => match cmd {

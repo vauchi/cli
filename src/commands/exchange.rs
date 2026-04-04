@@ -6,11 +6,7 @@
 //!
 //! Generate and complete contact exchanges.
 
-use std::time::Duration;
-
 use anyhow::{Result, bail};
-use futures_util::SinkExt;
-use tokio_tungstenite::tungstenite::Message;
 use vauchi_core::contact_card::ContactCard;
 use vauchi_core::exchange::{
     ExchangeEvent, ExchangeQR, ExchangeSession, ExchangeState, ManualConfirmationVerifier,
@@ -21,84 +17,6 @@ use vauchi_core::{Contact, Identity, Vauchi};
 use crate::commands::common::open_vauchi;
 use crate::config::CliConfig;
 use crate::display;
-use crate::protocol::{
-    EncryptedUpdate, MessagePayload, create_envelope, create_signed_handshake, encode_message,
-};
-
-/// Type alias for the async WebSocket stream.
-type WsStream =
-    tokio_tungstenite::WebSocketStream<tokio_tungstenite::MaybeTlsStream<tokio::net::TcpStream>>;
-
-/// Connect to relay server via async WebSocket with timeout.
-async fn connect_to_relay(relay_url: &str) -> Result<WsStream> {
-    let (ws_stream, _) = tokio::time::timeout(
-        Duration::from_secs(5),
-        tokio_tungstenite::connect_async(relay_url),
-    )
-    .await
-    .map_err(|_| anyhow::anyhow!("Connection timed out"))?
-    .map_err(|e| anyhow::anyhow!("WebSocket connection failed: {}", e))?;
-
-    Ok(ws_stream)
-}
-
-/// Sends authenticated handshake message to relay.
-async fn send_handshake(socket: &mut WsStream, identity: &Identity) -> Result<()> {
-    let handshake = create_signed_handshake(identity, None);
-    let envelope = create_envelope(MessagePayload::Handshake(handshake));
-    let data = encode_message(&envelope).map_err(|e| anyhow::anyhow!(e))?;
-    socket
-        .send(Message::Binary(data))
-        .await
-        .map_err(|e| anyhow::anyhow!("Send error: {}", e))?;
-    Ok(())
-}
-
-/// Sends an initial encrypted card update to establish the responder's send chain.
-///
-/// This is critical for the Double Ratchet protocol: the responder cannot send
-/// messages until they receive at least one message from the initiator. By sending
-/// our card immediately after the exchange, we ensure both parties can send.
-///
-/// Crypto (delta, signing, ratchet encryption) is handled by core's
-/// `prepare_card_update_for_contact()` — CLI only handles transport.
-async fn send_initial_card_update(
-    config: &CliConfig,
-    wb: &Vauchi,
-    identity: &Identity,
-    contact_id: &str,
-    recipient_id: &str,
-) -> Result<()> {
-    // Core handles: delta computation, signing, CEK wrapping, ratchet encrypt+save
-    let our_card = wb
-        .storage()
-        .load_own_card()?
-        .ok_or_else(|| anyhow::anyhow!("No own card found"))?;
-    let empty_card = ContactCard::new(identity.display_name());
-    let encrypted = wb.prepare_card_update_for_contact(contact_id, &empty_card, &our_card)?;
-
-    // CLI handles: relay connection and transport
-    let mut socket = connect_to_relay(&config.relay_url).await?;
-    send_handshake(&mut socket, identity).await?;
-
-    let update = EncryptedUpdate {
-        recipient_id: recipient_id.to_string(),
-        sender_id: identity.public_id(),
-        ciphertext: encrypted,
-    };
-
-    let envelope = create_envelope(MessagePayload::EncryptedUpdate(update));
-    let data = encode_message(&envelope).map_err(|e| anyhow::anyhow!(e))?;
-    socket
-        .send(Message::Binary(data))
-        .await
-        .map_err(|e| anyhow::anyhow!("Send error: {}", e))?;
-
-    tokio::time::sleep(Duration::from_millis(100)).await;
-    let _ = socket.close(None).await;
-
-    Ok(())
-}
 
 /// Records a new contact addition for inter-device sync.
 fn record_contact_added(wb: &Vauchi, contact: &Contact) -> Result<()> {
@@ -123,10 +41,7 @@ fn record_contact_added(wb: &Vauchi, contact: &Contact) -> Result<()> {
                 )
             });
 
-    // Create ContactSyncData from the contact
     let contact_data = ContactSyncData::from_contact(contact);
-
-    // Record the sync item
     let item = SyncItem::ContactAdded {
         contact_data,
         timestamp: std::time::SystemTime::now()
@@ -149,7 +64,6 @@ fn record_contact_added(wb: &Vauchi, contact: &Contact) -> Result<()> {
 pub fn start(config: &CliConfig) -> Result<()> {
     let wb = open_vauchi(config)?;
 
-    // Get our identity
     let identity = wb
         .identity()
         .ok_or_else(|| anyhow::anyhow!("No identity found"))?;
@@ -159,7 +73,6 @@ pub fn start(config: &CliConfig) -> Result<()> {
         .load_own_card()?
         .unwrap_or_else(|| ContactCard::new(identity.display_name()));
 
-    // Create exchange session with manual confirmation verifier
     let verifier = ManualConfirmationVerifier::new();
 
     let backup_password = config.backup_password()?;
@@ -168,7 +81,6 @@ pub fn start(config: &CliConfig) -> Result<()> {
 
     let mut session = ExchangeSession::new_qr(identity_owned, our_card, verifier);
 
-    // Generate QR via state machine
     session
         .apply(ExchangeEvent::StartQR)
         .map_err(|e| anyhow::anyhow!("Failed to generate QR: {:?}", e))?;
@@ -178,7 +90,6 @@ pub fn start(config: &CliConfig) -> Result<()> {
         None => bail!("QR code not generated"),
     };
 
-    // Display
     display::info("Share this with another Vauchi user:");
     println!();
     println!("{}", qr_image);
@@ -196,29 +107,27 @@ pub fn start(config: &CliConfig) -> Result<()> {
 ///
 /// Uses the mutual QR exchange flow: both sides generate a QR and scan each
 /// other's QR code. The mutual scan serves as proximity verification.
-/// Flow: StartQR → ProcessQR → TheyScannedOurQR → PerformKeyAgreement → CompleteExchange.
-pub async fn complete(config: &CliConfig, data: &str) -> Result<()> {
-    let wb = open_vauchi(config)?;
+/// Flow: StartQR -> ProcessQR -> TheyScannedOurQR -> PerformKeyAgreement -> CompleteExchange.
+///
+/// After creating the contact, queues our initial card for delivery
+/// and runs a sync to send it immediately.
+pub fn complete(config: &CliConfig, data: &str) -> Result<()> {
+    let mut wb = open_vauchi(config)?;
 
-    // Parse the exchange QR data
     let qr = ExchangeQR::from_data_string(data)?;
 
-    // Check if expired
     if qr.is_expired() {
         bail!("This exchange QR code has expired. Ask them to generate a new one.");
     }
 
-    // Save exchange key before QR is consumed by the session
     let their_exchange_key = *qr.exchange_key();
     let their_public_id = hex::encode(qr.public_key());
 
-    // Check if we already have this contact
     if wb.get_contact(&their_public_id)?.is_some() {
         display::warning("You already have this contact.");
         return Ok(());
     }
 
-    // Get our identity
     let identity = wb
         .identity()
         .ok_or_else(|| anyhow::anyhow!("No identity found"))?;
@@ -228,7 +137,6 @@ pub async fn complete(config: &CliConfig, data: &str) -> Result<()> {
         .load_own_card()?
         .unwrap_or_else(|| ContactCard::new(identity.display_name()));
 
-    // Create exchange session with manual confirmation verifier
     let verifier = ManualConfirmationVerifier::new();
 
     let backup_password = config.backup_password()?;
@@ -237,12 +145,10 @@ pub async fn complete(config: &CliConfig, data: &str) -> Result<()> {
 
     let mut session = ExchangeSession::new_qr(identity_owned, our_card, verifier);
 
-    // Start our QR first (session must be in DisplayingQr state to process a peer's QR)
     session
         .apply(ExchangeEvent::StartQR)
         .map_err(|e| anyhow::anyhow!("Failed to start QR: {:?}", e))?;
 
-    // Display our QR so the other user can scan it to complete their side
     if let Some(our_qr) = session.qr() {
         let qr_data = our_qr.to_data_string();
         let qr_image = our_qr.to_qr_image_string();
@@ -255,7 +161,6 @@ pub async fn complete(config: &CliConfig, data: &str) -> Result<()> {
         println!();
     }
 
-    // Drive the state machine: ProcessQR → TheyScannedOurQR → PerformKeyAgreement → CompleteExchange
     session
         .apply(ExchangeEvent::ProcessQR(qr))
         .map_err(|e| anyhow::anyhow!("Failed to process QR: {:?}", e))?;
@@ -268,13 +173,11 @@ pub async fn complete(config: &CliConfig, data: &str) -> Result<()> {
         .apply(ExchangeEvent::PerformKeyAgreement)
         .map_err(|e| anyhow::anyhow!("Key agreement failed: {:?}", e))?;
 
-    // Get shared key for ratchet initialization
     let shared_key = match session.state() {
         ExchangeState::AwaitingCardExchange { shared_key, .. } => shared_key.clone(),
         _ => bail!("Session not in expected state after key agreement"),
     };
 
-    // Use display name from QR payload (v3+), fall back to "New Contact" for older QRs
     let their_name = session
         .their_display_name()
         .filter(|n| !n.is_empty())
@@ -284,7 +187,6 @@ pub async fn complete(config: &CliConfig, data: &str) -> Result<()> {
         .apply(ExchangeEvent::CompleteExchange(their_card))
         .map_err(|e| anyhow::anyhow!("Card exchange failed: {:?}", e))?;
 
-    // Extract contact from completed session
     let contact = match session.state() {
         ExchangeState::Complete { contact } => contact.clone(),
         _ => bail!("Session not in Complete state"),
@@ -293,30 +195,32 @@ pub async fn complete(config: &CliConfig, data: &str) -> Result<()> {
     let contact_id = contact.id().to_string();
     let contact_clone = contact.clone();
 
-    // Add the contact
     wb.add_contact(contact)?;
 
-    // Record for inter-device sync (if multiple devices)
     if let Err(e) = record_contact_added(&wb, &contact_clone) {
         display::warning(&format!("Could not record for device sync: {}", e));
     }
 
-    // Initialize Double Ratchet as initiator for forward secrecy
     wb.create_ratchet_as_initiator(&contact_id, &shared_key, their_exchange_key)?;
 
-    // Re-load identity for relay operations (session consumed it)
-    let identity = wb
-        .identity()
-        .ok_or_else(|| anyhow::anyhow!("No identity found"))?;
-
-    // Send initial encrypted card update to establish responder's send chain
-    match send_initial_card_update(config, &wb, identity, &contact_id, &their_public_id).await {
+    // Queue our card for delivery and sync immediately.
+    // The initial card establishes the responder's receive chain so
+    // both parties can send updates.
+    match wb.queue_initial_card_for_contact(&contact_id) {
         Ok(()) => {
-            display::info("Sent initial card to enable bidirectional messaging");
+            // Send via OHTTP sync
+            if let Err(e) = wb.connect() {
+                display::warning(&format!("Could not connect to relay: {e}"));
+            } else if let Err(e) = wb.sync() {
+                display::warning(&format!("Could not sync: {e}"));
+            } else {
+                display::info("Sent initial card to enable bidirectional messaging");
+            }
+            wb.disconnect();
         }
         Err(e) => {
-            display::warning(&format!("Could not send initial card update: {}", e));
-            display::info("The other user may not be able to send updates until you sync again.");
+            display::warning(&format!("Could not prepare initial card: {e}"));
+            display::info("Run 'vauchi sync' to send your card later.");
         }
     }
 
@@ -326,7 +230,6 @@ pub async fn complete(config: &CliConfig, data: &str) -> Result<()> {
         their_public_id.get(..16).unwrap_or(&their_public_id)
     ));
     display::info("They need to run 'vauchi sync' to see your contact request.");
-    display::info("You should also run 'vauchi sync' to receive their card updates.");
 
     Ok(())
 }

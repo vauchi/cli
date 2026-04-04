@@ -11,7 +11,6 @@ mod commands;
 mod config;
 mod dispatch;
 mod display;
-mod protocol;
 mod ui;
 
 use std::path::PathBuf;

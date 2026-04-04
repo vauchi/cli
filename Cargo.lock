@@ -969,23 +969,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7e3450815272ef58cec6d564423f6e755e25379b217b0bc688e295ba24df6b1d"
 
 [[package]]
-name = "futures-macro"
-version = "0.3.32"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e835b70203e41293343137df5c0664546da5745f82ec9b84d40be8336958447b"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn",
-]
-
-[[package]]
-name = "futures-sink"
-version = "0.3.32"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c39754e157331b013978ec91992bde1ac089843443c49cbc7f46150b0fad0893"
-
-[[package]]
 name = "futures-task"
 version = "0.3.32"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -998,8 +981,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "389ca41296e6190b48053de0321d02a77f32f8a5d2461dd38762c0593805c6d6"
 dependencies = [
  "futures-core",
- "futures-macro",
- "futures-sink",
  "futures-task",
  "pin-project-lite",
  "slab",
@@ -2970,16 +2951,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "tokio-native-tls"
-version = "0.3.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bbae76ab933c85776efabc971569dd6119c580d8f5d448769dec1764bf796ef2"
-dependencies = [
- "native-tls",
- "tokio",
-]
-
-[[package]]
 name = "tokio-rustls"
 version = "0.26.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2987,20 +2958,6 @@ checksum = "1729aa945f29d91ba541258c8df89027d5792d85a8841fb65e8bf0f4ede4ef61"
 dependencies = [
  "rustls",
  "tokio",
-]
-
-[[package]]
-name = "tokio-tungstenite"
-version = "0.24.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "edc5f74e248dc973e0dbb7b74c7e0d6fcc301c694ff50049504004ef4d0cdcd9"
-dependencies = [
- "futures-util",
- "log",
- "native-tls",
- "tokio",
- "tokio-native-tls",
- "tungstenite",
 ]
 
 [[package]]
@@ -3276,7 +3233,7 @@ dependencies = [
 
 [[package]]
 name = "vauchi-app"
-version = "0.14.1"
+version = "0.15.0"
 dependencies = [
  "hex",
  "reqwest",
@@ -3302,7 +3259,6 @@ dependencies = [
  "console",
  "dialoguer",
  "dirs",
- "futures-util",
  "hex",
  "indicatif",
  "insta",
@@ -3313,14 +3269,13 @@ dependencies = [
  "tabled",
  "tempfile",
  "tokio",
- "tokio-tungstenite",
  "vauchi-app",
  "vauchi-core",
 ]
 
 [[package]]
 name = "vauchi-core"
-version = "0.14.1"
+version = "0.15.0"
 dependencies = [
  "argon2",
  "async-trait",
@@ -3363,7 +3318,7 @@ dependencies = [
 
 [[package]]
 name = "vauchi-protocol"
-version = "0.14.1"
+version = "0.15.0"
 dependencies = [
  "serde",
  "serde_json",

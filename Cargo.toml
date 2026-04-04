@@ -15,7 +15,7 @@ path = "src/main.rs"
 
 [dependencies]
 # Core library - use git dependency for CI, patched to local path via .cargo/config.toml
-vauchi-core = { git = "https://gitlab.com/vauchi/core.git", branch = "main", features = ["network-http"] }
+vauchi-core = { git = "https://gitlab.com/vauchi/core.git", branch = "main" }
 vauchi-app = { git = "https://gitlab.com/vauchi/core.git", branch = "main", features = ["network-native-tls"] }
 
 # CLI framework
@@ -48,11 +48,6 @@ anyhow = "1"
 
 # QR code generation
 qrcode = "0.14"
-
-# Async WebSocket client
-tokio-tungstenite = { version = "0.24", features = ["native-tls"] }
-# Stream/Sink combinators for async WebSocket
-futures-util = "0.3"
 
 # Hex encoding
 hex = "0.4"
