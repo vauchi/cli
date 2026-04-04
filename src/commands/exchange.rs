@@ -6,12 +6,15 @@
 //!
 //! Generate and complete contact exchanges.
 
+use std::fs;
+
 use anyhow::{Result, bail};
 use vauchi_core::contact_card::ContactCard;
 use vauchi_core::exchange::{
     ExchangeEvent, ExchangeQR, ExchangeSession, ExchangeState, ManualConfirmationVerifier,
 };
 use vauchi_core::sync::{ContactSyncData, DeviceSyncOrchestrator, SyncItem};
+use vauchi_core::types::{AhaMomentTracker, AhaMomentType};
 use vauchi_core::{Contact, Identity, Vauchi};
 
 use crate::commands::common::open_vauchi;
@@ -181,8 +184,9 @@ pub fn complete(config: &CliConfig, data: &str) -> Result<()> {
     let their_name = session
         .their_display_name()
         .filter(|n| !n.is_empty())
-        .unwrap_or("New Contact");
-    let their_card = ContactCard::new(their_name);
+        .unwrap_or("New Contact")
+        .to_string();
+    let their_card = ContactCard::new(&their_name);
     session
         .apply(ExchangeEvent::CompleteExchange(their_card))
         .map_err(|e| anyhow::anyhow!("Card exchange failed: {:?}", e))?;
@@ -197,6 +201,15 @@ pub fn complete(config: &CliConfig, data: &str) -> Result<()> {
 
     wb.add_contact(contact)?;
 
+    // Aha moment: first contact added
+    let mut tracker = load_aha_tracker(config);
+    if let Some(moment) =
+        tracker.try_trigger_with_context(AhaMomentType::FirstContactAdded, their_name.to_string())
+    {
+        display::display_aha_moment(&moment);
+    }
+    save_aha_tracker(config, &tracker);
+
     if let Err(e) = record_contact_added(&wb, &contact_clone) {
         display::warning(&format!("Could not record for device sync: {}", e));
     }
@@ -208,7 +221,6 @@ pub fn complete(config: &CliConfig, data: &str) -> Result<()> {
     // both parties can send updates.
     match wb.queue_initial_card_for_contact(&contact_id) {
         Ok(()) => {
-            // Send via OHTTP sync
             if let Err(e) = wb.connect() {
                 display::warning(&format!("Could not connect to relay: {e}"));
             } else if let Err(e) = wb.sync() {
@@ -224,6 +236,11 @@ pub fn complete(config: &CliConfig, data: &str) -> Result<()> {
         }
     }
 
+    // C1: set post-exchange delay AFTER the initial card send so
+    // subsequent `vauchi sync` calls respect the privacy-preserving
+    // timing gap (prevents relay timing correlation).
+    wb.set_post_exchange_delay();
+
     println!();
     display::success(&format!(
         "Contact added (ID: {}...)",
@@ -232,4 +249,19 @@ pub fn complete(config: &CliConfig, data: &str) -> Result<()> {
     display::info("They need to run 'vauchi sync' to see your contact request.");
 
     Ok(())
+}
+
+fn load_aha_tracker(config: &CliConfig) -> AhaMomentTracker {
+    let path = config.data_dir.join("aha_tracker.json");
+    fs::read_to_string(&path)
+        .ok()
+        .and_then(|json| AhaMomentTracker::from_json(&json).ok())
+        .unwrap_or_default()
+}
+
+fn save_aha_tracker(config: &CliConfig, tracker: &AhaMomentTracker) {
+    let path = config.data_dir.join("aha_tracker.json");
+    if let Ok(json) = tracker.to_json() {
+        let _ = crate::config::write_restricted(&path, json);
+    }
 }
