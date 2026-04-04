@@ -242,6 +242,11 @@ fn create_secure_storage(config: &CliConfig) -> Result<Box<dyn SecureStorage>> {
 }
 
 /// Creates a connected RelayClient for shred operations.
+///
+/// NOTE: This is the only remaining WebSocket consumer in the CLI.
+/// Shred operations (purge, revocation) use the V1 WS protocol because
+/// the V2 HTTP API does not yet expose purge/revoke endpoints. Migrate
+/// when V2 purge is available.
 fn create_relay_client(
     relay_url: &str,
     identity_id: &str,
