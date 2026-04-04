@@ -17,7 +17,10 @@ use vauchi_core::api::{
     ShredVerification, export_all_data,
 };
 use vauchi_core::crypto::derive_key_argon2id;
-use vauchi_core::network::{RelayClient, RelayClientConfig, TransportConfig, WebSocketTransport};
+use vauchi_core::network::{
+    HttpTransport, HttpTransportAdapter, HttpTransportConfig, ProxyConfig, RelayClient,
+    RelayClientConfig, TransportConfig,
+};
 use vauchi_core::storage::DeletionState;
 use vauchi_core::storage::secure::SecureStorage;
 
@@ -241,30 +244,43 @@ fn create_secure_storage(config: &CliConfig) -> Result<Box<dyn SecureStorage>> {
     }
 }
 
-/// Creates a connected RelayClient for shred operations.
-///
-/// NOTE: This is the only remaining WebSocket consumer in the CLI.
-/// Shred operations (purge, revocation) use the V1 WS protocol because
-/// the V2 HTTP API does not yet expose purge/revoke endpoints. Migrate
-/// when V2 purge is available.
+/// Creates a connected RelayClient for shred operations using HTTP transport.
 fn create_relay_client(
     relay_url: &str,
     identity_id: &str,
-) -> Result<RelayClient<WebSocketTransport>> {
+) -> Result<RelayClient<HttpTransportAdapter>> {
+    let http_url = ws_to_http(relay_url);
+    let transport = HttpTransport::new(HttpTransportConfig {
+        relay_url: http_url.clone(),
+        timeout_ms: 10_000,
+        proxy: ProxyConfig::None,
+        allow_direct: true,
+    });
+    let adapter = HttpTransportAdapter::new(transport);
     let transport_config = TransportConfig {
-        server_url: relay_url.to_string(),
+        server_url: http_url,
         ..TransportConfig::default()
     };
     let config = RelayClientConfig {
         transport: transport_config,
         ..RelayClientConfig::default()
     };
-    let transport = WebSocketTransport::new();
-    let mut client = RelayClient::new(transport, config, identity_id.to_string());
+    let mut client = RelayClient::new(adapter, config, identity_id.to_string());
     client
         .connect()
         .map_err(|e| anyhow::anyhow!("Failed to connect to relay: {}", e))?;
     Ok(client)
+}
+
+/// Convert wss:// to https:// and ws:// to http://.
+fn ws_to_http(url: &str) -> String {
+    if let Some(rest) = url.strip_prefix("wss://") {
+        format!("https://{rest}")
+    } else if let Some(rest) = url.strip_prefix("ws://") {
+        format!("http://{rest}")
+    } else {
+        url.to_string()
+    }
 }
 
 /// Executes a scheduled identity deletion after the grace period.
