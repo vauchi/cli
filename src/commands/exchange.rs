@@ -192,7 +192,7 @@ pub fn complete(config: &CliConfig, data: &str) -> Result<()> {
         .map_err(|e| anyhow::anyhow!("Card exchange failed: {:?}", e))?;
 
     let contact = match session.state() {
-        ExchangeState::Complete { contact } => contact.clone(),
+        ExchangeState::Complete { contact } => *contact.clone(),
         _ => bail!("Session not in Complete state"),
     };
 
