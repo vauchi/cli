@@ -158,6 +158,10 @@ security:vet:
 check:core-freshness:
   extends: .check-core-freshness
 
+# Blocks MRs with non-main branch refs in Cargo.toml git dependencies.
+check:branch-refs:
+  extends: .check-git-branch-refs
+
 # Design drift: verify all design-spec components are handled in renderer
 check:design-drift:
   extends: .design-drift-job
