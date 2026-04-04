@@ -740,7 +740,7 @@ version = "2.17.0"
 criteria = "safe-to-deploy"
 
 [[exemptions.semver]]
-version = "1.0.27"
+version = "1.0.28"
 criteria = "safe-to-deploy"
 
 [[exemptions.serde_json]]
@@ -849,10 +849,6 @@ criteria = "safe-to-deploy"
 
 [[exemptions.tokio-rustls]]
 version = "0.26.4"
-criteria = "safe-to-deploy"
-
-[[exemptions.tokio-tungstenite]]
-version = "0.24.0"
 criteria = "safe-to-deploy"
 
 [[exemptions.tower]]
