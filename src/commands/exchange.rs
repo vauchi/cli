@@ -236,10 +236,10 @@ pub fn complete(config: &CliConfig, data: &str) -> Result<()> {
         }
     }
 
-    // C1: set post-exchange delay AFTER the initial card send so
-    // subsequent `vauchi sync` calls respect the privacy-preserving
-    // timing gap (prevents relay timing correlation).
-    wb.set_post_exchange_delay();
+    // Note: C1 post-exchange delay is in-memory only (Instant). It cannot
+    // survive the CLI's per-command Vauchi lifecycle. C1 is effective in
+    // long-lived instances (mobile apps, TUI) but not in CLI. No call to
+    // set_post_exchange_delay() here — it would be misleading.
 
     println!();
     display::success(&format!(
