@@ -263,7 +263,7 @@ pub(crate) async fn run(
             DeliveryCommands::Translate { reason } => commands::delivery::translate(&reason)?,
         },
         Commands::Sync => {
-            commands::sync::run(config).await?;
+            commands::sync::run(config)?;
         }
         Commands::Export { output } => {
             commands::backup::export(config, &output)?;

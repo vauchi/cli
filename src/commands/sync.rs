@@ -4,459 +4,33 @@
 
 //! Sync Command
 //!
-//! Synchronize with the relay server using async WebSocket I/O.
+//! Synchronize with the relay server using the core OHTTP HTTP sync API.
 
 use std::fs;
 use std::time::Duration;
 
-use anyhow::{Result, bail};
-use futures_util::{SinkExt, StreamExt};
+use anyhow::Result;
 use indicatif::{ProgressBar, ProgressStyle};
-use tokio_tungstenite::tungstenite::Message;
-use vauchi_core::network::{MessageType, classify_message};
-use vauchi_core::sync::{ContactSyncData, DeviceSyncOrchestrator, SyncItem};
-use vauchi_core::{Contact, Identity, Vauchi, VauchiConfig};
-
+use vauchi_core::api::VauchiSyncOutcome;
 use vauchi_core::types::{AhaMomentTracker, AhaMomentType};
 
+use crate::commands::common::open_vauchi;
 use crate::config::CliConfig;
 use crate::display;
-use crate::protocol::{
-    AckStatus, EncryptedUpdate, ExchangeMessage, MessagePayload, create_ack, create_envelope,
-    decode_message, encode_message,
-};
-
-/// Type alias for the async WebSocket stream.
-type WsStream =
-    tokio_tungstenite::WebSocketStream<tokio_tungstenite::MaybeTlsStream<tokio::net::TcpStream>>;
-
-/// Opens Vauchi from the config and loads the identity.
-fn open_vauchi(config: &CliConfig) -> Result<Vauchi> {
-    if !config.is_initialized() {
-        bail!("Vauchi not initialized. Run 'vauchi init <name>' first.");
-    }
-
-    let wb_config = VauchiConfig::with_storage_path(config.storage_path())
-        .with_relay_url(&config.relay_url)
-        .with_storage_key(config.storage_key()?);
-
-    let mut wb = Vauchi::new(wb_config)?;
-
-    // Core now auto-loads identity from storage; only set from file if not already loaded
-    if wb.identity().is_none() {
-        let identity = config.import_local_identity()?;
-        wb.set_identity(identity)?;
-    }
-
-    Ok(wb)
-}
-
-/// Connect to relay server via async WebSocket with timeout.
-async fn connect_to_relay(relay_url: &str) -> Result<WsStream> {
-    let (ws_stream, _) = tokio::time::timeout(
-        Duration::from_secs(5),
-        tokio_tungstenite::connect_async(relay_url),
-    )
-    .await
-    .map_err(|_| anyhow::anyhow!("Connection timed out"))?
-    .map_err(|e| anyhow::anyhow!("WebSocket connection failed: {}", e))?;
-
-    Ok(ws_stream)
-}
-
-/// Sends authenticated handshake message to relay.
-async fn send_handshake(
-    socket: &mut WsStream,
-    identity: &Identity,
-    device_id: Option<&str>,
-) -> Result<()> {
-    let handshake =
-        crate::protocol::create_signed_handshake(identity, device_id.map(|s| s.to_string()));
-    let envelope = create_envelope(MessagePayload::Handshake(handshake));
-    let data = encode_message(&envelope).map_err(|e| anyhow::anyhow!(e))?;
-    socket
-        .send(Message::Binary(data))
-        .await
-        .map_err(|e| anyhow::anyhow!("Send error: {}", e))?;
-    Ok(())
-}
-
-/// Sends an exchange response with our name to a contact.
-pub async fn send_exchange_response(
-    config: &CliConfig,
-    our_identity: &Identity,
-    recipient_id: &str,
-) -> Result<()> {
-    let mut socket = connect_to_relay(&config.relay_url).await?;
-
-    send_handshake(&mut socket, our_identity, None).await?;
-
-    let our_id = our_identity.public_id();
-
-    // Create response message
-    let exchange_msg = ExchangeMessage::new_response(
-        &hex::encode(our_identity.signing_public_key()),
-        &hex::encode(our_identity.exchange_public_key()),
-        our_identity.display_name(),
-    );
-
-    // Create encrypted update
-    let update = EncryptedUpdate {
-        recipient_id: recipient_id.to_string(),
-        sender_id: our_id,
-        ciphertext: exchange_msg.to_bytes()?,
-    };
-
-    let envelope = create_envelope(MessagePayload::EncryptedUpdate(update));
-    let data = encode_message(&envelope).map_err(|e| anyhow::anyhow!(e))?;
-    socket
-        .send(Message::Binary(data))
-        .await
-        .map_err(|e| anyhow::anyhow!("Send error: {}", e))?;
-
-    // Wait briefly for acknowledgment
-    tokio::time::sleep(Duration::from_millis(100)).await;
-
-    let _ = socket.close(None).await;
-
-    Ok(())
-}
-
-/// Receives and processes pending messages from relay.
-/// Returns: (total_received, exchange_messages, encrypted_card_updates)
-#[allow(clippy::type_complexity)]
-async fn receive_pending(
-    socket: &mut WsStream,
-    _wb: &Vauchi,
-) -> Result<(usize, Vec<ExchangeMessage>, Vec<(String, Vec<u8>)>)> {
-    let mut received = 0;
-    let mut exchange_messages = Vec::new();
-    let mut card_updates = Vec::new(); // (sender_id, ciphertext)
-
-    loop {
-        // Use timeout to detect when no more messages are pending
-        let msg = match tokio::time::timeout(Duration::from_secs(1), socket.next()).await {
-            Ok(Some(Ok(msg))) => msg,
-            Ok(Some(Err(_))) | Ok(None) => break,
-            Err(_) => break, // Timeout — no more pending messages
-        };
-
-        match msg {
-            Message::Binary(data) => {
-                // Use core classify_message() to route by type before full decode
-                let msg_type = classify_message(&data);
-                match msg_type {
-                    MessageType::EncryptedUpdate => {
-                        if let Ok(envelope) = decode_message(&data)
-                            && let MessagePayload::EncryptedUpdate(update) = envelope.payload
-                        {
-                            received += 1;
-
-                            // Check if this is an exchange message
-                            if let Some(exchange) = ExchangeMessage::from_bytes(&update.ciphertext)
-                            {
-                                display::info(&format!(
-                                    "Received exchange request from {}",
-                                    exchange.display_name
-                                ));
-                                exchange_messages.push(exchange);
-                            } else {
-                                // This is an encrypted card update
-                                display::info(&format!(
-                                    "Received encrypted update from {}",
-                                    update.sender_id.get(..8).unwrap_or(&update.sender_id)
-                                ));
-                                card_updates.push((update.sender_id.clone(), update.ciphertext));
-                            }
-
-                            // Send acknowledgment
-                            let ack =
-                                create_ack(&envelope.message_id, AckStatus::ReceivedByRecipient);
-                            if let Ok(ack_data) = encode_message(&ack) {
-                                let _ = socket.send(Message::Binary(ack_data)).await;
-                            }
-                        }
-                    }
-                    MessageType::Acknowledgment => {
-                        if let Ok(envelope) = decode_message(&data)
-                            && let MessagePayload::Acknowledgment(ack) = envelope.payload
-                        {
-                            display::info(&format!(
-                                "Message {} acknowledged",
-                                ack.message_id.get(..8).unwrap_or(&ack.message_id)
-                            ));
-                        }
-                    }
-                    MessageType::Unknown => {
-                        display::warning("Received unrecognized message type");
-                    }
-                    _ => {} // Handshake, IdentityRevoked — not expected inbound
-                }
-            }
-            Message::Ping(data) => {
-                let _ = socket.send(Message::Pong(data)).await;
-            }
-            Message::Close(_) => {
-                break;
-            }
-            _ => {
-                // Ignore text messages, pongs, etc.
-            }
-        }
-    }
-
-    Ok((received, exchange_messages, card_updates))
-}
-
-/// Processes exchange messages and creates contacts.
-///
-/// Delegates X3DH, contact creation, and ratchet init to core
-/// via `accept_relay_exchange()` (ADR-021: no crypto in frontends).
-fn process_exchange_messages(
-    wb: &Vauchi,
-    messages: Vec<ExchangeMessage>,
-) -> Result<(usize, usize, Vec<String>)> {
-    let mut added = 0;
-    let mut updated = 0;
-    let mut response_recipients = Vec::new();
-
-    for exchange in messages {
-        // Parse the identity public key (signing key)
-        let identity_key = match hex::decode(&exchange.identity_public_key) {
-            Ok(bytes) if bytes.len() == 32 => {
-                let mut arr = [0u8; 32];
-                arr.copy_from_slice(&bytes);
-                arr
-            }
-            _ => {
-                display::warning(&format!(
-                    "Invalid identity key from {}",
-                    exchange.display_name
-                ));
-                continue;
-            }
-        };
-
-        let public_id = hex::encode(identity_key);
-
-        // Check if this is a response to our exchange
-        if exchange.is_response {
-            match wb.get_contact(&public_id)? {
-                Some(mut contact) => {
-                    if contact.display_name() != exchange.display_name {
-                        if let Err(e) = contact.set_display_name(&exchange.display_name) {
-                            display::warning(&format!("Failed to update contact name: {:?}", e));
-                            continue;
-                        }
-                        wb.update_contact(&contact)?;
-                        display::success(&format!(
-                            "Updated contact name: {}",
-                            exchange.display_name
-                        ));
-                        updated += 1;
-                    }
-                }
-                _ => {
-                    display::warning(&format!(
-                        "Received response from unknown contact: {}",
-                        exchange.display_name
-                    ));
-                }
-            }
-            continue;
-        }
-
-        // Parse the ephemeral public key
-        let ephemeral_key = match hex::decode(&exchange.ephemeral_public_key) {
-            Ok(bytes) if bytes.len() == 32 => {
-                let mut arr = [0u8; 32];
-                arr.copy_from_slice(&bytes);
-                arr
-            }
-            _ => {
-                display::warning(&format!(
-                    "Invalid ephemeral key from {}",
-                    exchange.display_name
-                ));
-                continue;
-            }
-        };
-
-        // Core handles X3DH + contact creation + ratchet init
-        let contact_id =
-            match wb.accept_relay_exchange(&identity_key, &ephemeral_key, &exchange.display_name) {
-                Ok(id) => id,
-                Err(e) => {
-                    display::warning(&format!(
-                        "Exchange with {} failed: {}",
-                        exchange.display_name, e
-                    ));
-                    continue;
-                }
-            };
-
-        // Record for inter-device sync
-        if let Some(contact) = wb.get_contact(&contact_id)?.as_ref()
-            && let Err(e) = record_contact_for_device_sync(wb, contact)
-        {
-            display::warning(&format!("Could not record for device sync: {}", e));
-        }
-
-        display::success(&format!("Added contact: {}", exchange.display_name));
-        added += 1;
-        response_recipients.push(public_id);
-    }
-
-    Ok((added, updated, response_recipients))
-}
-
-/// Processes encrypted card updates from contacts.
-fn process_card_updates(
-    wb: &Vauchi,
-    updates: Vec<(String, Vec<u8>)>, // (sender_id, ciphertext)
-) -> Result<usize> {
-    let mut processed = 0;
-
-    for (sender_id, ciphertext) in updates {
-        // Get contact to display name
-        let contact_name = match wb.get_contact(&sender_id)? {
-            Some(c) => c.display_name().to_string(),
-            None => {
-                display::warning(&format!(
-                    "Update from unknown contact: {}...",
-                    sender_id.get(..8).unwrap_or(&sender_id)
-                ));
-                continue;
-            }
-        };
-
-        // Process the encrypted update
-        match wb.process_card_update(&sender_id, &ciphertext) {
-            Ok(changed_fields) => {
-                if changed_fields.is_empty() {
-                    display::info(&format!("{} sent an update (no changes)", contact_name));
-                } else {
-                    display::success(&format!(
-                        "{} updated: {}",
-                        contact_name,
-                        changed_fields.join(", ")
-                    ));
-                }
-                processed += 1;
-            }
-            Err(e) => {
-                display::warning(&format!(
-                    "Failed to process update from {}: {:?}",
-                    contact_name, e
-                ));
-            }
-        }
-    }
-
-    Ok(processed)
-}
-
-/// Collects pending outbound updates as serialized envelopes (sync — no await).
-/// Returns (update_id, serialized_envelope) pairs for async sending.
-fn collect_pending_updates_data(
-    wb: &Vauchi,
-    our_id: &str,
-) -> Result<Vec<(String, Vec<u8>, String)>> {
-    let contacts = wb.list_contacts()?;
-    let mut result = Vec::new();
-
-    for contact in contacts {
-        let pending = wb.storage().get_pending_updates(contact.id())?;
-
-        for update in pending {
-            if update.update_type != "card_delta" {
-                continue;
-            }
-
-            let msg = EncryptedUpdate {
-                recipient_id: contact.id().to_string(),
-                sender_id: our_id.to_string(),
-                ciphertext: update.payload,
-            };
-
-            let envelope = create_envelope(MessagePayload::EncryptedUpdate(msg));
-            match encode_message(&envelope) {
-                Ok(data) => {
-                    result.push((update.id, data, contact.display_name().to_string()));
-                }
-                Err(e) => {
-                    display::warning(&format!("Failed to encode update: {}", e));
-                }
-            }
-        }
-    }
-
-    Ok(result)
-}
-
-/// Builds device sync envelopes (sync — no await).
-fn build_device_sync_data(wb: &Vauchi, identity: &Identity) -> Vec<Vec<u8>> {
-    match vauchi_core::sync::build_device_sync_envelopes(identity, wb.storage()) {
-        Ok(e) => e,
-        Err(e) => {
-            display::warning(&format!("Failed to build device sync: {}", e));
-            Vec::new()
-        }
-    }
-}
-
-/// Records a contact addition for inter-device sync.
-fn record_contact_for_device_sync(wb: &Vauchi, contact: &Contact) -> Result<()> {
-    // Try to load device registry - if none exists or only one device, skip
-    let registry = match wb.storage().load_device_registry()? {
-        Some(r) if r.device_count() > 1 => r,
-        _ => return Ok(()), // No other devices to sync to
-    };
-
-    let identity = wb
-        .identity()
-        .ok_or_else(|| anyhow::anyhow!("No identity found"))?;
-
-    // Load orchestrator with existing state (not new(), which would overwrite previous items)
-    let mut orchestrator =
-        DeviceSyncOrchestrator::load(wb.storage(), identity.create_device_info(), registry)
-            .unwrap_or_else(|_| {
-                DeviceSyncOrchestrator::new(
-                    wb.storage(),
-                    identity.create_device_info(),
-                    identity.initial_device_registry(),
-                )
-            });
-
-    // Create ContactSyncData from the contact
-    let contact_data = ContactSyncData::from_contact(contact);
-
-    // Record the sync item
-    let item = SyncItem::ContactAdded {
-        contact_data,
-        timestamp: std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .unwrap()
-            .as_secs(),
-    };
-
-    orchestrator.record_local_change(item)?;
-
-    Ok(())
-}
 
 /// Runs the sync command.
-pub async fn run(config: &CliConfig) -> Result<()> {
-    // ── Phase 1: Open Vauchi and extract data (sync, Vauchi is !Send) ──
-    let wb = open_vauchi(config)?;
+///
+/// Delegates to `Vauchi::connect()` + `sync()` for bidirectional sync
+/// over OHTTP-encrypted HTTP. The core API handles:
+/// - OHTTP key bootstrap and caching
+/// - Mailbox token registration
+/// - Blob fetch, ratchet-based decrypt, and ACK
+/// - Outbound update encryption and delivery
+/// - C1/C2 timing enforcement
+pub fn run(config: &CliConfig) -> Result<()> {
+    let mut wb = open_vauchi(config)?;
 
-    let identity = wb
-        .identity()
-        .ok_or_else(|| anyhow::anyhow!("No identity found"))?;
-    let client_id = identity.public_id();
-    let device_id_hex = hex::encode(identity.device_id());
-
-    // Create a spinner for connection progress
+    // Connect: bootstrap OHTTP key, health check
     let spinner = ProgressBar::new_spinner();
     spinner.set_style(
         ProgressStyle::default_spinner()
@@ -466,137 +40,78 @@ pub async fn run(config: &CliConfig) -> Result<()> {
     spinner.set_message(format!("Connecting to {}...", config.relay_url));
     spinner.enable_steady_tick(Duration::from_millis(80));
 
-    // ── Phase 2: Connect via async WebSocket ──
-    let mut socket = connect_to_relay(&config.relay_url).await?;
+    wb.connect()
+        .map_err(|e| anyhow::anyhow!("Connection failed: {e}"))?;
 
     spinner.finish_and_clear();
     display::success("Connected");
 
-    // Send authenticated handshake with device_id for inter-device sync
-    send_handshake(&mut socket, identity, Some(&device_id_hex)).await?;
-
-    // Small delay to let server send pending messages
-    tokio::time::sleep(Duration::from_millis(500)).await;
-
-    // Create a spinner for receiving messages
-    let recv_spinner = ProgressBar::new_spinner();
-    recv_spinner.set_style(
+    // Sync: receive + send
+    let sync_spinner = ProgressBar::new_spinner();
+    sync_spinner.set_style(
         ProgressStyle::default_spinner()
             .template("{spinner:.blue} {msg}")
             .unwrap(),
     );
-    recv_spinner.set_message("Receiving pending messages...");
-    recv_spinner.enable_steady_tick(Duration::from_millis(80));
+    sync_spinner.set_message("Syncing...");
+    sync_spinner.enable_steady_tick(Duration::from_millis(80));
 
-    // Receive pending messages (async)
-    let (received, exchange_messages, card_updates) = receive_pending(&mut socket, &wb).await?;
-    recv_spinner.finish_and_clear();
+    let outcome = wb.sync().map_err(|e| anyhow::anyhow!("Sync failed: {e}"))?;
 
-    // ── Phase 3: Process received messages (sync, Vauchi scope) ──
-    let (contacts_added, contacts_updated, response_recipients) =
-        process_exchange_messages(&wb, exchange_messages)?;
+    sync_spinner.finish_and_clear();
 
-    let cards_updated = process_card_updates(&wb, card_updates)?;
+    // Display outcome + aha moments
+    match outcome {
+        VauchiSyncOutcome::Ok {
+            received,
+            sent,
+            acknowledged,
+            errors,
+        } => {
+            println!();
+            let total = received + sent + acknowledged;
+            if total > 0 {
+                let mut summary = format!("Sync complete: {received} received");
+                if sent > 0 {
+                    summary.push_str(&format!(", {sent} sent"));
+                }
+                if acknowledged > 0 {
+                    summary.push_str(&format!(", {acknowledged} acknowledged"));
+                }
+                display::success(&summary);
+            } else {
+                display::info("Sync complete: No new messages or pending updates");
+            }
+            for err in &errors {
+                display::warning(&format!("Sync error: {err}"));
+            }
 
-    // Collect outbound data (sync)
-    let pending_data = collect_pending_updates_data(&wb, &client_id)?;
-    let device_envelopes = build_device_sync_data(&wb, identity);
-
-    // ── Phase 4: Send outbound data (async) ──
-
-    // Send exchange responses
-    for recipient_id in &response_recipients {
-        display::info(&format!(
-            "Sending our name to {}...",
-            recipient_id.get(..16).unwrap_or(recipient_id)
-        ));
-        match send_exchange_response(config, identity, recipient_id).await {
-            Ok(()) => display::success("Response sent"),
-            Err(e) => display::warning(&format!("Could not send response: {}", e)),
+            // Aha moments
+            let mut tracker = load_aha_tracker(config);
+            if received > 0
+                && let Some(moment) = tracker.try_trigger(AhaMomentType::FirstUpdateReceived)
+            {
+                display::display_aha_moment(&moment);
+            }
+            if sent > 0
+                && let Some(moment) = tracker.try_trigger(AhaMomentType::FirstOutboundDelivered)
+            {
+                display::display_aha_moment(&moment);
+            }
+            save_aha_tracker(config, &tracker);
+        }
+        VauchiSyncOutcome::TooSoon => {
+            display::info("Sync skipped: too soon since last sync");
+        }
+        VauchiSyncOutcome::NotConnected => {
+            display::warning("Not connected to relay");
+        }
+        VauchiSyncOutcome::NoIdentity => {
+            display::warning("No identity found. Run 'vauchi init <name>' first.");
         }
     }
 
-    // Send device sync envelopes
-    let mut device_syncs_sent = 0;
-    for data in device_envelopes {
-        if socket.send(Message::Binary(data)).await.is_ok() {
-            device_syncs_sent += 1;
-        }
-    }
-    if device_syncs_sent > 0 {
-        display::info(&format!(
-            "Sent device sync to {} devices",
-            device_syncs_sent
-        ));
-    }
-
-    // Send pending updates
-    let mut updates_sent = 0;
-    let mut sent_ids = Vec::new();
-    for (update_id, data, contact_name) in pending_data {
-        if socket.send(Message::Binary(data)).await.is_ok() {
-            sent_ids.push(update_id);
-            updates_sent += 1;
-            display::info(&format!("Sent update to {}", contact_name));
-        }
-    }
-
-    // Close connection
-    let _ = socket.close(None).await;
-
-    // ── Phase 5: Cleanup sent updates (sync, Vauchi scope) ──
-    for id in &sent_ids {
-        let _ = wb.storage().delete_pending_update(id);
-    }
-
-    // Display results
-    println!();
-    let total_changes = received
-        + contacts_added
-        + contacts_updated
-        + cards_updated
-        + updates_sent
-        + device_syncs_sent;
-    if total_changes > 0 {
-        let mut summary = format!("Sync complete: {} received", received);
-        if contacts_added > 0 {
-            summary.push_str(&format!(", {} contacts added", contacts_added));
-        }
-        if contacts_updated > 0 {
-            summary.push_str(&format!(", {} contacts updated", contacts_updated));
-        }
-        if cards_updated > 0 {
-            summary.push_str(&format!(", {} cards updated", cards_updated));
-        }
-        if updates_sent > 0 {
-            summary.push_str(&format!(", {} sent", updates_sent));
-        }
-        if device_syncs_sent > 0 {
-            summary.push_str(&format!(", {} device syncs sent", device_syncs_sent));
-        }
-        display::success(&summary);
-    } else {
-        display::info("Sync complete: No new messages or pending updates");
-    }
-
-    // Check for aha moments
-    let mut tracker = load_aha_tracker(config);
-    if contacts_added > 0
-        && let Some(moment) = tracker.try_trigger(AhaMomentType::FirstContactAdded)
-    {
-        display::display_aha_moment(&moment);
-    }
-    if cards_updated > 0
-        && let Some(moment) = tracker.try_trigger(AhaMomentType::FirstUpdateReceived)
-    {
-        display::display_aha_moment(&moment);
-    }
-    if updates_sent > 0
-        && let Some(moment) = tracker.try_trigger(AhaMomentType::FirstOutboundDelivered)
-    {
-        display::display_aha_moment(&moment);
-    }
-    save_aha_tracker(config, &tracker);
+    wb.disconnect();
 
     Ok(())
 }
