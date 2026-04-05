@@ -868,7 +868,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "39cab71617ae0d63f51a36d69f866391735b51691dbda63cf6f96d042b63efeb"
 dependencies = [
  "libc",
- "windows-sys 0.59.0",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]
@@ -896,9 +896,9 @@ dependencies = [
 
 [[package]]
 name = "fastrand"
-version = "2.3.0"
+version = "2.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "37909eebbb50d72f9059c3b6d82c0463f2ff062c9e95845c43a6c9c0355411be"
+checksum = "a043dc74da1e37d6afe657061213aa6f425f855399a11d3463c6ecccc4dfda1f"
 
 [[package]]
 name = "fiat-crypto"
@@ -2353,7 +2353,7 @@ dependencies = [
  "errno",
  "libc",
  "linux-raw-sys",
- "windows-sys 0.59.0",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]
@@ -2821,7 +2821,7 @@ dependencies = [
  "getrandom 0.4.2",
  "once_cell",
  "rustix",
- "windows-sys 0.59.0",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]
@@ -3240,7 +3240,8 @@ dependencies = [
 
 [[package]]
 name = "vauchi-app"
-version = "0.17.0"
+version = "0.18.2"
+source = "git+https://gitlab.com/vauchi/core.git?branch=main#be427a9a3c217358378ea2cfbdddae257065d741"
 dependencies = [
  "hex",
  "reqwest",
@@ -3282,7 +3283,8 @@ dependencies = [
 
 [[package]]
 name = "vauchi-core"
-version = "0.17.0"
+version = "0.18.2"
+source = "git+https://gitlab.com/vauchi/core.git?branch=main#be427a9a3c217358378ea2cfbdddae257065d741"
 dependencies = [
  "argon2",
  "async-trait",
@@ -3325,7 +3327,8 @@ dependencies = [
 
 [[package]]
 name = "vauchi-protocol"
-version = "0.17.0"
+version = "0.18.2"
+source = "git+https://gitlab.com/vauchi/core.git?branch=main#be427a9a3c217358378ea2cfbdddae257065d741"
 dependencies = [
  "serde",
  "serde_json",
