@@ -10,7 +10,6 @@ pub(crate) mod common;
 pub mod contacts;
 pub mod delivery;
 pub mod device;
-pub mod device_sync_helpers;
 pub mod diag;
 pub mod duress;
 pub mod emergency;

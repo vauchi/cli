@@ -10,7 +10,6 @@ use anyhow::{Result, bail};
 use vauchi_core::{ContactField, FieldType};
 
 use crate::commands::common::open_vauchi;
-use crate::commands::device_sync_helpers::{record_card_field_removed, record_card_update};
 use crate::config::CliConfig;
 use crate::display;
 
@@ -70,11 +69,6 @@ pub fn add(config: &CliConfig, field_type: &str, label: &str, value: &str) -> Re
     let queued = wb.propagate_card_update(&old_card, &new_card)?;
     if queued > 0 {
         display::info(&format!("Update queued to {} contact(s)", queued));
-    }
-
-    // Record for inter-device sync
-    if let Err(e) = record_card_update(&wb, label, value) {
-        display::warning(&format!("Failed to record for device sync: {}", e));
     }
 
     Ok(())
@@ -153,11 +147,6 @@ pub fn add_social_interactive(config: &CliConfig) -> Result<()> {
         display::info(&format!("Update queued to {} contact(s)", queued));
     }
 
-    // Record for inter-device sync
-    if let Err(e) = record_card_update(&wb, &network_id, &username) {
-        display::warning(&format!("Failed to record for device sync: {}", e));
-    }
-
     Ok(())
 }
 
@@ -178,11 +167,6 @@ pub fn remove(config: &CliConfig, label: &str) -> Result<()> {
         let queued = wb.propagate_card_update(&old_card, &new_card)?;
         if queued > 0 {
             display::info(&format!("Update queued to {} contact(s)", queued));
-        }
-
-        // Record for inter-device sync
-        if let Err(e) = record_card_field_removed(&wb, label) {
-            display::warning(&format!("Failed to record for device sync: {}", e));
         }
     } else {
         display::warning(&format!("Field '{}' not found", label));
@@ -218,11 +202,6 @@ pub fn edit(config: &CliConfig, label: &str, value: &str) -> Result<()> {
             if queued > 0 {
                 display::info(&format!("Update queued to {} contact(s)", queued));
             }
-
-            // Record for inter-device sync
-            if let Err(e) = record_card_update(&wb, label, value) {
-                display::warning(&format!("Failed to record for device sync: {}", e));
-            }
         }
         None => {
             display::warning(&format!("Field '{}' not found", label));
@@ -251,11 +230,6 @@ pub fn edit_name(config: &CliConfig, name: &str) -> Result<()> {
     let queued = wb.propagate_card_update(&old_card, &new_card)?;
     if queued > 0 {
         display::info(&format!("Update queued to {} contact(s)", queued));
-    }
-
-    // Record for inter-device sync (display_name is a special field)
-    if let Err(e) = record_card_update(&wb, "_display_name", name) {
-        display::warning(&format!("Failed to record for device sync: {}", e));
     }
 
     Ok(())

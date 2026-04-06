@@ -6,7 +6,6 @@ use anyhow::{Result, bail};
 
 use super::find_contact;
 use crate::commands::common::open_vauchi;
-use crate::commands::device_sync_helpers::record_contact_removed;
 use crate::config::CliConfig;
 use crate::display;
 
@@ -24,21 +23,15 @@ pub fn delete(config: &CliConfig, id: &str, yes: bool) -> Result<()> {
     if yes {
         wb.hard_delete_imported_contact(&contact_id)?;
         display::success(&format!("Deleted contact: {}", name));
-        if let Err(e) = record_contact_removed(&wb, &contact_id) {
-            display::warning(&format!("Failed to record for device sync: {}", e));
-        }
     } else {
         wb.soft_delete_imported_contact(&contact_id)?;
         display::info(&format!(
             "Contact '{}' will be deleted in 30s. Press Ctrl+C to cancel.",
             name
         ));
-        std::thread::sleep(std::time::Duration::from_secs(30));
+        std::thread::sleep(vauchi_core::contact::SOFT_DELETE_UNDO_WINDOW);
         wb.hard_delete_imported_contact(&contact_id)?;
         display::success(&format!("Deleted contact: {}", name));
-        if let Err(e) = record_contact_removed(&wb, &contact_id) {
-            display::warning(&format!("Failed to record for device sync: {}", e));
-        }
     }
 
     Ok(())

@@ -6,7 +6,6 @@ use anyhow::{Result, bail};
 
 use super::find_contact;
 use crate::commands::common::open_vauchi;
-use crate::commands::device_sync_helpers::{record_contact_archived, record_contact_unarchived};
 use crate::config::CliConfig;
 use crate::display;
 
@@ -22,10 +21,6 @@ pub fn archive(config: &CliConfig, id: &str) -> Result<()> {
     let contact_id = contact.id().to_string();
     wb.archive_contact(&contact_id)?;
     display::success(&format!("Archived contact: {}", name));
-
-    if let Err(e) = record_contact_archived(&wb, &contact_id) {
-        display::warning(&format!("Failed to record for device sync: {}", e));
-    }
     Ok(())
 }
 
@@ -36,10 +31,6 @@ pub fn unarchive(config: &CliConfig, id: &str) -> Result<()> {
     let contact_id = contact.id().to_string();
     wb.unarchive_contact(&contact_id)?;
     display::success(&format!("Unarchived contact: {}", name));
-
-    if let Err(e) = record_contact_unarchived(&wb, &contact_id) {
-        display::warning(&format!("Failed to record for device sync: {}", e));
-    }
     Ok(())
 }
 

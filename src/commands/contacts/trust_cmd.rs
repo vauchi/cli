@@ -2,7 +2,7 @@
 //
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-use anyhow::{Result, bail};
+use anyhow::Result;
 
 use crate::commands::common::open_vauchi;
 use crate::config::CliConfig;
@@ -22,11 +22,6 @@ pub fn trust(config: &CliConfig, id: &str) -> Result<()> {
         .ok_or_else(|| anyhow::anyhow!("Contact '{}' not found", id))?;
 
     let name = contact.display_name().to_string();
-
-    // Blocked contacts cannot be trusted for recovery
-    if contact.is_blocked() {
-        bail!("Blocked contacts cannot be trusted for recovery");
-    }
 
     if contact.is_recovery_trusted() {
         display::info(&format!("{} is already trusted for recovery", name));
