@@ -10,13 +10,11 @@ use std::fs;
 use std::path::Path;
 
 use anyhow::{Result, bail};
-use aws_lc_rs::rand::{SecureRandom, SystemRandom};
 use dialoguer::Input;
 use vauchi_core::api::{
     ConsentManager, ConsentType, DeletionManager, ShredManager, ShredReport, ShredToken,
-    ShredVerification, export_all_data,
+    ShredVerification, export_all_data, export_encrypted,
 };
-use vauchi_core::crypto::derive_key_argon2id;
 use vauchi_core::network::{
     HttpTransport, HttpTransportAdapter, HttpTransportConfig, ProxyConfig, RelayClient,
     RelayClientConfig, TransportConfig,
@@ -28,59 +26,33 @@ use crate::commands::common::open_vauchi;
 use crate::config::CliConfig;
 use crate::display;
 
-/// Version byte for encrypted GDPR exports.
-const GDPR_EXPORT_VERSION: u8 = 0x01;
-
-/// Salt length for Argon2id key derivation.
-const GDPR_SALT_LEN: usize = 16;
-
 /// Exports all user data as GDPR-compliant JSON.
 ///
-/// If `password` is provided, the JSON is encrypted with Argon2id + XChaCha20-Poly1305.
-/// Format: `version_byte (0x01) || salt (16 bytes) || ciphertext`
+/// If `password` is provided, uses core's encrypted export envelope
+/// (Argon2id + HKDF domain separation + XChaCha20-Poly1305).
 pub fn export_data(config: &CliConfig, output: &Path, password: Option<&str>) -> Result<()> {
     let wb = open_vauchi(config)?;
-    let export = export_all_data(wb.storage())?;
-
-    let json = serde_json::to_string_pretty(&export)?;
 
     if let Some(pw) = password {
-        // Generate random salt
-        let rng = SystemRandom::new();
-        let mut salt = [0u8; GDPR_SALT_LEN];
-        rng.fill(&mut salt)
-            .map_err(|_| anyhow::anyhow!("Failed to generate random salt"))?;
-
-        // Derive key from password
-        let key = derive_key_argon2id(pw.as_bytes(), &salt)
-            .map_err(|e| anyhow::anyhow!("Key derivation failed: {:?}", e))?;
-
-        // Encrypt the JSON
-        let ciphertext = vauchi_core::encrypt(&key, json.as_bytes())
-            .map_err(|e| anyhow::anyhow!("Encryption failed: {:?}", e))?;
-
-        // Write: version || salt || ciphertext
-        let mut encrypted = Vec::with_capacity(1 + GDPR_SALT_LEN + ciphertext.len());
-        encrypted.push(GDPR_EXPORT_VERSION);
-        encrypted.extend_from_slice(&salt);
-        encrypted.extend_from_slice(&ciphertext);
-
+        let encrypted = export_encrypted(wb.storage(), pw)?;
         fs::write(output, &encrypted)?;
         display::success(&format!("Encrypted GDPR data export saved to {:?}", output));
     } else {
+        let export = export_all_data(wb.storage())?;
+        let json = serde_json::to_string_pretty(&export)?;
         display::warning(
             "Exporting without encryption. Consider using --encrypt to protect sensitive data.",
         );
         fs::write(output, &json)?;
         display::success(&format!("GDPR data export saved to {:?}", output));
-    }
 
-    display::info(&format!(
-        "Export version: {}, contacts: {}, exported at: {}",
-        export.version,
-        export.contacts.len(),
-        export.exported_at
-    ));
+        display::info(&format!(
+            "Export version: {}, contacts: {}, exported at: {}",
+            export.version,
+            export.contacts.len(),
+            export.exported_at
+        ));
+    }
 
     Ok(())
 }

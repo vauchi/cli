@@ -381,15 +381,7 @@ pub fn display_faq_categories(locale: &str) {
 
 /// Displays FAQs for a specific category.
 pub fn display_faqs_by_category(category_name: &str, locale: &str) {
-    let category = match category_name.to_lowercase().as_str() {
-        "getting-started" | "gettingstarted" | "start" => Some(HelpCategory::GettingStarted),
-        "privacy" | "security" => Some(HelpCategory::Privacy),
-        "recovery" => Some(HelpCategory::Recovery),
-        "contacts" | "contact" => Some(HelpCategory::Contacts),
-        "updates" | "sync" => Some(HelpCategory::Updates),
-        "features" | "feature" => Some(HelpCategory::Features),
-        _ => None,
-    };
+    let category = HelpCategory::from_alias(category_name);
 
     let Some(cat) = category else {
         error(&format!("Unknown category: {}", category_name));

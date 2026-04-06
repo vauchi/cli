@@ -230,16 +230,15 @@ pub fn add_voucher(config: &CliConfig, voucher_data: &str) -> Result<()> {
     println!();
     display::success(&format!("Voucher added! ({}/{})", voucher_count, threshold));
 
-    if voucher_count >= threshold as usize {
+    if proof.is_complete() {
         println!();
         display::success("Recovery threshold reached!");
         display::info("Your recovery proof is complete.");
         display::info("Share it with your contacts: vauchi recovery proof show");
     } else {
-        let needed = threshold as usize - voucher_count;
         display::info(&format!(
             "Need {} more voucher(s) to complete recovery.",
-            needed
+            proof.needed_count()
         ));
     }
 
@@ -275,11 +274,10 @@ pub fn status(config: &CliConfig) -> Result<()> {
         );
         println!();
 
-        if proof.voucher_count() >= proof.threshold() as usize {
+        if proof.is_complete() {
             display::success("Proof complete! Ready to share.");
         } else {
-            let needed = proof.threshold() as usize - proof.voucher_count();
-            display::info(&format!("Need {} more voucher(s).", needed));
+            display::info(&format!("Need {} more voucher(s).", proof.needed_count()));
         }
     } else if claim_path.exists() {
         let claim_bytes = fs::read(&claim_path)?;
@@ -317,10 +315,10 @@ pub fn proof_show(config: &CliConfig) -> Result<()> {
     let proof_bytes = fs::read(&proof_path)?;
     let proof = RecoveryProof::from_bytes(&proof_bytes)?;
 
-    if proof.voucher_count() < proof.threshold() as usize {
+    if !proof.is_complete() {
         bail!(
             "Recovery proof incomplete. Need {} more voucher(s).",
-            proof.threshold() as usize - proof.voucher_count()
+            proof.needed_count()
         );
     }
 

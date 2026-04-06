@@ -9,56 +9,16 @@
 use std::fs;
 
 use anyhow::{Result, bail};
+use vauchi_core::Identity;
 use vauchi_core::contact_card::ContactCard;
 use vauchi_core::exchange::{
     ExchangeEvent, ExchangeQR, ExchangeSession, ExchangeState, ManualConfirmationVerifier,
 };
-use vauchi_core::sync::{ContactSyncData, DeviceSyncOrchestrator, SyncItem};
 use vauchi_core::types::{AhaMomentTracker, AhaMomentType};
-use vauchi_core::{Contact, Identity, Vauchi};
 
 use crate::commands::common::open_vauchi;
 use crate::config::CliConfig;
 use crate::display;
-
-/// Records a new contact addition for inter-device sync.
-fn record_contact_added(wb: &Vauchi, contact: &Contact) -> Result<()> {
-    // Try to load device registry - if none exists, skip (single device)
-    let registry = match wb.storage().load_device_registry()? {
-        Some(r) if r.device_count() > 1 => r,
-        _ => return Ok(()), // No other devices to sync to
-    };
-
-    let identity = wb
-        .identity()
-        .ok_or_else(|| anyhow::anyhow!("No identity found"))?;
-
-    // Load orchestrator with existing state (not new(), which would overwrite previous items)
-    let mut orchestrator =
-        DeviceSyncOrchestrator::load(wb.storage(), identity.create_device_info(), registry)
-            .unwrap_or_else(|_| {
-                DeviceSyncOrchestrator::new(
-                    wb.storage(),
-                    identity.create_device_info(),
-                    identity.initial_device_registry(),
-                )
-            });
-
-    let contact_data = ContactSyncData::from_contact(contact);
-    let item = SyncItem::ContactAdded {
-        contact_data,
-        timestamp: std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .unwrap()
-            .as_secs(),
-    };
-
-    if let Err(e) = orchestrator.record_local_change(item) {
-        display::warning(&format!("Could not record sync item: {:?}", e));
-    }
-
-    Ok(())
-}
 
 /// Starts a contact exchange by generating a QR code.
 ///
@@ -197,8 +157,6 @@ pub fn complete(config: &CliConfig, data: &str) -> Result<()> {
     };
 
     let contact_id = contact.id().to_string();
-    let contact_clone = contact.clone();
-
     wb.add_contact(contact)?;
 
     // Aha moment: first contact added
@@ -209,10 +167,6 @@ pub fn complete(config: &CliConfig, data: &str) -> Result<()> {
         display::display_aha_moment(&moment);
     }
     save_aha_tracker(config, &tracker);
-
-    if let Err(e) = record_contact_added(&wb, &contact_clone) {
-        display::warning(&format!("Could not record for device sync: {}", e));
-    }
 
     wb.create_ratchet_as_initiator(&contact_id, &shared_key, their_exchange_key)?;
 
