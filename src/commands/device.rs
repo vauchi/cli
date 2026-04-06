@@ -118,7 +118,7 @@ pub fn link(config: &CliConfig) -> Result<()> {
     println!("  {}", data_string);
     println!();
 
-    display::warning("This QR code expires in 10 minutes.");
+    display::warning("This QR code expires in 5 minutes.");
     display::info("Scan this QR code with your new device using 'vauchi device join'");
     println!();
 
