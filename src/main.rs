@@ -11,6 +11,7 @@ mod commands;
 mod config;
 mod dispatch;
 mod display;
+mod raw;
 mod ui;
 
 use std::path::PathBuf;
@@ -35,6 +36,7 @@ async fn main() -> Result<()> {
     let config = CliConfig {
         data_dir,
         relay_url: cli.relay,
+        raw: cli.raw,
     };
 
     dispatch::run(cli.command, &config, cli.pin.as_deref(), &cli.locale).await

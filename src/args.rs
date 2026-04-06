@@ -36,6 +36,10 @@ pub(crate) struct Cli {
     /// PIN for authentication (required when app password is configured)
     #[arg(long, global = true, env = "VAUCHI_PIN")]
     pub pin: Option<String>,
+
+    /// Output raw JSON instead of formatted text
+    #[arg(long, global = true)]
+    pub raw: bool,
 }
 
 #[derive(Subcommand)]

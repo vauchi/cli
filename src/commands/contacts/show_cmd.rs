@@ -24,7 +24,11 @@ pub fn show(config: &CliConfig, pin: Option<&str>, id: &str) -> Result<()> {
 
     match contact {
         Some(c) => {
-            display::display_contact_details(&c);
+            if config.raw {
+                crate::raw::print_json(&crate::raw::ContactJson::from(&c))?;
+            } else {
+                display::display_contact_details(&c);
+            }
         }
         None => {
             display::warning(&format!("Contact '{}' not found", id));

@@ -36,6 +36,32 @@ pub fn status(config: &CliConfig) -> Result<()> {
             reason: String::new(),
         })?;
 
+    if config.raw {
+        #[derive(serde::Serialize)]
+        struct DeliveryStatusJson {
+            queued: usize,
+            sent: usize,
+            stored: usize,
+            delivered: usize,
+            failed: usize,
+            pending_retries: i32,
+            offline_queue_depth: i32,
+            offline_queue_capacity: i32,
+            next_retry_at: String,
+        }
+        return crate::raw::print_json(&DeliveryStatusJson {
+            queued,
+            sent,
+            stored,
+            delivered,
+            failed,
+            pending_retries: report.pending_retries,
+            offline_queue_depth: report.offline_queue_depth,
+            offline_queue_capacity: report.offline_queue_capacity,
+            next_retry_at: report.next_retry_at.clone(),
+        });
+    }
+
     display::info("Delivery Status");
     println!();
     println!("  Queued:     {}", queued);
@@ -167,6 +193,7 @@ mod tests {
         let config = CliConfig {
             data_dir: dir.path().to_path_buf(),
             relay_url: "wss://test.example.com".to_string(),
+            raw: false,
         };
 
         // Initialize identity so open_vauchi works

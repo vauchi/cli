@@ -40,6 +40,11 @@ pub fn list(config: &CliConfig, pin: Option<&str>, offset: usize, limit: usize) 
     }
     println!();
 
+    if config.raw {
+        let json: Vec<_> = contacts.iter().map(crate::raw::ContactJson::from).collect();
+        return crate::raw::print_json(&json);
+    }
+
     display::display_contacts_table(&contacts);
 
     println!();

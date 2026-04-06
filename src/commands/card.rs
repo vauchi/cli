@@ -36,7 +36,11 @@ pub fn show(config: &CliConfig) -> Result<()> {
 
     match wb.own_card()? {
         Some(card) => {
-            display::display_card(&card);
+            if config.raw {
+                crate::raw::print_json(&crate::raw::CardJson::from(&card))?;
+            } else {
+                display::display_card(&card);
+            }
         }
         None => {
             display::warning("No contact card found. Create one with 'vauchi init'.");

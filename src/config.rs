@@ -41,6 +41,8 @@ pub struct CliConfig {
     pub data_dir: PathBuf,
     /// Relay server URL.
     pub relay_url: String,
+    /// Output raw JSON instead of formatted text.
+    pub raw: bool,
 }
 
 /// Key name used for SecureStorage (non-keychain path).
@@ -295,6 +297,7 @@ mod tests {
         let config = CliConfig {
             data_dir: temp_dir.path().to_path_buf(),
             relay_url: "ws://localhost:8080".to_string(),
+            raw: false,
         };
 
         // First call should create a key
@@ -314,6 +317,7 @@ mod tests {
         let config = CliConfig {
             data_dir: temp_dir.path().to_path_buf(),
             relay_url: "ws://localhost:8080".to_string(),
+            raw: false,
         };
 
         // First call creates key
@@ -334,6 +338,7 @@ mod tests {
         let config = CliConfig {
             data_dir: temp_dir.path().to_path_buf(),
             relay_url: "ws://localhost:8080".to_string(),
+            raw: false,
         };
 
         let password = config.backup_password().expect("should generate password");
@@ -347,6 +352,7 @@ mod tests {
         let config = CliConfig {
             data_dir: temp_dir.path().to_path_buf(),
             relay_url: "ws://localhost:8080".to_string(),
+            raw: false,
         };
 
         let pw1 = config.backup_password().unwrap();
@@ -361,10 +367,12 @@ mod tests {
         let config1 = CliConfig {
             data_dir: temp1.path().to_path_buf(),
             relay_url: "ws://localhost:8080".to_string(),
+            raw: false,
         };
         let config2 = CliConfig {
             data_dir: temp2.path().to_path_buf(),
             relay_url: "ws://localhost:8080".to_string(),
+            raw: false,
         };
 
         let pw1 = config1.backup_password().unwrap();
@@ -378,6 +386,7 @@ mod tests {
         let config = CliConfig {
             data_dir: temp_dir.path().to_path_buf(),
             relay_url: "ws://localhost:8080".to_string(),
+            raw: false,
         };
 
         // Create an identity encrypted with the old hardcoded password
@@ -404,6 +413,7 @@ mod tests {
         let config = CliConfig {
             data_dir: temp_dir.path().to_path_buf(),
             relay_url: "ws://localhost:8080".to_string(),
+            raw: false,
         };
 
         // Create identity and save with new password
@@ -421,6 +431,7 @@ mod tests {
         let config = CliConfig {
             data_dir: temp_dir.path().to_path_buf(),
             relay_url: "ws://localhost:8080".to_string(),
+            raw: false,
         };
 
         // Create identity with legacy password
@@ -466,6 +477,7 @@ mod tests {
         let config1 = CliConfig {
             data_dir: data_dir.clone(),
             relay_url: "ws://localhost:8080".to_string(),
+            raw: false,
         };
         let key1 = config1.storage_key().expect("should create key");
 
@@ -473,6 +485,7 @@ mod tests {
         let config2 = CliConfig {
             data_dir,
             relay_url: "ws://localhost:8080".to_string(),
+            raw: false,
         };
         let key2 = config2.storage_key().expect("should load key");
 

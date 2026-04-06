@@ -88,6 +88,7 @@ mod tests {
         let config = CliConfig {
             data_dir: temp_dir.path().to_path_buf(),
             relay_url: "ws://localhost:8080".to_string(),
+            raw: false,
         };
         let identity = Identity::create("Test User");
         config.save_local_identity(&identity).unwrap();
@@ -109,6 +110,7 @@ mod tests {
         let config = CliConfig {
             data_dir: temp_dir.path().to_path_buf(),
             relay_url: "ws://localhost:8080".to_string(),
+            raw: false,
         };
 
         let result = open_vauchi(&config);
@@ -129,6 +131,7 @@ mod tests {
         let config = CliConfig {
             data_dir: temp_dir.path().to_path_buf(),
             relay_url: "ws://localhost:8080".to_string(),
+            raw: false,
         };
 
         // Initialize: create an identity and save it
@@ -150,6 +153,7 @@ mod tests {
         let config = CliConfig {
             data_dir: temp_dir.path().to_path_buf(),
             relay_url: "ws://localhost:9999".to_string(),
+            raw: false,
         };
 
         let identity = Identity::create("Storage Path Test");
