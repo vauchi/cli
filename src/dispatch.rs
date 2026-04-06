@@ -35,10 +35,9 @@ pub(crate) async fn run(
             } => {
                 // Social fields support interactive prompting when label/value
                 // are omitted: `vauchi card add social`
-                let is_social = matches!(
-                    field_type.to_lowercase().as_str(),
-                    "social" | "twitter" | "instagram" | "linkedin"
-                );
+                let is_social = vauchi_core::FieldType::from_alias(&field_type)
+                    .map(|(ft, _)| ft.is_social())
+                    .unwrap_or(false);
 
                 match (label, value) {
                     (Some(l), Some(v)) => {

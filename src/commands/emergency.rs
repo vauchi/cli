@@ -34,7 +34,7 @@ pub fn configure(config: &CliConfig) -> Result<()> {
 
     let message: String = Input::new()
         .with_prompt("Alert message")
-        .default("I may be in danger. Please check on me.".to_string())
+        .default(vauchi_core::DEFAULT_EMERGENCY_MESSAGE.to_string())
         .interact_text()?;
 
     let include_location = Confirm::new()
@@ -90,10 +90,10 @@ pub fn status(config: &CliConfig) -> Result<()> {
                 "  Trusted Contacts:   {} contact(s)",
                 cfg.trusted_contact_ids.len()
             );
-            if cfg.message != "I may be in danger. Please check on me." {
-                println!("  Alert Message:      (custom)");
-            } else {
+            if cfg.is_default_message() {
                 println!("  Alert Message:      (default)");
+            } else {
+                println!("  Alert Message:      (custom)");
             }
             println!(
                 "  Include Location:   {}",

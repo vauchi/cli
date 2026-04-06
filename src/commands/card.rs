@@ -13,20 +13,14 @@ use crate::commands::common::open_vauchi;
 use crate::config::CliConfig;
 use crate::display;
 
-/// Parses a field type string.
-fn parse_field_type(s: &str) -> Result<FieldType> {
-    match s.to_lowercase().as_str() {
-        "email" | "mail" => Ok(FieldType::Email),
-        "phone" | "tel" | "telephone" => Ok(FieldType::Phone),
-        "website" | "web" | "url" => Ok(FieldType::Website),
-        "address" | "addr" | "home" => Ok(FieldType::Address),
-        "social" | "twitter" | "instagram" | "linkedin" => Ok(FieldType::Social),
-        "custom" | "other" | "note" => Ok(FieldType::Custom),
-        _ => bail!(
+/// Parses a field type string using core's alias table.
+fn parse_field_type(s: &str) -> Result<(FieldType, Option<String>)> {
+    FieldType::from_alias(s).ok_or_else(|| {
+        anyhow::anyhow!(
             "Unknown field type: {}. Use: email, phone, website, address, social, custom",
             s
-        ),
-    }
+        )
+    })
 }
 
 /// Shows the current contact card.
@@ -52,7 +46,7 @@ pub fn show(config: &CliConfig) -> Result<()> {
 /// Adds a field to the contact card.
 pub fn add(config: &CliConfig, field_type: &str, label: &str, value: &str) -> Result<()> {
     let wb = open_vauchi(config)?;
-    let ft = parse_field_type(field_type)?;
+    let (ft, _label_hint) = parse_field_type(field_type)?;
 
     // Get old card for delta propagation
     let old_card = wb
@@ -247,31 +241,16 @@ mod tests {
 
     #[test]
     fn test_parse_field_type_email_aliases() {
-        assert!(matches!(
-            parse_field_type("email").unwrap(),
-            FieldType::Email
-        ));
-        assert!(matches!(
-            parse_field_type("mail").unwrap(),
-            FieldType::Email
-        ));
-        assert!(matches!(
-            parse_field_type("EMAIL").unwrap(),
-            FieldType::Email
-        ));
+        assert_eq!(parse_field_type("email").unwrap().0, FieldType::Email);
+        assert_eq!(parse_field_type("mail").unwrap().0, FieldType::Email);
+        assert_eq!(parse_field_type("EMAIL").unwrap().0, FieldType::Email);
     }
 
     #[test]
     fn test_parse_field_type_phone_aliases() {
-        assert!(matches!(
-            parse_field_type("phone").unwrap(),
-            FieldType::Phone
-        ));
-        assert!(matches!(parse_field_type("tel").unwrap(), FieldType::Phone));
-        assert!(matches!(
-            parse_field_type("telephone").unwrap(),
-            FieldType::Phone
-        ));
+        assert_eq!(parse_field_type("phone").unwrap().0, FieldType::Phone);
+        assert_eq!(parse_field_type("tel").unwrap().0, FieldType::Phone);
+        assert_eq!(parse_field_type("telephone").unwrap().0, FieldType::Phone);
     }
 
     #[test]
@@ -298,10 +277,17 @@ mod tests {
             ("address", FieldType::Address),
             ("addr", FieldType::Address),
             ("home", FieldType::Address),
+            ("birthday", FieldType::Birthday),
+            ("bday", FieldType::Birthday),
+            ("dob", FieldType::Birthday),
             ("social", FieldType::Social),
             ("twitter", FieldType::Social),
+            ("x", FieldType::Social),
             ("instagram", FieldType::Social),
+            ("ig", FieldType::Social),
             ("linkedin", FieldType::Social),
+            ("github", FieldType::Social),
+            ("gh", FieldType::Social),
             ("custom", FieldType::Custom),
             ("other", FieldType::Custom),
             ("note", FieldType::Custom),
@@ -312,7 +298,7 @@ mod tests {
         /// Case-insensitive: any mixed-case variant of a valid alias is accepted.
         #[test]
         fn prop_parse_field_type_case_insensitive(
-            idx in 0usize..18,
+            idx in 0usize..25,
             bits in proptest::collection::vec(any::<bool>(), 20),
         ) {
             let aliases = all_valid_aliases();
@@ -329,7 +315,7 @@ mod tests {
             let result = parse_field_type(&mixed);
             prop_assert!(result.is_ok(), "Should accept '{}' (from alias '{}')", mixed, alias);
             prop_assert_eq!(
-                std::mem::discriminant(&result.unwrap()),
+                std::mem::discriminant(&result.unwrap().0),
                 std::mem::discriminant(expected_type),
             );
         }
@@ -340,7 +326,9 @@ mod tests {
             let known: Vec<&str> = vec![
                 "email", "mail", "phone", "tel", "telephone",
                 "website", "web", "url", "address", "addr", "home",
-                "social", "twitter", "instagram", "linkedin",
+                "birthday", "bday", "dob",
+                "social", "twitter", "x", "instagram", "ig",
+                "linkedin", "github", "gh",
                 "custom", "other", "note",
             ];
             if !known.contains(&s.to_lowercase().as_str()) {

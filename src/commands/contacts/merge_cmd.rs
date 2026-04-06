@@ -46,23 +46,8 @@ pub fn merge(config: &CliConfig, contact1: &str, contact2: &str) -> Result<()> {
         secondary_name
     );
 
-    // Show which fields will be added from secondary
-    let primary_labels: std::collections::HashSet<String> = primary
-        .card()
-        .fields()
-        .iter()
-        .map(|f| format!("{:?}:{}", f.field_type(), f.label()))
-        .collect();
-
-    let new_fields: Vec<_> = secondary
-        .card()
-        .fields()
-        .iter()
-        .filter(|f| {
-            let sig = format!("{:?}:{}", f.field_type(), f.label());
-            !primary_labels.contains(&sig)
-        })
-        .collect();
+    // Show which fields will be added from secondary (using core's dedup logic)
+    let new_fields = vauchi_core::contact::merge::preview_merge_additions(&primary, &secondary);
 
     if new_fields.is_empty() {
         println!("  No new fields to add from {}", secondary_name);
