@@ -9,7 +9,7 @@
 use anyhow::{Result, bail};
 use vauchi_core::{ContactField, FieldType};
 
-use crate::commands::common::open_vauchi;
+use crate::commands::common::{drain_activity_log, open_vauchi, register_activity_log_handler};
 use crate::config::CliConfig;
 use crate::display;
 
@@ -46,6 +46,8 @@ pub fn show(config: &CliConfig) -> Result<()> {
 /// Adds a field to the contact card.
 pub fn add(config: &CliConfig, field_type: &str, label: &str, value: &str) -> Result<()> {
     let wb = open_vauchi(config)?;
+    let event_rx = register_activity_log_handler(&wb);
+
     let (ft, _label_hint) = parse_field_type(field_type)?;
 
     // Get old card for delta propagation
@@ -65,6 +67,8 @@ pub fn add(config: &CliConfig, field_type: &str, label: &str, value: &str) -> Re
         display::info(&format!("Update queued to {} contact(s)", queued));
     }
 
+    drain_activity_log(&wb, event_rx);
+
     Ok(())
 }
 
@@ -77,6 +81,7 @@ pub fn add_social_interactive(config: &CliConfig) -> Result<()> {
     use vauchi_core::SocialNetworkRegistry;
 
     let wb = open_vauchi(config)?;
+    let event_rx = register_activity_log_handler(&wb);
 
     // Ensure a card exists before prompting
     let old_card = wb
@@ -141,12 +146,15 @@ pub fn add_social_interactive(config: &CliConfig) -> Result<()> {
         display::info(&format!("Update queued to {} contact(s)", queued));
     }
 
+    drain_activity_log(&wb, event_rx);
+
     Ok(())
 }
 
 /// Removes a field from the contact card.
 pub fn remove(config: &CliConfig, label: &str) -> Result<()> {
     let wb = open_vauchi(config)?;
+    let event_rx = register_activity_log_handler(&wb);
 
     // Get old card for delta propagation
     let old_card = wb
@@ -166,12 +174,15 @@ pub fn remove(config: &CliConfig, label: &str) -> Result<()> {
         display::warning(&format!("Field '{}' not found", label));
     }
 
+    drain_activity_log(&wb, event_rx);
+
     Ok(())
 }
 
 /// Edits a field value.
 pub fn edit(config: &CliConfig, label: &str, value: &str) -> Result<()> {
     let wb = open_vauchi(config)?;
+    let event_rx = register_activity_log_handler(&wb);
 
     // Get current card (also serves as old card for delta)
     let old_card = wb
@@ -202,12 +213,15 @@ pub fn edit(config: &CliConfig, label: &str, value: &str) -> Result<()> {
         }
     }
 
+    drain_activity_log(&wb, event_rx);
+
     Ok(())
 }
 
 /// Edits the display name.
 pub fn edit_name(config: &CliConfig, name: &str) -> Result<()> {
     let mut wb = open_vauchi(config)?;
+    let event_rx = register_activity_log_handler(&wb);
 
     // Get old card for delta propagation
     let old_card = wb
@@ -225,6 +239,8 @@ pub fn edit_name(config: &CliConfig, name: &str) -> Result<()> {
     if queued > 0 {
         display::info(&format!("Update queued to {} contact(s)", queued));
     }
+
+    drain_activity_log(&wb, event_rx);
 
     Ok(())
 }

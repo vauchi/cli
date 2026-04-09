@@ -5,7 +5,8 @@
 //! Shared helpers for CLI commands.
 
 use anyhow::{Result, bail};
-use vauchi_core::{AuthMode, Vauchi, VauchiConfig};
+use std::sync::mpsc;
+use vauchi_core::{AuthMode, Vauchi, VauchiConfig, VauchiEvent};
 
 use crate::config::CliConfig;
 
@@ -72,6 +73,38 @@ pub(crate) fn auth_mode_label(mode: AuthMode) -> &'static str {
         AuthMode::Duress => "duress",
         AuthMode::Unauthenticated => "unauthenticated",
         _ => "unknown",
+    }
+}
+
+/// Registers an event handler that captures events for the activity log (ADR-031).
+///
+/// Use with `drain_activity_log` to persist events at the end of a command.
+pub(crate) fn register_activity_log_handler(wb: &Vauchi) -> mpsc::Receiver<VauchiEvent> {
+    let (event_tx, event_rx) = mpsc::channel();
+    let event_tx = std::sync::Mutex::new(event_tx);
+    wb.add_event_handler(std::sync::Arc::new(move |event| {
+        if let Ok(tx) = event_tx.lock() {
+            let _ = tx.send(event);
+        }
+    }));
+    event_rx
+}
+
+/// Drains captured events and persists them to the activity log.
+///
+/// Usually called at the end of a command's successful execution.
+pub(crate) fn drain_activity_log(wb: &Vauchi, rx: mpsc::Receiver<VauchiEvent>) {
+    let mut events = Vec::new();
+    while let Ok(event) = rx.try_recv() {
+        events.push(event);
+    }
+    if !events.is_empty() {
+        let now = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap_or_default()
+            .as_secs();
+        let _ =
+            vauchi_app::activity_log_writer::ActivityLogWriter::write(wb.storage(), &events, now);
     }
 }
 

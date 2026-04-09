@@ -4,13 +4,14 @@
 
 use anyhow::Result;
 
-use crate::commands::common::open_vauchi;
+use crate::commands::common::{drain_activity_log, open_vauchi, register_activity_log_handler};
 use crate::config::CliConfig;
 use crate::display;
 
 /// Removes a contact.
 pub fn remove(config: &CliConfig, id: &str) -> Result<()> {
     let wb = open_vauchi(config)?;
+    let event_rx = register_activity_log_handler(&wb);
 
     // Get contact name before removing
     let contact = wb.get_contact(id)?;
@@ -24,6 +25,8 @@ pub fn remove(config: &CliConfig, id: &str) -> Result<()> {
     } else {
         display::warning(&format!("Contact '{}' not found", id));
     }
+
+    drain_activity_log(&wb, event_rx);
 
     Ok(())
 }

@@ -14,7 +14,7 @@ use indicatif::{ProgressBar, ProgressStyle};
 use vauchi_core::api::VauchiSyncOutcome;
 use vauchi_core::types::{AhaMomentTracker, AhaMomentType};
 
-use crate::commands::common::open_vauchi;
+use crate::commands::common::{drain_activity_log, open_vauchi, register_activity_log_handler};
 use crate::config::CliConfig;
 use crate::display;
 
@@ -29,6 +29,9 @@ use crate::display;
 /// - C1/C2 timing enforcement
 pub fn run(config: &CliConfig) -> Result<()> {
     let mut wb = open_vauchi(config)?;
+
+    // Sync is the primary source of background events in the CLI.
+    let event_rx = register_activity_log_handler(&wb);
 
     // Connect: bootstrap OHTTP key, health check
     let spinner = ProgressBar::new_spinner();
@@ -64,6 +67,8 @@ pub fn run(config: &CliConfig) -> Result<()> {
     let outcome = wb.sync().map_err(|e| anyhow::anyhow!("Sync failed: {e}"))?;
 
     sync_spinner.finish_and_clear();
+
+    drain_activity_log(&wb, event_rx);
 
     // Display outcome + aha moments
     match outcome {

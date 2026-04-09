@@ -16,7 +16,7 @@ use vauchi_core::exchange::{
 };
 use vauchi_core::types::{AhaMomentTracker, AhaMomentType};
 
-use crate::commands::common::open_vauchi;
+use crate::commands::common::{drain_activity_log, open_vauchi, register_activity_log_handler};
 use crate::config::CliConfig;
 use crate::display;
 
@@ -76,6 +76,9 @@ pub fn start(config: &CliConfig) -> Result<()> {
 /// and runs a sync to send it immediately.
 pub fn complete(config: &CliConfig, data: &str) -> Result<()> {
     let mut wb = open_vauchi(config)?;
+
+    // Capture exchange events (ContactAdded) for the activity log.
+    let event_rx = register_activity_log_handler(&wb);
 
     let qr = ExchangeQR::from_data_string(data)?;
 
@@ -201,6 +204,8 @@ pub fn complete(config: &CliConfig, data: &str) -> Result<()> {
         their_public_id.get(..16).unwrap_or(&their_public_id)
     ));
     display::info("They need to run 'vauchi sync' to see your contact request.");
+
+    drain_activity_log(&wb, event_rx);
 
     Ok(())
 }
