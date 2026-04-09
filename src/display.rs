@@ -488,6 +488,8 @@ pub fn display_activity_row(row: &ActivityLogRow) {
         "contact_added" => style("👤").green(),
         "card_update_received" => style("📥").blue(),
         "card_update_failed" => style("⚠").yellow(),
+        "own_card_updated" => style("✏").cyan(),
+        "contact_removed" => style("🗑").red(),
         _ => style("•").dim(),
     };
 
@@ -511,6 +513,21 @@ pub fn display_activity_row(row: &ActivityLogRow) {
             style(format!("Card Update Failed: {}", reason))
                 .yellow()
                 .bold()
+        }
+        Ok(AppActivityEntry::OwnCardUpdated { changed_fields }) => {
+            if changed_fields.is_empty() {
+                style("You Updated Your Card".to_string()).cyan().bold()
+            } else {
+                style(format!(
+                    "You Updated Your Card: {}",
+                    changed_fields.join(", ")
+                ))
+                .cyan()
+                .bold()
+            }
+        }
+        Ok(AppActivityEntry::ContactRemoved { .. }) => {
+            style("Contact Removed".to_string()).red().bold()
         }
         _ => style(row.category.to_string()).dim().bold(),
     };
