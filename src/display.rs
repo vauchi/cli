@@ -493,9 +493,11 @@ pub fn display_activity_row(row: &ActivityLogRow) {
 
     let title = match &entry {
         Ok(AppActivityEntry::EmergencyAlertReceived { .. }) => {
-            style("EMERGENCY ALERT").red().bold()
+            style("EMERGENCY ALERT".to_string()).red().bold()
         }
-        Ok(AppActivityEntry::ContactAdded { .. }) => style("New Contact Added").green().bold(),
+        Ok(AppActivityEntry::ContactAdded { .. }) => {
+            style("New Contact Added".to_string()).green().bold()
+        }
         Ok(AppActivityEntry::CardUpdateReceived { changed_fields, .. }) => {
             if changed_fields.is_empty() {
                 style("Card Update Received".to_string()).blue().bold()
