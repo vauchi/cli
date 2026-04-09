@@ -512,7 +512,7 @@ pub fn display_activity_row(row: &ActivityLogRow) {
                 .yellow()
                 .bold()
         }
-        _ => style(&row.category).dim().bold(),
+        _ => style(row.category.to_string()).dim().bold(),
     };
 
     let contact = if let Some(id) = &row.contact_id {
