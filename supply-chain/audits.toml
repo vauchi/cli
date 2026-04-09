@@ -6,3 +6,21 @@ who = "Mattia Egloff <mattia.egloff@pm.me>"
 criteria = "safe-to-deploy"
 delta = "2.4.0 -> 2.4.1"
 notes = "Only change: getrandom::getrandom() renamed to getrandom::fill() (API compat fix for js feature) + CI-only additions. No logic changes."
+
+[[audits.libredox]]
+who = "Mattia Egloff <mattia.egloff@pm.me>"
+criteria = "safe-to-deploy"
+delta = "0.1.15 -> 0.1.16"
+notes = "Trivial: 3 files, 6 insertions, 6 deletions — version bumps only."
+
+[[trusted.hashbrown]]
+criteria = "safe-to-deploy"
+user-id = 55123 # rust-lang-owner
+start = "2025-04-30"
+end = "2027-04-10"
+
+[[trusted.indexmap]]
+criteria = "safe-to-deploy"
+user-id = 539 # Josh Stone (cuviper)
+start = "2020-01-15"
+end = "2027-04-10"

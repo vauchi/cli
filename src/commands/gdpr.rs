@@ -227,6 +227,7 @@ fn create_relay_client(
         timeout_ms: 10_000,
         proxy: ProxyConfig::None,
         allow_direct: true,
+        pinned_certs: vec![],
     });
     let adapter = HttpTransportAdapter::new(transport);
     let transport_config = TransportConfig {
