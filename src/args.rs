@@ -88,6 +88,13 @@ pub(crate) enum Commands {
     /// Sync with the relay server
     Sync,
 
+    /// View recent activity and notifications
+    Activity {
+        /// Show activity from the last N minutes (default: 60)
+        #[arg(long, default_value = "60")]
+        since: Option<u64>,
+    },
+
     /// Export identity backup
     Export {
         /// Output file path

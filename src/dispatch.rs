@@ -264,6 +264,9 @@ pub(crate) async fn run(
         Commands::Sync => {
             commands::sync::run(config)?;
         }
+        Commands::Activity { since } => {
+            commands::activity::run(config, since.unwrap_or(60))?;
+        }
         Commands::Export { output } => {
             commands::backup::export(config, &output)?;
         }

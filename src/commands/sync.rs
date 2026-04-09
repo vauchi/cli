@@ -43,6 +43,11 @@ pub fn run(config: &CliConfig) -> Result<()> {
     wb.connect()
         .map_err(|e| anyhow::anyhow!("Connection failed: {e}"))?;
 
+    let start_time = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_secs();
+
     spinner.finish_and_clear();
     display::success("Connected");
 
@@ -100,6 +105,20 @@ pub fn run(config: &CliConfig) -> Result<()> {
                 display::display_aha_moment(&moment);
             }
             save_aha_tracker(config, &tracker);
+
+            // Show recent activity
+            let now = std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap_or_default()
+                .as_secs();
+            let activity = wb.activity_log_poll(start_time, now)?;
+            if !activity.is_empty() {
+                println!();
+                println!("{}", console::style("Recent Activity").bold().underlined());
+                for row in activity {
+                    display::display_activity_row(&row);
+                }
+            }
         }
         VauchiSyncOutcome::TooSoon => {
             display::info("Sync skipped: too soon since last sync");

@@ -3236,6 +3236,7 @@ name = "vauchi-app"
 version = "0.18.15"
 dependencies = [
  "hex",
+ "log",
  "reqwest",
  "serde",
  "serde_json",
@@ -3253,6 +3254,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "base64",
+ "chrono",
  "clap",
  "clap_complete",
  "console 0.15.11",

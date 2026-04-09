@@ -13,6 +13,8 @@ use tabled::{
     Table, Tabled,
     settings::{Alignment, Modify, Style as TableStyle, object::Columns},
 };
+use vauchi_app::notification_types::ActivityLogEntry as AppActivityEntry;
+use vauchi_core::storage::ActivityLogRow;
 use vauchi_core::{Contact, ContactCard, FieldType, SocialNetworkRegistry};
 
 /// Prints a success message.
@@ -472,6 +474,52 @@ pub fn display_aha_moment(moment: &AhaMoment) {
     }
     println!("{}", style(&bottom).magenta());
     println!();
+}
+
+/// Displays an activity log row.
+pub fn display_activity_row(row: &ActivityLogRow) {
+    let entry: Result<AppActivityEntry, _> = serde_json::from_str(&row.payload);
+    let time = chrono::DateTime::from_timestamp(row.created_at as i64, 0)
+        .map(|dt| dt.format("%Y-%m-%d %H:%M:%S").to_string())
+        .unwrap_or_else(|| "unknown".into());
+
+    let icon = match row.category.as_str() {
+        "emergency_alert_received" => style("🚨").red(),
+        "contact_added" => style("👤").green(),
+        "card_update_received" => style("📥").blue(),
+        "card_update_failed" => style("⚠").yellow(),
+        _ => style("•").dim(),
+    };
+
+    let title = match &entry {
+        Ok(AppActivityEntry::EmergencyAlertReceived { .. }) => {
+            style("EMERGENCY ALERT").red().bold()
+        }
+        Ok(AppActivityEntry::ContactAdded { .. }) => style("New Contact Added").green().bold(),
+        Ok(AppActivityEntry::CardUpdateReceived { changed_fields, .. }) => {
+            if changed_fields.is_empty() {
+                style("Card Update Received".to_string()).blue().bold()
+            } else {
+                style(format!("Card Update: {}", changed_fields.join(", ")))
+                    .blue()
+                    .bold()
+            }
+        }
+        Ok(AppActivityEntry::CardUpdateFailed { reason, .. }) => {
+            style(format!("Card Update Failed: {}", reason))
+                .yellow()
+                .bold()
+        }
+        _ => style(&row.category).dim().bold(),
+    };
+
+    let contact = if let Some(id) = &row.contact_id {
+        format!(" for contact {}", style(&id[..8.min(id.len())]).cyan())
+    } else {
+        String::new()
+    };
+
+    println!("{} [{}] {}{}", icon, style(time).dim(), title, contact);
 }
 
 /// Simple text wrapping.

@@ -4,6 +4,7 @@
 
 //! CLI Commands
 
+pub mod activity;
 pub mod backup;
 pub mod card;
 pub(crate) mod common;

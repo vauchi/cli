@@ -40,6 +40,9 @@ tabled = "0.20"
 # Platform directories
 dirs = "5"
 
+# Time and date formatting
+chrono = "0.4"
+
 # Serialization
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
