@@ -1,6 +1,12 @@
 
 # cargo-vet audits file
 
+[[audits.cc]]
+who = "Mattia Egloff <mattia.egloff@pm.me>"
+criteria = "safe-to-deploy"
+delta = "1.2.59 -> 1.2.60"
+notes = "5 files, 46 insertions — minor build system updates."
+
 [[audits.fastrand]]
 who = "Mattia Egloff <mattia.egloff@pm.me>"
 criteria = "safe-to-deploy"
