@@ -25,7 +25,8 @@ pub(crate) fn open_vauchi(config: &CliConfig) -> Result<Vauchi> {
         .with_storage_key(config.storage_key()?);
 
     // Allow direct (non-OHTTP) requests for testing against local relays.
-    // Production clients must use OHTTP — this is only for dev/e2e.
+    // Stripped from release builds — production clients must use OHTTP.
+    #[cfg(debug_assertions)]
     if std::env::var("VAUCHI_ALLOW_DIRECT").is_ok() {
         wb_config.ohttp.allow_direct = true;
     }
