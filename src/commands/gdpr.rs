@@ -226,8 +226,8 @@ fn create_relay_client(
         relay_url: http_url.clone(),
         timeout_ms: 10_000,
         proxy: ProxyConfig::None,
-        allow_direct: true,
-        pinned_certs: vec![],
+        allow_direct: false,
+        pinned_certs: vauchi_core::api::RelayConfig::default_pins(),
     });
     let adapter = HttpTransportAdapter::new(transport);
     let transport_config = TransportConfig {
