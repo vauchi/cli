@@ -20,9 +20,15 @@ pub(crate) fn open_vauchi(config: &CliConfig) -> Result<Vauchi> {
         bail!("Vauchi not initialized. Run 'vauchi init <name>' first.");
     }
 
-    let wb_config = VauchiConfig::with_storage_path(config.storage_path())
+    let mut wb_config = VauchiConfig::with_storage_path(config.storage_path())
         .with_relay_url(&config.relay_url)
         .with_storage_key(config.storage_key()?);
+
+    // Allow direct (non-OHTTP) requests for testing against local relays.
+    // Production clients must use OHTTP — this is only for dev/e2e.
+    if std::env::var("VAUCHI_ALLOW_DIRECT").is_ok() {
+        wb_config.ohttp.allow_direct = true;
+    }
 
     let mut wb = Vauchi::new(wb_config)?;
 
