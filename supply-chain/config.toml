@@ -124,7 +124,7 @@ version = "1.11.1"
 criteria = "safe-to-deploy"
 
 [[exemptions.cc]]
-version = "1.2.59"
+version = "1.2.60"
 criteria = "safe-to-deploy"
 
 [[exemptions.chacha20]]
@@ -304,7 +304,7 @@ version = "0.13.0"
 criteria = "safe-to-deploy"
 
 [[exemptions.fastrand]]
-version = "2.4.0"
+version = "2.4.1"
 criteria = "safe-to-deploy"
 
 [[exemptions.find-msvc-tools]]
@@ -484,7 +484,7 @@ version = "0.2.184"
 criteria = "safe-to-deploy"
 
 [[exemptions.libredox]]
-version = "0.1.15"
+version = "0.1.16"
 criteria = "safe-to-deploy"
 
 [[exemptions.libsqlite3-sys]]
