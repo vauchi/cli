@@ -459,6 +459,7 @@ mod tests {
                     max_length: Some(50),
                     validation_error: None,
                     input_type: vauchi_app::ui::InputType::Text,
+                    a11y: None,
                 },
                 Component::ToggleList {
                     id: "tl".into(),
