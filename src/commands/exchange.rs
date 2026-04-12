@@ -7,12 +7,15 @@
 //! Generate and complete contact exchanges.
 
 use std::fs;
+use std::net::{TcpListener, TcpStream};
 
 use anyhow::{Result, bail};
 use vauchi_core::Identity;
 use vauchi_core::contact_card::ContactCard;
+use vauchi_core::exchange::tcp_transport::TcpDirectTransport;
 use vauchi_core::exchange::{
-    ExchangeEvent, ExchangeQR, ExchangeSession, ExchangeState, ManualConfirmationVerifier,
+    ExchangeCommand, ExchangeEvent, ExchangeHardwareEvent, ExchangeQR, ExchangeSession,
+    ExchangeState, ManualConfirmationVerifier, ProximityConfidence, UsbRole,
 };
 use vauchi_core::types::{AhaMomentTracker, AhaMomentType};
 
@@ -207,6 +210,250 @@ pub fn complete(config: &CliConfig, data: &str) -> Result<()> {
 
     drain_activity_log(&wb, event_rx);
 
+    Ok(())
+}
+
+/// Performs a USB cable exchange as the initiator (desktop/TCP client side).
+///
+/// Connects to the phone's TCP address, exchanges payloads using the VXCH
+/// framing protocol, then completes key agreement and contact creation.
+pub fn usb_exchange(config: &CliConfig, address: &str) -> Result<()> {
+    let mut wb = open_vauchi(config)?;
+    let event_rx = register_activity_log_handler(&wb);
+
+    let identity = wb
+        .identity()
+        .ok_or_else(|| anyhow::anyhow!("No identity found"))?;
+
+    let our_card = wb
+        .storage()
+        .load_own_card()?
+        .unwrap_or_else(|| ContactCard::new(identity.display_name()));
+
+    let verifier = ManualConfirmationVerifier::new();
+
+    let backup_password = config.backup_password()?;
+    let backup = identity.export_backup(&backup_password)?;
+    let identity_owned = Identity::import_backup(&backup, &backup_password)?;
+
+    let mut session =
+        ExchangeSession::new_usb(identity_owned, our_card, verifier, UsbRole::Initiator);
+
+    session.emit_initial_commands();
+    let cmds = session.drain_commands();
+
+    let (payload, is_initiator) = match &cmds[0] {
+        ExchangeCommand::DirectSend {
+            payload,
+            is_initiator,
+        } => (payload.clone(), *is_initiator),
+        other => bail!("expected DirectSend command, got {:?}", other),
+    };
+
+    display::info(&format!("Connecting to {address}..."));
+
+    let addr: std::net::SocketAddr = address
+        .parse()
+        .map_err(|e| anyhow::anyhow!("invalid address '{}': {}", address, e))?;
+    let stream = TcpStream::connect_timeout(&addr, std::time::Duration::from_secs(10))
+        .map_err(|e| anyhow::anyhow!("connection failed: {}", e))?;
+    let mut transport = TcpDirectTransport::physical(stream);
+    let their_payload = transport
+        .exchange(&payload, is_initiator)
+        .map_err(|e| anyhow::anyhow!("TCP exchange failed: {:?}", e))?;
+
+    session
+        .apply_hardware_event(ExchangeHardwareEvent::DirectPayloadReceived {
+            data: their_payload,
+        })
+        .map_err(|e| anyhow::anyhow!("payload processing failed: {:?}", e))?;
+
+    // Capture their_exchange_key before PerformKeyAgreement consumes the state
+    let their_exchange_key = match session.state() {
+        ExchangeState::AwaitingKeyAgreement {
+            their_exchange_key, ..
+        } => *their_exchange_key,
+        _ => bail!("unexpected state after DirectPayloadReceived"),
+    };
+
+    session
+        .apply(ExchangeEvent::PerformKeyAgreement)
+        .map_err(|e| anyhow::anyhow!("key agreement failed: {:?}", e))?;
+
+    session
+        .apply(ExchangeEvent::ProximityCheckCompleted {
+            confidence: ProximityConfidence::High,
+        })
+        .map_err(|e| anyhow::anyhow!("proximity check failed: {:?}", e))?;
+
+    let shared_key = match session.state() {
+        ExchangeState::AwaitingCardExchange { shared_key, .. } => shared_key.clone(),
+        _ => bail!("unexpected state after key agreement"),
+    };
+
+    let their_name = session
+        .their_display_name()
+        .filter(|n| !n.is_empty())
+        .unwrap_or("New Contact")
+        .to_string();
+    let their_card = ContactCard::new(&their_name);
+    session
+        .apply(ExchangeEvent::CompleteExchange(their_card))
+        .map_err(|e| anyhow::anyhow!("complete exchange failed: {:?}", e))?;
+
+    let contact = match session.state() {
+        ExchangeState::Complete { contact } => *contact.clone(),
+        _ => bail!("session not in Complete state"),
+    };
+
+    let contact_id = contact.id().to_string();
+    wb.add_contact(contact)?;
+    wb.create_ratchet_as_initiator(&contact_id, &shared_key, their_exchange_key)?;
+
+    match wb.queue_initial_card_for_contact(&contact_id) {
+        Ok(()) => {
+            if let Err(e) = wb.connect() {
+                display::warning(&format!("Could not connect to relay: {e}"));
+            } else if let Err(e) = wb.sync() {
+                display::warning(&format!("Could not sync: {e}"));
+            } else {
+                display::info("Sent initial card to enable bidirectional messaging");
+            }
+            wb.disconnect();
+        }
+        Err(e) => {
+            display::warning(&format!("Could not prepare initial card: {e}"));
+            display::info("Run 'vauchi sync' to send your card later.");
+        }
+    }
+
+    display::success(&format!("Contact '{}' added via USB exchange!", their_name));
+    drain_activity_log(&wb, event_rx);
+    Ok(())
+}
+
+/// Listens for a USB cable exchange as the responder (phone/TCP server side).
+///
+/// Binds to a TCP port, accepts one connection from the desktop initiator,
+/// exchanges payloads using the VXCH framing protocol, then completes key
+/// agreement and contact creation.
+pub fn usb_listen(config: &CliConfig, port: u16) -> Result<()> {
+    let mut wb = open_vauchi(config)?;
+    let event_rx = register_activity_log_handler(&wb);
+
+    let identity = wb
+        .identity()
+        .ok_or_else(|| anyhow::anyhow!("No identity found"))?;
+
+    let our_card = wb
+        .storage()
+        .load_own_card()?
+        .unwrap_or_else(|| ContactCard::new(identity.display_name()));
+
+    let verifier = ManualConfirmationVerifier::new();
+
+    let backup_password = config.backup_password()?;
+    let backup = identity.export_backup(&backup_password)?;
+    let identity_owned = Identity::import_backup(&backup, &backup_password)?;
+
+    let mut session =
+        ExchangeSession::new_usb(identity_owned, our_card, verifier, UsbRole::Responder);
+
+    session.emit_initial_commands();
+    let cmds = session.drain_commands();
+
+    let (payload, is_initiator) = match &cmds[0] {
+        ExchangeCommand::DirectSend {
+            payload,
+            is_initiator,
+        } => (payload.clone(), *is_initiator),
+        other => bail!("expected DirectSend command, got {:?}", other),
+    };
+
+    let bind_addr = format!("0.0.0.0:{port}");
+    display::info(&format!("Listening on {bind_addr}..."));
+
+    let listener =
+        TcpListener::bind(&bind_addr).map_err(|e| anyhow::anyhow!("bind failed: {}", e))?;
+    let (stream, peer_addr) = listener
+        .accept()
+        .map_err(|e| anyhow::anyhow!("accept failed: {}", e))?;
+    display::info(&format!("Connected from {peer_addr}"));
+
+    let mut transport = TcpDirectTransport::physical(stream);
+    let their_payload = transport
+        .exchange(&payload, is_initiator)
+        .map_err(|e| anyhow::anyhow!("TCP exchange failed: {:?}", e))?;
+
+    session
+        .apply_hardware_event(ExchangeHardwareEvent::DirectPayloadReceived {
+            data: their_payload,
+        })
+        .map_err(|e| anyhow::anyhow!("payload processing failed: {:?}", e))?;
+
+    // Capture their_exchange_key before PerformKeyAgreement consumes the state
+    let their_exchange_key = match session.state() {
+        ExchangeState::AwaitingKeyAgreement {
+            their_exchange_key, ..
+        } => *their_exchange_key,
+        _ => bail!("unexpected state after DirectPayloadReceived"),
+    };
+
+    session
+        .apply(ExchangeEvent::PerformKeyAgreement)
+        .map_err(|e| anyhow::anyhow!("key agreement failed: {:?}", e))?;
+
+    session
+        .apply(ExchangeEvent::ProximityCheckCompleted {
+            confidence: ProximityConfidence::High,
+        })
+        .map_err(|e| anyhow::anyhow!("proximity check failed: {:?}", e))?;
+
+    let shared_key = match session.state() {
+        ExchangeState::AwaitingCardExchange { shared_key, .. } => shared_key.clone(),
+        _ => bail!("unexpected state after key agreement"),
+    };
+
+    let their_name = session
+        .their_display_name()
+        .filter(|n| !n.is_empty())
+        .unwrap_or("New Contact")
+        .to_string();
+    let their_card = ContactCard::new(&their_name);
+    session
+        .apply(ExchangeEvent::CompleteExchange(their_card))
+        .map_err(|e| anyhow::anyhow!("complete exchange failed: {:?}", e))?;
+
+    let contact = match session.state() {
+        ExchangeState::Complete { contact } => *contact.clone(),
+        _ => bail!("session not in Complete state"),
+    };
+
+    let contact_id = contact.id().to_string();
+    wb.add_contact(contact)?;
+    // USB symmetric session: both sides use create_ratchet_as_initiator
+    // with the peer's exchange public key (same symmetric DH shared secret).
+    wb.create_ratchet_as_initiator(&contact_id, &shared_key, their_exchange_key)?;
+
+    match wb.queue_initial_card_for_contact(&contact_id) {
+        Ok(()) => {
+            if let Err(e) = wb.connect() {
+                display::warning(&format!("Could not connect to relay: {e}"));
+            } else if let Err(e) = wb.sync() {
+                display::warning(&format!("Could not sync: {e}"));
+            } else {
+                display::info("Sent initial card to enable bidirectional messaging");
+            }
+            wb.disconnect();
+        }
+        Err(e) => {
+            display::warning(&format!("Could not prepare initial card: {e}"));
+            display::info("Run 'vauchi sync' to send your card later.");
+        }
+    }
+
+    display::success(&format!("Contact '{}' added via USB exchange!", their_name));
+    drain_activity_log(&wb, event_rx);
     Ok(())
 }
 

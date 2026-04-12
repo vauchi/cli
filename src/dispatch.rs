@@ -73,6 +73,12 @@ pub(crate) async fn run(
             ExchangeCommands::Complete { data } => {
                 commands::exchange::complete(config, &data)?;
             }
+            ExchangeCommands::Usb { address } => {
+                commands::exchange::usb_exchange(config, &address)?;
+            }
+            ExchangeCommands::UsbListen { port } => {
+                commands::exchange::usb_listen(config, port)?;
+            }
         },
         Commands::Contacts(cmd) => match cmd {
             ContactCommands::List {

@@ -319,6 +319,20 @@ pub(crate) enum ExchangeCommands {
         /// Exchange data (wb:// URL or base64)
         data: String,
     },
+
+    /// Exchange contacts via USB cable (initiator/desktop)
+    Usb {
+        /// Phone's TCP address (default: 127.0.0.1:19283)
+        #[arg(long, default_value = "127.0.0.1:19283")]
+        address: String,
+    },
+
+    /// Listen for USB cable exchange (responder/phone)
+    UsbListen {
+        /// TCP port to listen on (default: 19283)
+        #[arg(long, default_value_t = 19283)]
+        port: u16,
+    },
 }
 
 #[derive(Subcommand)]
