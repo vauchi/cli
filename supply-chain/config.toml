@@ -472,7 +472,7 @@ version = "3.6.3"
 criteria = "safe-to-deploy"
 
 [[exemptions.libc]]
-version = "0.2.184"
+version = "0.2.185"
 criteria = "safe-to-deploy"
 
 [[exemptions.libredox]]
