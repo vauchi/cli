@@ -10,6 +10,8 @@
 //! - contact_exchange.feature
 //! - visibility_labels.feature
 
+use rstest::fixture;
+use rstest::rstest;
 use std::process::{Command, Output};
 use tempfile::TempDir;
 
@@ -27,7 +29,7 @@ impl CliTestContext {
         }
     }
 
-    /// Run a CLI command and return the output
+    /// Run a CLI command and return the output.
     fn run(&self, args: &[&str]) -> Output {
         let mut cmd = Command::new(env!("CARGO_BIN_EXE_vauchi"));
         cmd.arg("--data-dir")
@@ -75,6 +77,12 @@ impl CliTestContext {
     fn init(&self, name: &str) -> String {
         self.run_success(&["init", name])
     }
+}
+
+/// rstest fixture: creates a fresh `CliTestContext` with an isolated temp dir.
+#[fixture]
+fn ctx() -> CliTestContext {
+    CliTestContext::new()
 }
 
 // ===========================================================================
@@ -234,53 +242,39 @@ mod identity_management {
 mod contact_card_management {
     use super::*;
 
-    /// Trace: contact_card_management.feature - "Add a phone number field"
+    /// Trace: contact_card_management.feature - "Add a field of each type"
     // @scenario: contact_card_management:Add a phone number field
-    #[test]
-    fn test_card_add_phone_field() {
-        let ctx = CliTestContext::new();
-        ctx.init("Alice Smith");
-
-        let output = ctx.run_success(&["card", "add", "phone", "Mobile", "+1-555-123-4567"]);
-        assert!(output.contains("added") || output.contains("Mobile"));
-
-        let card = ctx.run_success(&["card", "show"]);
-        assert!(card.contains("Mobile"));
-        assert!(card.contains("+1-555-123-4567"));
-    }
-
-    /// Trace: contact_card_management.feature - "Add an email field"
     // @scenario: contact_card_management:Add an email field
-    #[test]
-    fn test_card_add_email_field() {
-        let ctx = CliTestContext::new();
-        ctx.init("Alice Smith");
-
-        ctx.run_success(&["card", "add", "email", "Work", "alice@company.com"]);
-
-        let card = ctx.run_success(&["card", "show"]);
-        assert!(card.contains("Work"));
-        assert!(card.contains("alice@company.com"));
-    }
-
-    /// Trace: contact_card_management.feature - "Add a website field"
     // @scenario: contact_card_management:Add a website field
-    #[test]
-    fn test_card_add_website_field() {
-        let ctx = CliTestContext::new();
+    // @scenario: contact_card_management:Add social media fields
+    #[rstest]
+    #[case::phone("phone", "Mobile", "+1-555-123-4567")]
+    #[case::email("email", "Work", "alice@company.com")]
+    #[case::website("website", "Personal", "https://alice.example.com")]
+    #[case::social("social", "GitHub", "alicesmith")]
+    fn test_card_add_field(
+        ctx: CliTestContext,
+        #[case] field_type: &str,
+        #[case] label: &str,
+        #[case] value: &str,
+    ) {
         ctx.init("Alice Smith");
 
-        ctx.run_success(&[
-            "card",
-            "add",
-            "website",
-            "Personal",
-            "https://alice.example.com",
-        ]);
+        ctx.run_success(&["card", "add", field_type, label, value]);
 
         let card = ctx.run_success(&["card", "show"]);
-        assert!(card.contains("Personal"));
-        assert!(card.contains("https://alice.example.com"));
+        assert!(
+            card.contains(label) || card.contains(&label.to_lowercase()),
+            "Card should contain label '{}', got: {}",
+            label,
+            card,
+        );
+        assert!(
+            card.contains(value),
+            "Card should contain value '{}', got: {}",
+            value,
+            card,
+        );
     }
 
     /// Trace: contact_card_management.feature - "Edit an existing field value"
@@ -340,19 +334,6 @@ mod contact_card_management {
         assert!(card.contains("Mobile"));
         assert!(card.contains("Work"));
         assert!(card.contains("Personal"));
-    }
-
-    /// Trace: contact_card_management.feature - "Add social media fields"
-    // @scenario: contact_card_management:Add social media fields
-    #[test]
-    fn test_card_add_social_field() {
-        let ctx = CliTestContext::new();
-        ctx.init("Alice Smith");
-
-        ctx.run_success(&["card", "add", "social", "GitHub", "alicesmith"]);
-
-        let card = ctx.run_success(&["card", "show"]);
-        assert!(card.contains("GitHub") || card.contains("github"));
     }
 }
 

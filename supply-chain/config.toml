@@ -319,6 +319,10 @@ criteria = "safe-to-deploy"
 version = "0.3.21"
 criteria = "safe-to-deploy"
 
+[[exemptions.futures-timer]]
+version = "3.0.3"
+criteria = "safe-to-run"
+
 [[exemptions.futures-util]]
 version = "0.3.21"
 criteria = "safe-to-deploy"
@@ -579,6 +583,10 @@ criteria = "safe-to-deploy"
 version = "0.2.37"
 criteria = "safe-to-deploy"
 
+[[exemptions.proc-macro-crate]]
+version = "3.5.0"
+criteria = "safe-to-run"
+
 [[exemptions.proc-macro2]]
 version = "1.0.106"
 criteria = "safe-to-deploy"
@@ -658,6 +666,14 @@ criteria = "safe-to-deploy"
 [[exemptions.ring]]
 version = "0.17.14"
 criteria = "safe-to-deploy"
+
+[[exemptions.rstest]]
+version = "0.26.1"
+criteria = "safe-to-run"
+
+[[exemptions.rstest_macros]]
+version = "0.26.1"
+criteria = "safe-to-run"
 
 [[exemptions.rusqlite]]
 version = "0.32.1"
@@ -814,6 +830,14 @@ criteria = "safe-to-deploy"
 [[exemptions.toml]]
 version = "0.9.12+spec-1.1.0"
 criteria = "safe-to-deploy"
+
+[[exemptions.toml_datetime]]
+version = "1.1.1+spec-1.1.0"
+criteria = "safe-to-run"
+
+[[exemptions.toml_edit]]
+version = "0.25.11+spec-1.1.0"
+criteria = "safe-to-run"
 
 [[exemptions.toml_parser]]
 version = "1.1.2+spec-1.1.0"
