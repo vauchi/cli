@@ -145,7 +145,7 @@ security:deny:
 # overrides and regenerates Cargo.lock so cargo-vet sees git/registry sources.
 # On main, transitive dep bumps are auto-fixed and pushed.
 security:vet:
-  extends: [.rust-runner-readonly, .security-vet-autofix-job]
+  extends: [.rust-runner-readonly, .security-vet-job]
   script:
     - |
       curl --silent --fail \
