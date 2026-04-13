@@ -139,16 +139,20 @@ security:audit:
 security:deny:
   extends: [.rust-runner-readonly, .security-deny-job]
 
-# Supply chain verification (cargo-vet)
+# Supply chain verification (cargo-vet) with auto-fix on main.
 # Path overrides in .cargo/config.toml are gitignored and absent in CI, but the
-# committed Cargo.lock records path sources. Regenerate lockfile so cargo-vet
-# sees git/registry sources, then vet.
+# committed Cargo.lock records path sources. --regenerate-lockfile removes path
+# overrides and regenerates Cargo.lock so cargo-vet sees git/registry sources.
+# On main, transitive dep bumps are auto-fixed and pushed.
 security:vet:
-  extends: [.rust-runner-readonly, .security-vet-job]
+  extends: [.rust-runner-readonly, .security-vet-autofix-job]
   script:
-    - rm -f .cargo/config.toml
-    - cargo generate-lockfile
-    - cargo vet
+    - |
+      curl --silent --fail \
+        "${CI_API_V4_URL}/projects/77957857/repository/files/scripts%2Fci%2Fvet-autofix.sh/raw?ref=main" \
+        -o vet-autofix.sh
+      chmod +x vet-autofix.sh
+    - ./vet-autofix.sh --regenerate-lockfile
 
 # ============================================================
 # Advisory: Cargo.lock Freshness Check
