@@ -435,6 +435,10 @@ criteria = "safe-to-deploy"
 version = "0.25.10"
 criteria = "safe-to-deploy"
 
+[[exemptions.image-webp]]
+version = "0.2.4"
+criteria = "safe-to-deploy"
+
 [[exemptions.indicatif]]
 version = "0.17.11"
 criteria = "safe-to-deploy"
@@ -559,6 +563,10 @@ criteria = "safe-to-deploy"
 version = "0.3.33"
 criteria = "safe-to-deploy"
 
+[[exemptions.png]]
+version = "0.18.1"
+criteria = "safe-to-deploy"
+
 [[exemptions.poly1305]]
 version = "0.7.2"
 criteria = "safe-to-deploy"
@@ -601,6 +609,10 @@ criteria = "safe-to-deploy"
 
 [[exemptions.qrcode]]
 version = "0.14.1"
+criteria = "safe-to-deploy"
+
+[[exemptions.quick-error]]
+version = "2.0.1"
 criteria = "safe-to-deploy"
 
 [[exemptions.quinn]]
@@ -1153,6 +1165,14 @@ criteria = "safe-to-deploy"
 
 [[exemptions.zmij]]
 version = "1.0.21"
+criteria = "safe-to-deploy"
+
+[[exemptions.zune-core]]
+version = "0.5.1"
+criteria = "safe-to-deploy"
+
+[[exemptions.zune-jpeg]]
+version = "0.5.15"
 criteria = "safe-to-deploy"
 
 [[exemptions.zxcvbn]]
