@@ -501,6 +501,7 @@ mod tests {
                     fields: vec![],
                     group_views: vec![],
                     selected_group: None,
+                    avatar_data: None,
                     a11y: None,
                 },
                 Component::InfoPanel {
@@ -700,6 +701,7 @@ mod tests {
                     }],
                 }],
                 selected_group: Some("Family".into()),
+                avatar_data: None,
                 a11y: None,
             }],
             actions: vec![],
