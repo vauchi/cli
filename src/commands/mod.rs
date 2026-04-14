@@ -11,6 +11,7 @@ pub(crate) mod common;
 pub mod contacts;
 pub mod delivery;
 pub mod device;
+pub mod device_replacement;
 pub mod diag;
 pub mod duress;
 pub mod emergency;

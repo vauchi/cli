@@ -636,6 +636,22 @@ pub(crate) enum DeviceCommands {
         /// Device ID prefix
         device_id: String,
     },
+
+    /// Device replacement wizard
+    #[command(subcommand)]
+    Replace(DeviceReplaceCommands),
+}
+
+#[derive(Subcommand)]
+pub(crate) enum DeviceReplaceCommands {
+    /// Set up transfer from this (old) device to a new one
+    Setup,
+
+    /// Receive transfer on this (new) device
+    Transfer,
+
+    /// Post-restore guidance after importing a backup
+    PostRestore,
 }
 
 #[derive(Subcommand)]

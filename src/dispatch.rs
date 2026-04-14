@@ -215,6 +215,17 @@ pub(crate) async fn run(
             }
             DeviceCommands::Finish { response } => commands::device::finish(config, &response)?,
             DeviceCommands::Revoke { device_id } => commands::device::revoke(config, &device_id)?,
+            DeviceCommands::Replace(cmd) => match cmd {
+                DeviceReplaceCommands::Setup => {
+                    commands::device_replacement::run_setup()?;
+                }
+                DeviceReplaceCommands::Transfer => {
+                    commands::device_replacement::run_transfer()?;
+                }
+                DeviceReplaceCommands::PostRestore => {
+                    commands::device_replacement::run_post_restore()?;
+                }
+            },
         },
         Commands::Labels(cmd) => match cmd {
             LabelCommands::List => commands::labels::list(config)?,
