@@ -143,16 +143,18 @@ security:deny:
 # Path overrides in .cargo/config.toml are gitignored and absent in CI, but the
 # committed Cargo.lock records path sources. --regenerate-lockfile removes path
 # overrides and regenerates Cargo.lock so cargo-vet sees git/registry sources.
-# On main, transitive dep bumps are auto-fixed and pushed.
+# --sync-from=77874344 pre-populates exemptions from vauchi-core so shared
+# transitive deps inherit core's approved exemptions. Requires core in cli's
+# CI_JOB_TOKEN allowlist. On main, remaining unvetted deps are auto-fixed and pushed.
 security:vet:
-  extends: [.rust-runner-readonly, .security-vet-job]
+  extends: [.rust-runner-readonly, .security-vet-autofix-job]
   script:
     - |
       curl --silent --fail \
         "${CI_API_V4_URL}/projects/77957857/repository/files/scripts%2Fci%2Fvet-autofix.sh/raw?ref=main" \
         -o vet-autofix.sh
       chmod +x vet-autofix.sh
-    - ./vet-autofix.sh --regenerate-lockfile
+    - ./vet-autofix.sh --regenerate-lockfile --sync-from=77874344
 
 # ============================================================
 # Advisory: Cargo.lock Freshness Check
