@@ -4,7 +4,7 @@
 
 //! Backup Commands
 //!
-//! Export and import identity backups.
+//! Export and import backups (identity-only or full).
 
 use std::fs;
 use std::path::Path;
@@ -90,6 +90,67 @@ pub fn import(config: &CliConfig, input: &Path) -> Result<()> {
 
     display::success(&format!("Identity restored: {}", name));
     display::info("Your contacts and card will need to sync from the relay.");
+
+    Ok(())
+}
+
+/// Exports a full backup (identity + contacts + own card + labels).
+pub fn export_full(config: &CliConfig, output: &Path) -> Result<()> {
+    let wb = open_vauchi(config)?;
+
+    let password: String = Password::new()
+        .with_prompt("Enter backup password")
+        .with_confirmation("Confirm password", "Passwords don't match")
+        .interact()?;
+
+    let backup_hex = wb.export_full_backup(&password)?;
+    fs::write(output, backup_hex.as_bytes())?;
+
+    display::success(&format!("Full backup saved to {:?}", output));
+    display::warning(
+        "This file contains your identity, contacts, and labels. Keep it and the password safe.",
+    );
+
+    Ok(())
+}
+
+/// Imports a full backup (identity + contacts + own card + labels).
+pub fn import_full(config: &CliConfig, input: &Path) -> Result<()> {
+    if config.is_initialized() {
+        display::warning("Vauchi is already initialized.");
+
+        let confirm: String = Input::new()
+            .with_prompt("This will overwrite existing data. Type 'yes' to continue")
+            .interact_text()?;
+
+        if confirm.to_lowercase() != "yes" {
+            display::info("Import cancelled.");
+            return Ok(());
+        }
+    }
+
+    let backup_hex = fs::read_to_string(input)?;
+
+    let password: String = Password::new()
+        .with_prompt("Enter backup password")
+        .interact()?;
+
+    fs::create_dir_all(&config.data_dir)?;
+
+    let wb_config = VauchiConfig::with_storage_path(config.storage_path())
+        .with_relay_url(&config.relay_url)
+        .with_storage_key(config.storage_key()?);
+
+    let mut wb = Vauchi::new(wb_config)?;
+    wb.import_full_backup(&backup_hex, &password)?;
+
+    let name = wb
+        .identity()
+        .map(|id| id.display_name().to_string())
+        .unwrap_or_default();
+
+    display::success(&format!("Full backup restored: {}", name));
+    display::info("Identity, contacts, own card, and labels have been restored.");
 
     Ok(())
 }

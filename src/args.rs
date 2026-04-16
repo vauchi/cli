@@ -95,16 +95,22 @@ pub(crate) enum Commands {
         since: Option<u64>,
     },
 
-    /// Export identity backup
+    /// Export backup (identity-only by default, --full includes contacts + labels)
     Export {
         /// Output file path
         output: PathBuf,
+        /// Export full backup (identity + contacts + own card + labels)
+        #[arg(long)]
+        full: bool,
     },
 
-    /// Import identity from backup
+    /// Import from backup
     Import {
         /// Input file path
         input: PathBuf,
+        /// Import full backup (identity + contacts + own card + labels)
+        #[arg(long)]
+        full: bool,
     },
 
     /// Generate shell completions

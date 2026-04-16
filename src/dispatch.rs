@@ -284,11 +284,19 @@ pub(crate) async fn run(
         Commands::Activity { since } => {
             commands::activity::run(config, since.unwrap_or(60))?;
         }
-        Commands::Export { output } => {
-            commands::backup::export(config, &output)?;
+        Commands::Export { output, full } => {
+            if full {
+                commands::backup::export_full(config, &output)?;
+            } else {
+                commands::backup::export(config, &output)?;
+            }
         }
-        Commands::Import { input } => {
-            commands::backup::import(config, &input)?;
+        Commands::Import { input, full } => {
+            if full {
+                commands::backup::import_full(config, &input)?;
+            } else {
+                commands::backup::import(config, &input)?;
+            }
         }
         Commands::Completions { shell } => {
             let mut cmd = Cli::command();
