@@ -1,27 +1,18 @@
 // SPDX-FileCopyrightText: 2026 Mattia Egloff <mattia.egloff@pm.me>
 //
 // SPDX-License-Identifier: GPL-3.0-or-later
-//
-// allow(deprecated): MockTransportChannel deprecated by ADR-031, migration pending
-#![allow(deprecated)]
 
-//! Diagnostic commands for transport layer inspection.
+//! Diagnostic commands for exchange layer inspection.
 
 use std::path::PathBuf;
 
 use anyhow::Result;
 use clap::Subcommand;
 use vauchi_core::exchange::transport::animated_qr::{AnimatedQrConfig, AnimatedQrSession};
-use vauchi_core::exchange::transport::channel::TransportType;
-use vauchi_core::exchange::transport::diagnostics::TransportDiagnostics;
-use vauchi_core::exchange::transport::mock::MockTransportChannel;
 
 /// Diagnostic subcommands.
 #[derive(Subcommand)]
 pub enum DiagCommands {
-    /// Probe available transports and display a status table
-    Transport,
-
     /// Pretty-print a JSON trace file
     Trace {
         /// Path to the JSON trace file
@@ -49,41 +40,6 @@ pub enum AnimatedQrCommands {
         #[arg(long, default_value = "400")]
         chunk_size: usize,
     },
-}
-
-/// Run the `vauchi diag transport` subcommand.
-pub fn transport() -> Result<()> {
-    let transports: Vec<Box<dyn vauchi_core::exchange::transport::channel::TransportChannel>> = vec![
-        Box::new(MockTransportChannel::new(TransportType::WifiAware).with_available(false)),
-        Box::new(MockTransportChannel::new(TransportType::Ble).with_available(false)),
-        Box::new(MockTransportChannel::new(TransportType::AnimatedQr)),
-        Box::new(MockTransportChannel::new(TransportType::StaticQr)),
-        Box::new(MockTransportChannel::new(TransportType::Nfc).with_available(false)),
-        Box::new(MockTransportChannel::new(TransportType::Tcp).with_available(false)),
-    ];
-
-    let diag = TransportDiagnostics::new(transports);
-    let results = diag.probe_all();
-
-    println!("Transport Availability");
-    println!("{:<16} {:<12} Note", "Transport", "Available");
-    println!("{:-<16} {:-<12} {:-<30}", "", "", "");
-
-    for result in &results {
-        let status = if result.available { "yes" } else { "no" };
-        let note = result.error.as_deref().unwrap_or(if result.available {
-            "ready (mock)"
-        } else {
-            "not available on CLI"
-        });
-        println!("{:<16} {:<12} {}", result.transport, status, note);
-    }
-
-    let available_count = results.iter().filter(|r| r.available).count();
-    println!();
-    println!("{}/{} transports available", available_count, results.len());
-
-    Ok(())
 }
 
 /// Run the `vauchi diag trace` subcommand.

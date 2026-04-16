@@ -384,7 +384,6 @@ pub(crate) async fn run(
         },
         Commands::SupportUs => commands::support::run(),
         Commands::Diag(cmd) => match cmd {
-            commands::diag::DiagCommands::Transport => commands::diag::transport()?,
             commands::diag::DiagCommands::Trace { file } => commands::diag::trace(&file)?,
             commands::diag::DiagCommands::AnimatedQr(qr_cmd) => match qr_cmd {
                 commands::diag::AnimatedQrCommands::Encode {
