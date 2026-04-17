@@ -155,7 +155,7 @@ pub fn vouch(config: &CliConfig, claim_data: &str, auto_confirm: bool) -> Result
     }
 
     // Create voucher
-    let voucher = RecoveryVoucher::create_from_claim(&claim, identity.signing_keypair())?;
+    let voucher = RecoveryVoucher::create_from_claim(&claim, identity.signing_keypair(), None)?;
 
     // Encode for display
     let voucher_bytes = voucher.to_bytes();
