@@ -154,7 +154,7 @@ pub fn vouch(config: &CliConfig, claim_data: &str, auto_confirm: bool) -> Result
         display::success(&format!("Auto-confirmed vouch for: {}", c.display_name()));
     }
 
-    // Create voucher
+    // Create voucher (CLI does not yet wire guardian tokens — pass None)
     let voucher = RecoveryVoucher::create_from_claim(&claim, identity.signing_keypair(), None)?;
 
     // Encode for display

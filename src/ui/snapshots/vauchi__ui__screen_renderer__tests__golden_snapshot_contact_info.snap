@@ -1,6 +1,6 @@
 ---
 source: src/ui/screen_renderer.rs
-assertion_line: 854
+assertion_line: 842
 expression: output
 ---
 
