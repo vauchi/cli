@@ -1,15 +1,14 @@
 ---
 source: src/ui/screen_renderer.rs
+assertion_line: 854
 expression: output
 ---
 
   [ Step 3/4]
 
   Add contact info
-  Add phone, email, social profiles, and more to your card. You can always add or change entries later.
-
-  (no fields added)
+  Optional — you can add more later.
 
 ──────────────────────────────────────────────────
 
-  (1) Add Entry    (2) Continue    (3) Skip
+  (1) Add phone number    (2) Add email address    (3) Add social profile    (4) Continue    (5) Skip
