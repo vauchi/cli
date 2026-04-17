@@ -20,6 +20,9 @@ pub(crate) fn open_vauchi(config: &CliConfig) -> Result<Vauchi> {
         bail!("Vauchi not initialized. Run 'vauchi init <name>' first.");
     }
 
+    // `mut` is only needed on debug builds where the direct-HTTP escape
+    // hatch below may flip `ohttp.allow_direct`.
+    #[cfg_attr(not(debug_assertions), allow(unused_mut))]
     let mut wb_config = VauchiConfig::with_storage_path(config.storage_path())
         .with_relay_url(&config.relay_url)
         .with_storage_key(config.storage_key()?);
@@ -27,16 +30,16 @@ pub(crate) fn open_vauchi(config: &CliConfig) -> Result<Vauchi> {
     // Allow direct (non-OHTTP) requests for testing against local relays.
     //
     // Setting `allow_direct: true` exposes the client's source IP to the
-    // relay, defeating ADR-037's IP-privacy property. The only intended
-    // consumer is CI smoke tests (which build --release and need to fetch
-    // ephemeral OHTTP keys from a throwaway test relay) — hence the env
-    // gate rather than a compile-time feature.
+    // relay, defeating ADR-037's IP-privacy property. Release builds
+    // therefore drop this branch entirely — a leaked env var in a
+    // production deployment cannot re-enable it. Debug builds honor the
+    // env var so CI smoke tests (which traditionally built --release)
+    // must now build without --release to exercise the direct path.
     //
-    // The 2026-04-17 audit flagged this flag as a silent privacy regression
-    // when the env var is present. Phase 2.2 of the remediation plan moves
-    // this branch behind `#[cfg(debug_assertions)]` so release builds drop
-    // it entirely (see problem record
-    // `_private/docs/problems/2026-04-17-ohttp-allow-direct-fallback/`).
+    // See problem record
+    // `_private/docs/problems/2026-04-17-ohttp-allow-direct-fallback/`
+    // for the threat-model rationale.
+    #[cfg(debug_assertions)]
     if std::env::var("VAUCHI_ALLOW_DIRECT").is_ok() {
         wb_config.ohttp.allow_direct = true;
     }
