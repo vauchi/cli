@@ -460,6 +460,7 @@ mod tests {
                     validation_error: None,
                     input_type: vauchi_app::ui::InputType::Text,
                     a11y: None,
+                    info_key: None,
                 },
                 Component::ToggleList {
                     id: "tl".into(),
@@ -471,6 +472,7 @@ mod tests {
                             selected: true,
                             subtitle: None,
                             a11y: None,
+                            info_key: None,
                         },
                         ToggleItem {
                             id: "b".into(),
@@ -478,6 +480,7 @@ mod tests {
                             selected: false,
                             subtitle: Some("close friends".into()),
                             a11y: None,
+                            info_key: None,
                         },
                     ],
                     a11y: None,
