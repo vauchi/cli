@@ -1,10 +1,9 @@
 ---
 source: src/ui/screen_renderer.rs
-assertion_line: 752
 expression: output
 ---
 
-  [ Step 2/9]
+  [ Step 1/4]
 
   What's your name?
   This is how contacts will see you.

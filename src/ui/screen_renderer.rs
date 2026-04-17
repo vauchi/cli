@@ -825,20 +825,8 @@ mod tests {
     }
 
     #[test]
-    fn golden_snapshot_welcome() {
-        let output = render_golden_fixture("welcome.json");
-        insta::assert_snapshot!(output);
-    }
-
-    #[test]
     fn golden_snapshot_default_name() {
         let output = render_golden_fixture("default_name.json");
-        insta::assert_snapshot!(output);
-    }
-
-    #[test]
-    fn golden_snapshot_skip_gate() {
-        let output = render_golden_fixture("skip_gate.json");
         insta::assert_snapshot!(output);
     }
 
@@ -855,26 +843,8 @@ mod tests {
     }
 
     #[test]
-    fn golden_snapshot_preview_card() {
-        let output = render_golden_fixture("preview_card.json");
-        insta::assert_snapshot!(output);
-    }
-
-    #[test]
-    fn golden_snapshot_security_explanation() {
-        let output = render_golden_fixture("security_explanation.json");
-        insta::assert_snapshot!(output);
-    }
-
-    #[test]
-    fn golden_snapshot_backup_prompt() {
-        let output = render_golden_fixture("backup_prompt.json");
-        insta::assert_snapshot!(output);
-    }
-
-    #[test]
-    fn golden_snapshot_ready() {
-        let output = render_golden_fixture("ready.json");
+    fn golden_snapshot_what_next() {
+        let output = render_golden_fixture("what_next.json");
         insta::assert_snapshot!(output);
     }
 }

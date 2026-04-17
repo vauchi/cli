@@ -3,13 +3,10 @@ source: src/ui/screen_renderer.rs
 expression: output
 ---
 
-  [ Step 3/4]
+  [ Step 4/4]
 
-  Add contact info
-  Add phone, email, social profiles, and more to your card. You can always add or change entries later.
-
-  (no fields added)
+  What would you like to do?
 
 ──────────────────────────────────────────────────
 
-  (1) Add Entry    (2) Continue    (3) Skip
+  (1) Exchange cards    (2) Import existing contacts    (3) Read about security    (4) Read about backup    (5) Start using the app
