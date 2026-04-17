@@ -25,9 +25,18 @@ pub(crate) fn open_vauchi(config: &CliConfig) -> Result<Vauchi> {
         .with_storage_key(config.storage_key()?);
 
     // Allow direct (non-OHTTP) requests for testing against local relays.
-    // Gated on an explicit env var — production clients never set this.
-    // Available in release builds so CI smoke tests (which build --release)
-    // can fetch ephemeral OHTTP keys from the test relay.
+    //
+    // Setting `allow_direct: true` exposes the client's source IP to the
+    // relay, defeating ADR-037's IP-privacy property. The only intended
+    // consumer is CI smoke tests (which build --release and need to fetch
+    // ephemeral OHTTP keys from a throwaway test relay) — hence the env
+    // gate rather than a compile-time feature.
+    //
+    // The 2026-04-17 audit flagged this flag as a silent privacy regression
+    // when the env var is present. Phase 2.2 of the remediation plan moves
+    // this branch behind `#[cfg(debug_assertions)]` so release builds drop
+    // it entirely (see problem record
+    // `_private/docs/problems/2026-04-17-ohttp-allow-direct-fallback/`).
     if std::env::var("VAUCHI_ALLOW_DIRECT").is_ok() {
         wb_config.ohttp.allow_direct = true;
     }
