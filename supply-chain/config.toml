@@ -568,7 +568,7 @@ version = "1.70.2"
 criteria = "safe-to-deploy"
 
 [[exemptions.open]]
-version = "5.3.3"
+version = "5.3.4"
 criteria = "safe-to-deploy"
 
 [[exemptions.papergrid]]
