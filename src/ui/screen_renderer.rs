@@ -526,12 +526,14 @@ mod tests {
                     label: "OK".into(),
                     style: ActionStyle::Primary,
                     enabled: true,
+                    a11y: None,
                 },
                 ScreenAction {
                     id: "cancel".into(),
                     label: "Cancel".into(),
                     style: ActionStyle::Destructive,
                     enabled: false,
+                    a11y: None,
                 },
             ],
             progress: Some(Progress {
@@ -766,24 +768,28 @@ mod tests {
                 label: "Primary".into(),
                 style: ActionStyle::Primary,
                 enabled: true,
+                a11y: None,
             },
             ScreenAction {
                 id: "b".into(),
                 label: "Secondary".into(),
                 style: ActionStyle::Secondary,
                 enabled: true,
+                a11y: None,
             },
             ScreenAction {
                 id: "c".into(),
                 label: "Destructive".into(),
                 style: ActionStyle::Destructive,
                 enabled: true,
+                a11y: None,
             },
             ScreenAction {
                 id: "d".into(),
                 label: "Disabled".into(),
                 style: ActionStyle::Primary,
                 enabled: false,
+                a11y: None,
             },
         ];
         render_actions(&actions);
