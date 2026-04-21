@@ -890,7 +890,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "39cab71617ae0d63f51a36d69f866391735b51691dbda63cf6f96d042b63efeb"
 dependencies = [
  "libc",
- "windows-sys 0.59.0",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]
@@ -2499,7 +2499,7 @@ dependencies = [
  "errno",
  "libc",
  "linux-raw-sys",
- "windows-sys 0.59.0",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]
@@ -2528,9 +2528,9 @@ dependencies = [
 
 [[package]]
 name = "rustls-webpki"
-version = "0.103.12"
+version = "0.103.13"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8279bb85272c9f10811ae6a6c547ff594d6a7f3c6c6b02ee9726d1d0dcfcdd06"
+checksum = "61c429a8649f110dddef65e2a5ad240f747e85f7758a6bccc7e5777bd33f756e"
 dependencies = [
  "aws-lc-rs",
  "ring",
@@ -2909,7 +2909,7 @@ dependencies = [
  "getrandom 0.4.2",
  "once_cell",
  "rustix",
- "windows-sys 0.59.0",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]
@@ -3097,7 +3097,7 @@ dependencies = [
  "indexmap 2.14.0",
  "toml_datetime 1.1.1+spec-1.1.0",
  "toml_parser",
- "winnow 1.0.1",
+ "winnow 1.0.2",
 ]
 
 [[package]]
@@ -3106,7 +3106,7 @@ version = "1.1.2+spec-1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a2abe9b86193656635d2411dc43050282ca48aa31c2451210f4202550afb7526"
 dependencies = [
- "winnow 1.0.1",
+ "winnow 1.0.2",
 ]
 
 [[package]]
@@ -3337,8 +3337,8 @@ dependencies = [
 
 [[package]]
 name = "vauchi-app"
-version = "0.21.2"
-source = "git+https://gitlab.com/vauchi/core.git?branch=main#a0dc69c099c400911d44bc2bcc1d21890ecfc132"
+version = "0.21.4"
+source = "git+https://gitlab.com/vauchi/core.git?branch=main#00d526f59443f123c669ae32565d9b8aa346c5d1"
 dependencies = [
  "hex",
  "log",
@@ -3383,8 +3383,8 @@ dependencies = [
 
 [[package]]
 name = "vauchi-core"
-version = "0.21.2"
-source = "git+https://gitlab.com/vauchi/core.git?branch=main#a0dc69c099c400911d44bc2bcc1d21890ecfc132"
+version = "0.21.4"
+source = "git+https://gitlab.com/vauchi/core.git?branch=main#00d526f59443f123c669ae32565d9b8aa346c5d1"
 dependencies = [
  "argon2",
  "async-trait",
@@ -3426,8 +3426,8 @@ dependencies = [
 
 [[package]]
 name = "vauchi-protocol"
-version = "0.21.2"
-source = "git+https://gitlab.com/vauchi/core.git?branch=main#a0dc69c099c400911d44bc2bcc1d21890ecfc132"
+version = "0.21.4"
+source = "git+https://gitlab.com/vauchi/core.git?branch=main#00d526f59443f123c669ae32565d9b8aa346c5d1"
 dependencies = [
  "serde",
  "serde_json",
@@ -3830,9 +3830,9 @@ checksum = "df79d97927682d2fd8adb29682d1140b343be4ac0f08fd68b7765d9c059d3945"
 
 [[package]]
 name = "winnow"
-version = "1.0.1"
+version = "1.0.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "09dac053f1cd375980747450bfc7250c264eaae0583872e845c0c7cd578872b5"
+checksum = "2ee1708bef14716a11bae175f579062d4554d95be2c6829f518df847b7b3fdd0"
 dependencies = [
  "memchr",
 ]
