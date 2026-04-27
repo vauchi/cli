@@ -315,6 +315,10 @@ criteria = "safe-to-deploy"
 version = "0.1.13"
 criteria = "safe-to-deploy"
 
+[[exemptions.ctor]]
+version = "0.2.9"
+criteria = "safe-to-deploy"
+
 [[exemptions.ctr]]
 version = "0.9.2"
 criteria = "safe-to-deploy"
@@ -811,6 +815,10 @@ criteria = "safe-to-deploy"
 version = "0.15.7"
 criteria = "safe-to-deploy"
 
+[[exemptions.matchers]]
+version = "0.2.0"
+criteria = "safe-to-deploy"
+
 [[exemptions.matrixmultiply]]
 version = "0.3.10"
 criteria = "safe-to-deploy"
@@ -862,6 +870,10 @@ criteria = "safe-to-deploy"
 [[exemptions.nom_locate]]
 version = "4.2.0"
 criteria = "safe-to-run"
+
+[[exemptions.nu-ansi-term]]
+version = "0.50.3"
+criteria = "safe-to-deploy"
 
 [[exemptions.num]]
 version = "0.4.3"
@@ -1275,6 +1287,10 @@ criteria = "safe-to-deploy"
 version = "3.18.0"
 criteria = "safe-to-deploy"
 
+[[exemptions.sharded-slab]]
+version = "0.1.7"
+criteria = "safe-to-deploy"
+
 [[exemptions.shell-words]]
 version = "1.1.1"
 criteria = "safe-to-deploy"
@@ -1375,6 +1391,10 @@ criteria = "safe-to-deploy"
 version = "2.0.17"
 criteria = "safe-to-deploy"
 
+[[exemptions.thread_local]]
+version = "1.1.9"
+criteria = "safe-to-deploy"
+
 [[exemptions.time]]
 version = "0.1.44"
 criteria = "safe-to-deploy"
@@ -1451,8 +1471,24 @@ criteria = "safe-to-deploy"
 version = "0.1.44"
 criteria = "safe-to-deploy"
 
+[[exemptions.tracing-attributes]]
+version = "0.1.31"
+criteria = "safe-to-deploy"
+
 [[exemptions.tracing-core]]
 version = "0.1.36"
+criteria = "safe-to-deploy"
+
+[[exemptions.tracing-flame]]
+version = "0.2.0"
+criteria = "safe-to-deploy"
+
+[[exemptions.tracing-log]]
+version = "0.2.0"
+criteria = "safe-to-deploy"
+
+[[exemptions.tracing-subscriber]]
+version = "0.3.23"
 criteria = "safe-to-deploy"
 
 [[exemptions.ttf-parser]]
@@ -1514,6 +1550,10 @@ criteria = "safe-to-deploy"
 [[exemptions.uuid-simd]]
 version = "0.8.0"
 criteria = "safe-to-run"
+
+[[exemptions.valuable]]
+version = "0.1.1"
+criteria = "safe-to-deploy"
 
 [[exemptions.version_check]]
 version = "0.9.5"
