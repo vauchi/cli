@@ -48,28 +48,17 @@ pub struct CliConfig {
 /// Key name used for SecureStorage (non-keychain path).
 const KEY_NAME: &str = "storage_key";
 
-/// Legacy fixed keychain key name (pre per-data-dir fix).
+/// Derives a stable per-install keychain key name from the install_id stored
+/// at `<data_dir>/install_id`.
 ///
-/// Before the per-data-dir fix, all CLI instances shared a single OS keychain
-/// entry named "storage_key". This caused corruption when multiple instances
-/// (e.g., E2E test devices) ran concurrently with different data directories.
-#[cfg(feature = "secure-storage")]
-const LEGACY_KEY_NAME: &str = "storage_key";
-
-/// Derives a per-data-dir keychain key name using FNV-1a hash.
-///
-/// Ensures that CLI instances with different `--data-dir` values get
-/// separate OS keychain entries, preventing key collisions.
-#[cfg(feature = "secure-storage")]
-fn keychain_key_name(data_dir: &std::path::Path) -> String {
-    let path_str = data_dir.to_string_lossy();
-    // FNV-1a hash — stable, well-defined algorithm
-    let mut hash: u64 = 0xcbf29ce484222325; // FNV offset basis
-    for byte in path_str.as_bytes() {
-        hash ^= *byte as u64;
-        hash = hash.wrapping_mul(0x100000001b3); // FNV prime
-    }
-    format!("storage_key_{:016x}", hash)
+/// The install_id moves with the data directory on rename — so the OS keychain
+/// entry stays reachable even if the user relocates `data_dir`. Two installs
+/// with distinct data directories get distinct ids and distinct keychain
+/// entries.
+#[cfg_attr(not(feature = "secure-storage"), allow(dead_code))]
+fn keychain_key_name(data_dir: &std::path::Path) -> Result<String> {
+    let install_id = vauchi_core::install_id::read_or_create_install_id(data_dir)?;
+    Ok(format!("storage_key_{install_id}"))
 }
 
 /// Loads or generates a per-installation random fallback key from `data_dir/.fallback-key`.
@@ -206,16 +195,14 @@ impl CliConfig {
     /// Loads or creates the storage encryption key using SecureStorage.
     ///
     /// When the `secure-storage` feature is enabled, uses the OS keychain
-    /// with a per-data-dir key name to prevent collisions between instances.
-    /// Migrates from the old fixed key name on first access.
-    ///
-    /// Otherwise, falls back to encrypted file storage.
+    /// with a key name derived from the install_id stored next to the data
+    /// directory. Otherwise, falls back to encrypted file storage.
     #[allow(unused_variables)]
     pub fn storage_key(&self) -> Result<SymmetricKey> {
         #[cfg(feature = "secure-storage")]
         {
             let storage = PlatformKeyring::new("vauchi-cli");
-            let key_name = keychain_key_name(&self.data_dir);
+            let key_name = keychain_key_name(&self.data_dir)?;
 
             match storage.load_key(&key_name) {
                 Ok(Some(bytes)) if bytes.len() == 32 => {
@@ -227,21 +214,6 @@ impl CliConfig {
                     anyhow::bail!("Invalid storage key length in keychain");
                 }
                 Ok(None) => {
-                    // Try migrating from the old fixed key name
-                    if let Ok(Some(legacy_bytes)) = storage.load_key(LEGACY_KEY_NAME) {
-                        if legacy_bytes.len() == 32 {
-                            // Migrate: save under new per-dir name, delete legacy entry
-                            storage.save_key(&key_name, &legacy_bytes).map_err(|e| {
-                                anyhow::anyhow!("Failed to migrate keychain key: {}", e)
-                            })?;
-                            let _ = storage.delete_key(LEGACY_KEY_NAME);
-                            let mut arr = [0u8; 32];
-                            arr.copy_from_slice(&legacy_bytes);
-                            return Ok(SymmetricKey::from_bytes(arr));
-                        }
-                    }
-
-                    // No existing key — generate a new one
                     let key = SymmetricKey::generate();
                     storage
                         .save_key(&key_name, key.as_bytes())
@@ -327,6 +299,44 @@ mod tests {
         let key2 = config.storage_key().expect("should load key");
 
         assert_eq!(key1.as_bytes(), key2.as_bytes());
+    }
+
+    // @internal
+    #[test]
+    fn keychain_key_name_is_stable_across_calls() {
+        let temp_dir = tempdir().unwrap();
+        let name1 = keychain_key_name(temp_dir.path()).unwrap();
+        let name2 = keychain_key_name(temp_dir.path()).unwrap();
+        assert_eq!(name1, name2);
+    }
+
+    // @internal
+    #[test]
+    fn keychain_key_name_survives_data_dir_rename() {
+        // Regression: pre-fix, the key name was derived from `fnv1a(data_dir)`,
+        // so renaming the data directory orphaned the OS keychain entry. Now
+        // the name is derived from the install_id file, which moves with the
+        // data — rename is invisible to the keychain lookup.
+        let parent = tempdir().unwrap();
+        let original = parent.path().join("original");
+        std::fs::create_dir_all(&original).unwrap();
+        let name_before = keychain_key_name(&original).unwrap();
+
+        let renamed = parent.path().join("renamed");
+        std::fs::rename(&original, &renamed).unwrap();
+        let name_after = keychain_key_name(&renamed).unwrap();
+
+        assert_eq!(name_before, name_after);
+    }
+
+    // @internal
+    #[test]
+    fn keychain_key_name_differs_per_data_dir() {
+        let dir_a = tempdir().unwrap();
+        let dir_b = tempdir().unwrap();
+        let name_a = keychain_key_name(dir_a.path()).unwrap();
+        let name_b = keychain_key_name(dir_b.path()).unwrap();
+        assert_ne!(name_a, name_b);
     }
 
     // === Backup Password Tests ===

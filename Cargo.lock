@@ -875,7 +875,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "39cab71617ae0d63f51a36d69f866391735b51691dbda63cf6f96d042b63efeb"
 dependencies = [
  "libc",
- "windows-sys 0.61.2",
+ "windows-sys 0.59.0",
 ]
 
 [[package]]
@@ -2484,7 +2484,7 @@ dependencies = [
  "errno",
  "libc",
  "linux-raw-sys",
- "windows-sys 0.61.2",
+ "windows-sys 0.59.0",
 ]
 
 [[package]]
@@ -2894,7 +2894,7 @@ dependencies = [
  "getrandom 0.4.2",
  "once_cell",
  "rustix",
- "windows-sys 0.61.2",
+ "windows-sys 0.59.0",
 ]
 
 [[package]]
@@ -3334,8 +3334,8 @@ dependencies = [
 
 [[package]]
 name = "vauchi-app"
-version = "0.37.0"
-source = "git+https://gitlab.com/vauchi/core.git?branch=main#1e59d7513ee978477c99031d50c7871271b5a337"
+version = "0.38.0"
+source = "git+https://gitlab.com/vauchi/core.git?branch=main#e97c3c97efb5ac1d214bff24abde0af38b943b76"
 dependencies = [
  "base64",
  "hex",
@@ -3382,8 +3382,8 @@ dependencies = [
 
 [[package]]
 name = "vauchi-core"
-version = "0.37.0"
-source = "git+https://gitlab.com/vauchi/core.git?branch=main#1e59d7513ee978477c99031d50c7871271b5a337"
+version = "0.38.0"
+source = "git+https://gitlab.com/vauchi/core.git?branch=main#e97c3c97efb5ac1d214bff24abde0af38b943b76"
 dependencies = [
  "argon2",
  "async-trait",
@@ -3426,8 +3426,8 @@ dependencies = [
 
 [[package]]
 name = "vauchi-protocol"
-version = "0.37.0"
-source = "git+https://gitlab.com/vauchi/core.git?branch=main#1e59d7513ee978477c99031d50c7871271b5a337"
+version = "0.38.0"
+source = "git+https://gitlab.com/vauchi/core.git?branch=main#e97c3c97efb5ac1d214bff24abde0af38b943b76"
 dependencies = [
  "serde",
  "serde_json",
