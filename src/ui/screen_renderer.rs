@@ -176,10 +176,38 @@ fn render_component_to(out: &mut String, component: &Component) {
         } => {
             writeln!(out, "  {} [{}]", style(text).cyan(), action_label).unwrap();
         }
+        Component::Dropdown {
+            label,
+            selected,
+            options,
+            ..
+        } => {
+            render_dropdown_to(out, label, selected.as_deref(), options);
+        }
         _ => {
             // Unknown component variant — skip rendering
         }
     }
+}
+
+const DROPDOWN_NONE_PLACEHOLDER: &str = "—";
+
+/// Render a `Component::Dropdown` as `Label: <selected_label> ▼`.
+/// `selected` is matched against `options[i].id` (the de facto contract
+/// shared with tui/linux-gtk/android). When the id has no match, the
+/// `—` placeholder makes upstream id-vs-label bugs visible instead of
+/// silently dropping the row.
+fn render_dropdown_to(
+    out: &mut String,
+    label: &str,
+    selected: Option<&str>,
+    options: &[vauchi_app::ui::DropdownOption],
+) {
+    let selected_label = selected
+        .and_then(|sel_id| options.iter().find(|o| o.id == sel_id))
+        .map(|o| o.label.as_str())
+        .unwrap_or(DROPDOWN_NONE_PLACEHOLDER);
+    writeln!(out, "  {}: {} ▼", style(label).bold(), selected_label).unwrap();
 }
 
 fn render_text_to(out: &mut String, content: &str, text_style: &TextStyle) {
