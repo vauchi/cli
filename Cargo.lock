@@ -2681,9 +2681,9 @@ dependencies = [
 
 [[package]]
 name = "serde_with"
-version = "3.18.0"
+version = "3.19.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "dd5414fad8e6907dbdd5bc441a50ae8d6e26151a03b1de04d89a5576de61d01f"
+checksum = "f05839ce67618e14a09b286535c0d9c94e85ef25469b0e13cb4f844e5593eb19"
 dependencies = [
  "base64",
  "chrono",
@@ -2700,9 +2700,9 @@ dependencies = [
 
 [[package]]
 name = "serde_with_macros"
-version = "3.18.0"
+version = "3.19.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d3db8978e608f1fe7357e211969fd9abdcae80bac1ba7a3369bb7eb6b404eb65"
+checksum = "cf2ebbe86054f9b45bc3881e865683ccfaccce97b9b4cb53f3039d67f355a334"
 dependencies = [
  "darling 0.23.0",
  "proc-macro2",
@@ -3334,8 +3334,8 @@ dependencies = [
 
 [[package]]
 name = "vauchi-app"
-version = "0.34.0"
-source = "git+https://gitlab.com/vauchi/core.git?branch=main#afc5b1e4e38c9b13e08d1db1dd4a0346f1d14a32"
+version = "0.37.0"
+source = "git+https://gitlab.com/vauchi/core.git?branch=main#1e59d7513ee978477c99031d50c7871271b5a337"
 dependencies = [
  "base64",
  "hex",
@@ -3382,8 +3382,8 @@ dependencies = [
 
 [[package]]
 name = "vauchi-core"
-version = "0.34.0"
-source = "git+https://gitlab.com/vauchi/core.git?branch=main#afc5b1e4e38c9b13e08d1db1dd4a0346f1d14a32"
+version = "0.37.0"
+source = "git+https://gitlab.com/vauchi/core.git?branch=main#1e59d7513ee978477c99031d50c7871271b5a337"
 dependencies = [
  "argon2",
  "async-trait",
@@ -3426,8 +3426,8 @@ dependencies = [
 
 [[package]]
 name = "vauchi-protocol"
-version = "0.34.0"
-source = "git+https://gitlab.com/vauchi/core.git?branch=main#afc5b1e4e38c9b13e08d1db1dd4a0346f1d14a32"
+version = "0.37.0"
+source = "git+https://gitlab.com/vauchi/core.git?branch=main#1e59d7513ee978477c99031d50c7871271b5a337"
 dependencies = [
  "serde",
  "serde_json",
