@@ -507,6 +507,58 @@ mod tests {
         assert!(out.contains('—'), "expected placeholder, got: {out:?}");
     }
 
+    /// `Component::AvatarPreview` must render something user-visible
+    /// — historically dropped by the catch-all `_` arm. Placeholder
+    /// surface acceptable for CLI.
+    #[test]
+    fn render_avatar_preview_emits_visible_placeholder() {
+        console::set_colors_enabled(false);
+        let mut out = String::new();
+        render_component_to(
+            &mut out,
+            &Component::AvatarPreview {
+                id: "avatar".into(),
+                image_data: None,
+                initials: "AB".into(),
+                bg_color: None,
+                brightness: 0.0,
+                editable: false,
+                a11y: None,
+            },
+        );
+        assert!(
+            out.contains("Avatar") || out.contains("AB"),
+            "expected avatar surface, got: {out:?}"
+        );
+    }
+
+    /// `Component::Slider` must render label + current value — historically
+    /// dropped by the catch-all `_` arm.
+    #[test]
+    fn render_slider_emits_label_and_value() {
+        console::set_colors_enabled(false);
+        let mut out = String::new();
+        render_component_to(
+            &mut out,
+            &Component::Slider {
+                id: "brightness".into(),
+                label: "Brightness".into(),
+                value: 0.5,
+                min: 0.0,
+                max: 1.0,
+                step: 0.1,
+                min_icon: None,
+                max_icon: None,
+                a11y: None,
+            },
+        );
+        assert!(out.contains("Brightness"), "expected label, got: {out:?}");
+        assert!(
+            out.contains("0.5") || out.contains("0.50"),
+            "expected current value, got: {out:?}"
+        );
+    }
+
     #[test]
     fn render_does_not_panic_on_minimal_screen() {
         let screen = ScreenModel {
