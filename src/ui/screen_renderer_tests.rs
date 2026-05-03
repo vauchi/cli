@@ -593,3 +593,222 @@ fn golden_snapshot_what_next() {
     let output = render_golden_fixture("what_next.json");
     insta::assert_snapshot!(output);
 }
+
+// --- CC-22 reachability gate for Component renderer ---
+
+/// Build one labelled instance of every currently-known
+/// `Component` variant. Mirrors the enum in
+/// `core/vauchi-app/src/ui/component.rs` — keep in sync with
+/// `every_known_component_variant_renders_non_empty` below.
+fn every_known_component() -> Vec<Component> {
+    use vauchi_app::ui::{
+        ActionListItem, ContactItem, FieldDisplay, InfoItem, InputType, QrMode, SettingsItem,
+        SettingsItemKind, Status,
+    };
+    vec![
+        Component::Text {
+            id: "text".into(),
+            content: "Body text".into(),
+            style: TextStyle::Body,
+        },
+        Component::TextInput {
+            id: "input".into(),
+            label: "Name".into(),
+            value: "Alice".into(),
+            placeholder: None,
+            max_length: None,
+            validation_error: None,
+            input_type: InputType::Text,
+            a11y: None,
+            info_key: None,
+        },
+        Component::ToggleList {
+            id: "toggles".into(),
+            label: "Groups".into(),
+            items: vec![ToggleItem {
+                id: "fam".into(),
+                label: "Family".into(),
+                selected: true,
+                subtitle: None,
+                a11y: None,
+                info_key: None,
+            }],
+            a11y: None,
+        },
+        Component::FieldList {
+            id: "fields".into(),
+            fields: vec![FieldDisplay {
+                id: "email".into(),
+                field_type: "email".into(),
+                label: "Email".into(),
+                value: "a@b.com".into(),
+                visibility: UiFieldVisibility::Shown,
+                a11y: None,
+            }],
+            visibility_mode: VisibilityMode::ShowHide,
+            available_groups: vec![],
+            a11y: None,
+        },
+        Component::CardPreview {
+            name: "Alice".into(),
+            avatar_data: None,
+            fields: vec![],
+            group_views: vec![],
+            selected_group: None,
+            visible_fields: vec![],
+            a11y: None,
+        },
+        Component::InfoPanel {
+            id: "info".into(),
+            icon: None,
+            title: "Security".into(),
+            items: vec![InfoItem {
+                icon: None,
+                title: "E2E".into(),
+                detail: "Encrypted".into(),
+            }],
+            a11y: None,
+        },
+        Component::ContactList {
+            id: "contacts".into(),
+            contacts: vec![ContactItem {
+                id: "c1".into(),
+                name: "Bob".into(),
+                subtitle: None,
+                avatar_initials: "B".into(),
+                status: None,
+                searchable_fields: vec![],
+                actions: vec![],
+                a11y: None,
+            }],
+            searchable: false,
+        },
+        Component::SettingsGroup {
+            id: "settings".into(),
+            label: "Privacy".into(),
+            items: vec![SettingsItem {
+                id: "s1".into(),
+                label: "Show toasts".into(),
+                kind: SettingsItemKind::Toggle { enabled: true },
+                a11y: None,
+                info_key: None,
+            }],
+        },
+        Component::ActionList {
+            id: "actions".into(),
+            items: vec![ActionListItem {
+                id: "a1".into(),
+                label: "Do thing".into(),
+                icon: None,
+                detail: None,
+                a11y: None,
+                info_key: None,
+            }],
+        },
+        Component::StatusIndicator {
+            id: "status".into(),
+            icon: None,
+            title: "Connected".into(),
+            detail: Some("relay.example".into()),
+            status: Status::Success,
+            a11y: None,
+        },
+        Component::PinInput {
+            id: "pin".into(),
+            label: "PIN".into(),
+            length: 6,
+            filled: 0,
+            masked: true,
+            validation_error: None,
+            a11y: None,
+        },
+        Component::QrCode {
+            id: "qr".into(),
+            data: "vauchi://test".into(),
+            mode: QrMode::Display,
+            label: Some("scan me".into()),
+            scan_quality: None,
+            a11y: None,
+        },
+        Component::InlineConfirm {
+            id: "confirm".into(),
+            warning: "Are you sure?".into(),
+            confirm_text: "Yes".into(),
+            cancel_text: "No".into(),
+            destructive: false,
+            a11y: None,
+        },
+        Component::EditableText {
+            id: "edit".into(),
+            label: "Display name".into(),
+            value: "Alice".into(),
+            editing: false,
+            validation_error: None,
+            a11y: None,
+            info_key: None,
+        },
+        Component::Divider,
+        Component::Banner {
+            text: "Heads up".into(),
+            action_label: "OK".into(),
+            action_id: "ack".into(),
+            a11y: None,
+        },
+        Component::Dropdown {
+            id: "dd".into(),
+            label: "Theme".into(),
+            selected: Some("dark".into()),
+            options: vec![DropdownOption {
+                id: "dark".into(),
+                label: "Dark".into(),
+            }],
+            a11y: None,
+        },
+        Component::AvatarPreview {
+            id: "avatar".into(),
+            image_data: None,
+            initials: "AB".into(),
+            bg_color: None,
+            brightness: 0.0,
+            editable: false,
+            a11y: None,
+        },
+        Component::Slider {
+            id: "slider".into(),
+            label: "Vol".into(),
+            value: 0.5,
+            min: 0.0,
+            max: 1.0,
+            step: 0.1,
+            min_icon: None,
+            max_icon: None,
+            a11y: None,
+        },
+    ]
+}
+
+/// CC-22 reachability gate for `Component`: every currently-known
+/// variant must render at least one non-whitespace character on CLI.
+/// Closes the silent-drop class of bug (F1/F3/F4 in the audit) at a
+/// structural level — adding a new variant in core without updating
+/// this fixture leaves a visible gap that a reviewer can catch from
+/// the diff alone.
+///
+/// Note: `Component` is `#[non_exhaustive]`, so this fixture is hand-
+/// maintained. Update `every_known_component()` whenever
+/// `core/vauchi-app/src/ui/component.rs` grows a variant.
+// @internal
+#[test]
+fn every_known_component_variant_renders_non_empty() {
+    console::set_colors_enabled(false);
+    for component in every_known_component() {
+        let label = format!("{:?}", component);
+        let label_short = label.split_whitespace().next().unwrap_or("?").to_string();
+        let mut out = String::new();
+        render_component_to(&mut out, &component);
+        assert!(
+            out.chars().any(|c| !c.is_whitespace()),
+            "Component variant {label_short} rendered to whitespace only — silent drop"
+        );
+    }
+}
