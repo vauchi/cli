@@ -184,8 +184,15 @@ fn render_component_to(out: &mut String, component: &Component) {
         } => {
             render_dropdown_to(out, label, selected.as_deref(), options);
         }
+        Component::AvatarPreview { initials, .. } => {
+            writeln!(out, "  [Avatar: {}]", initials).unwrap();
+        }
+        Component::Slider { label, value, .. } => {
+            writeln!(out, "  {}: {:.2}", style(label).bold(), value).unwrap();
+        }
         _ => {
-            // Unknown component variant — skip rendering
+            // Future Component variants — caught by CC-22 reachability
+            // test (F5 in 2026-05-03-tui-cli-next-work-audit.md).
         }
     }
 }
