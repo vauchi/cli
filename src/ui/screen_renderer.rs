@@ -417,7 +417,67 @@ fn render_actions(actions: &[ScreenAction]) {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use vauchi_app::ui::Progress;
+    use vauchi_app::ui::{DropdownOption, Progress};
+
+    /// `Component::Dropdown` must render as `Label: <selected_label> ▼`,
+    /// matching the de facto contract that 3 frontends (tui, linux-gtk,
+    /// android) already enforce: `selected` is a `DropdownOption.id`,
+    /// the displayed string is the matching option's `label`.
+    #[test]
+    fn render_dropdown_shows_selected_option_label() {
+        console::set_colors_enabled(false);
+        let mut out = String::new();
+        render_component_to(
+            &mut out,
+            &Component::Dropdown {
+                id: "theme".into(),
+                label: "Theme".into(),
+                selected: Some("dark".into()),
+                options: vec![
+                    DropdownOption {
+                        id: "follow_system".into(),
+                        label: "System".into(),
+                    },
+                    DropdownOption {
+                        id: "dark".into(),
+                        label: "Dark".into(),
+                    },
+                ],
+                a11y: None,
+            },
+        );
+        assert!(out.contains("Theme"), "expected label, got: {out:?}");
+        assert!(
+            out.contains("Dark"),
+            "expected selected option label, got: {out:?}"
+        );
+        assert!(out.contains('▼'), "expected caret, got: {out:?}");
+    }
+
+    /// When `selected` is `None` or doesn't match any option id, render
+    /// the placeholder `—` (mirrors TUI's behavior). Catches the
+    /// upstream id-vs-label bug honestly instead of silently dropping
+    /// the component.
+    #[test]
+    fn render_dropdown_shows_placeholder_when_selected_id_missing() {
+        console::set_colors_enabled(false);
+        let mut out = String::new();
+        render_component_to(
+            &mut out,
+            &Component::Dropdown {
+                id: "language".into(),
+                label: "Language".into(),
+                selected: Some("xx-unknown".into()),
+                options: vec![DropdownOption {
+                    id: "en".into(),
+                    label: "English".into(),
+                }],
+                a11y: None,
+            },
+        );
+        assert!(out.contains("Language"));
+        assert!(out.contains('—'), "expected placeholder, got: {out:?}");
+    }
 
     #[test]
     fn render_does_not_panic_on_minimal_screen() {
