@@ -44,6 +44,31 @@ pub(crate) fn open_vauchi(config: &CliConfig) -> Result<Vauchi> {
         wb_config.ohttp.allow_direct = true;
     }
 
+    // Test-only override: `VAUCHI_OVERRIDE_BUNDLED_OHTTP_KEY_HEX` (a
+    // hex-encoded RFC 9458 KeyConfig) takes precedence over the
+    // compiled-in `BUNDLED_OHTTP_KEY`. Lets the e2e orchestrator
+    // inject a freshly-spawned local relay's ephemeral gateway key
+    // so the release cli (which compiles out the `VAUCHI_ALLOW_DIRECT`
+    // hatch above) can still encap to a key the local relay can
+    // decrypt. Release-allowed but WARN-loud — mirrors the F2 pattern
+    // in `relay/src/main.rs` (`RELAY_VERSION_CHANGED_AT_SECS`). The
+    // override changes which key bytes are used; it does NOT enable
+    // direct fetch, so ADR-037 IP-privacy properties hold. Production
+    // deployments must NOT set this env var. See problem record
+    // `_private/docs/problems/2026-05-04-f13-cli-bundled-key-injection-for-e2e/`.
+    if let Ok(hex) = std::env::var("VAUCHI_OVERRIDE_BUNDLED_OHTTP_KEY_HEX") {
+        let bytes = hex::decode(hex.trim()).map_err(|e| {
+            anyhow::anyhow!("VAUCHI_OVERRIDE_BUNDLED_OHTTP_KEY_HEX is not valid hex: {e}")
+        })?;
+        eprintln!(
+            "WARN: OHTTP bundled key overridden via \
+             VAUCHI_OVERRIDE_BUNDLED_OHTTP_KEY_HEX ({} bytes) — \
+             must NOT be set in production",
+            bytes.len()
+        );
+        wb_config.ohttp.bundled_gateway_key = Some(bytes);
+    }
+
     let mut wb = Vauchi::new(wb_config)?;
 
     // Core now auto-loads identity from storage; only set from file if not already loaded
