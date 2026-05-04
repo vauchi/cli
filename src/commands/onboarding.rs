@@ -77,8 +77,8 @@ pub fn run() -> Result<()> {
                 display::info(&format!("Open: {}", url));
             }
             _ => {
-                // StartDeviceLink, StartBackupImport, OpenContact,
-                // RequestCamera, WipeComplete — not applicable in CLI
+                // StartDeviceLink, OpenContact, RequestCamera,
+                // WipeComplete — not applicable in CLI
             }
         }
     }

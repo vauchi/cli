@@ -82,15 +82,27 @@ fn run_wizard(mut engine: DeviceReplacementEngine) -> Result<()> {
                 println!();
                 break;
             }
-            ActionResult::StartBackupImport => {
-                println!();
-                display::info("To restore from backup:");
-                display::info("  vauchi import <backup_file>");
-                display::info(
-                    "Then run 'vauchi device replace post-restore' for recovery guidance.",
-                );
-                println!();
-                break;
+            ActionResult::ExchangeCommands { commands } => {
+                use vauchi_core::exchange::{ExchangeCommand, FilePickPurpose};
+                let backup_pick = commands.iter().any(|c| {
+                    matches!(
+                        c,
+                        ExchangeCommand::FilePickFromUser {
+                            purpose: FilePickPurpose::ImportBackup,
+                            ..
+                        }
+                    )
+                });
+                if backup_pick {
+                    println!();
+                    display::info("To restore from backup:");
+                    display::info("  vauchi import <backup_file>");
+                    display::info(
+                        "Then run 'vauchi device replace post-restore' for recovery guidance.",
+                    );
+                    println!();
+                    break;
+                }
             }
             ActionResult::ShowAlert { title, message } => {
                 display::warning(&format!("{}: {}", title, message));
