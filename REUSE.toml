@@ -30,6 +30,12 @@ path = ["**/*.json"]
 SPDX-FileCopyrightText = "2026 Mattia Egloff <mattia.egloff@pm.me>"
 SPDX-License-Identifier = "GPL-3.0-or-later"
 
+# Vendored fixture manifest (golden/.version, mirrored from core)
+[[annotations]]
+path = ["tests/fixtures/golden/.version"]
+SPDX-FileCopyrightText = "2026 Mattia Egloff <mattia.egloff@pm.me>"
+SPDX-License-Identifier = "GPL-3.0-or-later"
+
 # Binary/media files
 [[annotations]]
 path = ["**/*.png", "**/*.jpg", "**/*.jpeg", "**/*.gif", "**/*.ico", "**/*.svg", "**/*.webp"]
