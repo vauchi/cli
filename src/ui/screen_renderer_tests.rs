@@ -208,7 +208,7 @@ fn render_does_not_panic_on_all_component_types() {
             },
             Component::FieldList {
                 id: "fl".into(),
-                fields: vec![FieldDisplay {
+                fields: vec![Field {
                     id: "f0".into(),
                     field_type: "email".into(),
                     label: "work".into(),
@@ -220,11 +220,11 @@ fn render_does_not_panic_on_all_component_types() {
                 available_groups: vec![],
                 a11y: None,
             },
-            Component::CardPreview {
+            Component::Preview {
                 name: "Alice".into(),
                 fields: vec![],
-                group_views: vec![],
-                selected_group: None,
+                variants: vec![],
+                selected_variant: None,
                 visible_fields: vec![],
                 avatar_data: None,
                 a11y: None,
@@ -351,19 +351,19 @@ fn render_does_not_panic_on_all_component_types() {
     }
 
     match &screen.components[4] {
-        Component::CardPreview {
+        Component::Preview {
             name,
             fields,
-            group_views,
-            selected_group,
+            variants,
+            selected_variant,
             ..
         } => {
             assert_eq!(name, "Alice");
             assert!(fields.is_empty());
-            assert!(group_views.is_empty());
-            assert!(selected_group.is_none());
+            assert!(variants.is_empty());
+            assert!(selected_variant.is_none());
         }
-        other => panic!("Expected CardPreview component, got {:?}", other),
+        other => panic!("Expected Preview component, got {:?}", other),
     }
 
     match &screen.components[5] {
@@ -406,9 +406,9 @@ fn render_card_preview_with_group_selection() {
         screen_id: "preview".into(),
         title: "Preview".into(),
         subtitle: None,
-        components: vec![Component::CardPreview {
+        components: vec![Component::Preview {
             name: "Bob".into(),
-            fields: vec![FieldDisplay {
+            fields: vec![Field {
                 id: "f0".into(),
                 field_type: "phone".into(),
                 label: "mobile".into(),
@@ -416,10 +416,10 @@ fn render_card_preview_with_group_selection() {
                 visibility: UiFieldVisibility::Shown,
                 a11y: None,
             }],
-            group_views: vec![GroupCardView {
-                group_name: "Family".into(),
+            variants: vec![PreviewVariant {
+                variant_id: "Family".into(),
                 display_name: "Bob".into(),
-                visible_fields: vec![FieldDisplay {
+                visible_fields: vec![Field {
                     id: "f0".into(),
                     field_type: "phone".into(),
                     label: "mobile".into(),
@@ -428,8 +428,8 @@ fn render_card_preview_with_group_selection() {
                     a11y: None,
                 }],
             }],
-            selected_group: Some("Family".into()),
-            visible_fields: vec![FieldDisplay {
+            selected_variant: Some("Family".into()),
+            visible_fields: vec![Field {
                 id: "f0".into(),
                 field_type: "phone".into(),
                 label: "mobile".into(),
@@ -449,11 +449,11 @@ fn render_card_preview_with_group_selection() {
     assert_eq!(screen.title, "Preview");
 
     match &screen.components[0] {
-        Component::CardPreview {
+        Component::Preview {
             name,
             fields,
-            group_views,
-            selected_group,
+            variants,
+            selected_variant,
             ..
         } => {
             assert_eq!(name, "Bob");
@@ -461,15 +461,15 @@ fn render_card_preview_with_group_selection() {
             assert_eq!(fields[0].label, "mobile");
             assert_eq!(fields[0].value, "+1234");
             assert_eq!(fields[0].field_type, "phone");
-            assert_eq!(selected_group.as_deref(), Some("Family"));
-            assert_eq!(group_views.len(), 1);
-            assert_eq!(group_views[0].group_name, "Family");
-            assert_eq!(group_views[0].display_name, "Bob");
-            assert_eq!(group_views[0].visible_fields.len(), 1);
-            assert_eq!(group_views[0].visible_fields[0].label, "mobile");
-            assert_eq!(group_views[0].visible_fields[0].value, "+1234");
+            assert_eq!(selected_variant.as_deref(), Some("Family"));
+            assert_eq!(variants.len(), 1);
+            assert_eq!(variants[0].variant_id, "Family");
+            assert_eq!(variants[0].display_name, "Bob");
+            assert_eq!(variants[0].visible_fields.len(), 1);
+            assert_eq!(variants[0].visible_fields[0].label, "mobile");
+            assert_eq!(variants[0].visible_fields[0].value, "+1234");
         }
-        other => panic!("Expected CardPreview component, got {:?}", other),
+        other => panic!("Expected Preview component, got {:?}", other),
     }
 }
 
@@ -602,8 +602,7 @@ fn golden_snapshot_what_next() {
 /// `every_known_component_variant_renders_non_empty` below.
 fn every_known_component() -> Vec<Component> {
     use vauchi_app::ui::{
-        ActionListItem, ContactItem, FieldDisplay, InfoItem, InputType, QrMode, SettingsItem,
-        SettingsItemKind, Status,
+        ActionListItem, InfoItem, InputType, Item, QrMode, SettingsItem, SettingsItemKind, Status,
     };
     vec![
         Component::Text {
@@ -637,7 +636,7 @@ fn every_known_component() -> Vec<Component> {
         },
         Component::FieldList {
             id: "fields".into(),
-            fields: vec![FieldDisplay {
+            fields: vec![Field {
                 id: "email".into(),
                 field_type: "email".into(),
                 label: "Email".into(),
@@ -649,12 +648,12 @@ fn every_known_component() -> Vec<Component> {
             available_groups: vec![],
             a11y: None,
         },
-        Component::CardPreview {
+        Component::Preview {
             name: "Alice".into(),
             avatar_data: None,
             fields: vec![],
-            group_views: vec![],
-            selected_group: None,
+            variants: vec![],
+            selected_variant: None,
             visible_fields: vec![],
             a11y: None,
         },
@@ -669,15 +668,14 @@ fn every_known_component() -> Vec<Component> {
             }],
             a11y: None,
         },
-        Component::ContactList {
+        Component::List {
             id: "contacts".into(),
-            contacts: vec![ContactItem {
+            items: vec![Item {
                 id: "c1".into(),
                 name: "Bob".into(),
                 subtitle: None,
                 avatar_initials: "B".into(),
                 status: None,
-                searchable_fields: vec![],
                 actions: vec![],
                 a11y: None,
             }],

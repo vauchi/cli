@@ -875,7 +875,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "39cab71617ae0d63f51a36d69f866391735b51691dbda63cf6f96d042b63efeb"
 dependencies = [
  "libc",
- "windows-sys 0.59.0",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]
@@ -2484,7 +2484,7 @@ dependencies = [
  "errno",
  "libc",
  "linux-raw-sys",
- "windows-sys 0.59.0",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]
@@ -2766,9 +2766,9 @@ checksum = "bbbb5d9659141646ae647b42fe094daf6c6192d1620870b449d9557f748b2daa"
 
 [[package]]
 name = "siphasher"
-version = "1.0.2"
+version = "1.0.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b2aa850e253778c88a04c3d7323b043aeda9d3e30d5971937c1855769763678e"
+checksum = "8ee5873ec9cce0195efcb7a4e9507a04cd49aec9c83d0389df45b1ef7ba2e649"
 
 [[package]]
 name = "slab"
@@ -2894,7 +2894,7 @@ dependencies = [
  "getrandom 0.4.2",
  "once_cell",
  "rustix",
- "windows-sys 0.59.0",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]
@@ -3334,8 +3334,8 @@ dependencies = [
 
 [[package]]
 name = "vauchi-app"
-version = "0.39.0"
-source = "git+https://gitlab.com/vauchi/core.git?branch=main#df63ab750e0c1b86baff6b59d0bd298a8b49f48c"
+version = "0.41.0"
+source = "git+https://gitlab.com/vauchi/core.git?branch=main#a3b31a1f73b4fdc946ec65a46aa385844f77c8e4"
 dependencies = [
  "base64",
  "hex",
@@ -3382,8 +3382,8 @@ dependencies = [
 
 [[package]]
 name = "vauchi-core"
-version = "0.39.0"
-source = "git+https://gitlab.com/vauchi/core.git?branch=main#df63ab750e0c1b86baff6b59d0bd298a8b49f48c"
+version = "0.41.0"
+source = "git+https://gitlab.com/vauchi/core.git?branch=main#a3b31a1f73b4fdc946ec65a46aa385844f77c8e4"
 dependencies = [
  "argon2",
  "async-trait",
@@ -3426,8 +3426,8 @@ dependencies = [
 
 [[package]]
 name = "vauchi-protocol"
-version = "0.39.0"
-source = "git+https://gitlab.com/vauchi/core.git?branch=main#df63ab750e0c1b86baff6b59d0bd298a8b49f48c"
+version = "0.41.0"
+source = "git+https://gitlab.com/vauchi/core.git?branch=main#a3b31a1f73b4fdc946ec65a46aa385844f77c8e4"
 dependencies = [
  "serde",
  "serde_json",

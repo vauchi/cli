@@ -10,8 +10,8 @@ use std::fmt::Write as _;
 
 use console::{Style, style};
 use vauchi_app::ui::{
-    ActionStyle, Component, FieldDisplay, GroupCardView, InfoItem, ScreenAction, ScreenModel,
-    TextStyle, ToggleItem, UiFieldVisibility, VisibilityMode,
+    ActionStyle, Component, Field, InfoItem, PreviewVariant, ScreenAction, ScreenModel, TextStyle,
+    ToggleItem, UiFieldVisibility, VisibilityMode,
 };
 
 const LINE_WIDTH: usize = 50;
@@ -107,14 +107,14 @@ fn render_component_to(out: &mut String, component: &Component) {
         } => {
             render_field_list_to(out, fields, visibility_mode, available_groups);
         }
-        Component::CardPreview {
+        Component::Preview {
             name,
             fields,
-            group_views,
-            selected_group,
+            variants,
+            selected_variant,
             ..
         } => {
-            render_card_preview_to(out, name, fields, group_views, selected_group.as_deref());
+            render_card_preview_to(out, name, fields, variants, selected_variant.as_deref());
         }
         Component::InfoPanel {
             title, items, icon, ..
@@ -124,9 +124,9 @@ fn render_component_to(out: &mut String, component: &Component) {
         Component::Divider => {
             writeln!(out, "  {}", "─".repeat(LINE_WIDTH - 4)).unwrap();
         }
-        Component::ContactList { contacts, .. } => {
-            for (i, contact) in contacts.iter().enumerate() {
-                writeln!(out, "  {}. {}", i + 1, contact.name).unwrap();
+        Component::List { items, .. } => {
+            for (i, item) in items.iter().enumerate() {
+                writeln!(out, "  {}. {}", i + 1, item.name).unwrap();
             }
         }
         Component::SettingsGroup { label, items, .. } => {
@@ -271,7 +271,7 @@ fn render_toggle_list_to(out: &mut String, label: &str, items: &[ToggleItem]) {
 
 fn render_field_list_to(
     out: &mut String,
-    fields: &[FieldDisplay],
+    fields: &[Field],
     visibility_mode: &VisibilityMode,
     available_groups: &[String],
 ) {
@@ -327,28 +327,28 @@ fn render_field_list_to(
 fn render_card_preview_to(
     out: &mut String,
     name: &str,
-    fields: &[FieldDisplay],
-    group_views: &[GroupCardView],
-    selected_group: Option<&str>,
+    fields: &[Field],
+    variants: &[PreviewVariant],
+    selected_variant: Option<&str>,
 ) {
-    // Show the view matching the selected group, or the default card
-    if let Some(group_name) = selected_group
-        && let Some(view) = group_views.iter().find(|v| v.group_name == group_name)
+    // Show the view matching the selected variant, or the default card
+    if let Some(variant_id) = selected_variant
+        && let Some(view) = variants.iter().find(|v| v.variant_id == variant_id)
     {
         render_card_box_to(out, &view.display_name, &view.visible_fields);
-        render_group_tabs_to(out, group_views, Some(group_name));
+        render_group_tabs_to(out, variants, Some(variant_id));
         return;
     }
 
     // Default: show full card
     render_card_box_to(out, name, fields);
 
-    if !group_views.is_empty() {
-        render_group_tabs_to(out, group_views, selected_group);
+    if !variants.is_empty() {
+        render_group_tabs_to(out, variants, selected_variant);
     }
 }
 
-fn render_card_box_to(out: &mut String, name: &str, fields: &[FieldDisplay]) {
+fn render_card_box_to(out: &mut String, name: &str, fields: &[Field]) {
     writeln!(out, "  {}", "─".repeat(LINE_WIDTH - 4)).unwrap();
     writeln!(out, "    {}", style(name).bold().cyan()).unwrap();
     writeln!(out, "  {}", "─".repeat(LINE_WIDTH - 4)).unwrap();
@@ -365,14 +365,14 @@ fn render_card_box_to(out: &mut String, name: &str, fields: &[FieldDisplay]) {
     writeln!(out).unwrap();
 }
 
-fn render_group_tabs_to(out: &mut String, group_views: &[GroupCardView], selected: Option<&str>) {
+fn render_group_tabs_to(out: &mut String, variants: &[PreviewVariant], selected: Option<&str>) {
     write!(out, "  View as: ").unwrap();
-    for (i, view) in group_views.iter().enumerate() {
-        let is_selected = selected == Some(view.group_name.as_str());
+    for (i, view) in variants.iter().enumerate() {
+        let is_selected = selected == Some(view.variant_id.as_str());
         if is_selected {
-            write!(out, "[{}] ", style(&view.group_name).bold()).unwrap();
+            write!(out, "[{}] ", style(&view.variant_id).bold()).unwrap();
         } else {
-            write!(out, "({}) {} ", i + 1, &view.group_name).unwrap();
+            write!(out, "({}) {} ", i + 1, &view.variant_id).unwrap();
         }
     }
     writeln!(out).unwrap();
