@@ -3004,9 +3004,9 @@ checksum = "1f3ccbac311fea05f86f61904b462b55fb3df8837a366dfc601a0161d0532f20"
 
 [[package]]
 name = "tokio"
-version = "1.52.1"
+version = "1.52.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b67dee974fe86fd92cc45b7a95fdd2f99a36a6d7b0d431a231178d3d670bbcc6"
+checksum = "110a78583f19d5cdb2c5ccf321d1290344e71313c6c37d43520d386027d18386"
 dependencies = [
  "bytes",
  "libc",
@@ -3334,8 +3334,8 @@ dependencies = [
 
 [[package]]
 name = "vauchi-app"
-version = "0.42.0"
-source = "git+https://gitlab.com/vauchi/core.git?branch=main#034f53ee8a2f34335e0dfb06aa77829fb1fcdf4d"
+version = "0.43.0"
+source = "git+https://gitlab.com/vauchi/core.git?branch=main#543d3bb3b77efdf9c9e80573599b33f295ba9681"
 dependencies = [
  "base64",
  "hex",
@@ -3382,8 +3382,8 @@ dependencies = [
 
 [[package]]
 name = "vauchi-core"
-version = "0.42.0"
-source = "git+https://gitlab.com/vauchi/core.git?branch=main#034f53ee8a2f34335e0dfb06aa77829fb1fcdf4d"
+version = "0.43.0"
+source = "git+https://gitlab.com/vauchi/core.git?branch=main#543d3bb3b77efdf9c9e80573599b33f295ba9681"
 dependencies = [
  "argon2",
  "async-trait",
@@ -3426,8 +3426,8 @@ dependencies = [
 
 [[package]]
 name = "vauchi-protocol"
-version = "0.42.0"
-source = "git+https://gitlab.com/vauchi/core.git?branch=main#034f53ee8a2f34335e0dfb06aa77829fb1fcdf4d"
+version = "0.43.0"
+source = "git+https://gitlab.com/vauchi/core.git?branch=main#543d3bb3b77efdf9c9e80573599b33f295ba9681"
 dependencies = [
  "serde",
  "serde_json",
