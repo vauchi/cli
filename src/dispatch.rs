@@ -69,14 +69,14 @@ pub(crate) async fn run(
             }
         },
         Commands::Exchange(cmd) => match cmd {
-            ExchangeCommands::Start => commands::exchange::start(config)?,
-            ExchangeCommands::Complete { data } => {
+            ExchangeSubcommand::Start => commands::exchange::start(config)?,
+            ExchangeSubcommand::Complete { data } => {
                 commands::exchange::complete(config, &data)?;
             }
-            ExchangeCommands::Usb { address } => {
+            ExchangeSubcommand::Usb { address } => {
                 commands::exchange::usb_exchange(config, &address)?;
             }
-            ExchangeCommands::UsbListen { port } => {
+            ExchangeSubcommand::UsbListen { port } => {
                 commands::exchange::usb_listen(config, port)?;
             }
         },

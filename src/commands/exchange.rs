@@ -14,10 +14,11 @@ use vauchi_core::Identity;
 use vauchi_core::contact_card::ContactCard;
 use vauchi_core::exchange::tcp_transport::TcpDirectTransport;
 use vauchi_core::exchange::{
-    ExchangeCommand, ExchangeEvent, ExchangeHardwareEvent, ExchangeQR, ExchangeSession,
-    ExchangeState, ManualConfirmationVerifier, ProximityConfidence, UsbRole,
+    ExchangeEvent, ExchangeQR, ExchangeSession, ExchangeState, ManualConfirmationVerifier,
+    ProximityConfidence, UsbRole,
 };
 use vauchi_core::types::{AhaMomentTracker, AhaMomentType};
+use vauchi_core::{Command, Event};
 
 use crate::commands::common::{drain_activity_log, open_vauchi, register_activity_log_handler};
 use crate::config::CliConfig;
@@ -243,7 +244,7 @@ pub fn usb_exchange(config: &CliConfig, address: &str) -> Result<()> {
     let cmds = session.drain_commands();
 
     let (payload, is_initiator) = match &cmds[0] {
-        ExchangeCommand::DirectSend {
+        Command::DirectSend {
             payload,
             is_initiator,
         } => (payload.clone(), *is_initiator),
@@ -263,7 +264,7 @@ pub fn usb_exchange(config: &CliConfig, address: &str) -> Result<()> {
         .map_err(|e| anyhow::anyhow!("TCP exchange failed: {:?}", e))?;
 
     session
-        .apply_hardware_event(ExchangeHardwareEvent::DirectPayloadReceived {
+        .apply_hardware_event(Event::DirectPayloadReceived {
             data: their_payload,
         })
         .map_err(|e| anyhow::anyhow!("payload processing failed: {:?}", e))?;
@@ -363,7 +364,7 @@ pub fn usb_listen(config: &CliConfig, port: u16) -> Result<()> {
     let cmds = session.drain_commands();
 
     let (payload, is_initiator) = match &cmds[0] {
-        ExchangeCommand::DirectSend {
+        Command::DirectSend {
             payload,
             is_initiator,
         } => (payload.clone(), *is_initiator),
@@ -386,7 +387,7 @@ pub fn usb_listen(config: &CliConfig, port: u16) -> Result<()> {
         .map_err(|e| anyhow::anyhow!("TCP exchange failed: {:?}", e))?;
 
     session
-        .apply_hardware_event(ExchangeHardwareEvent::DirectPayloadReceived {
+        .apply_hardware_event(Event::DirectPayloadReceived {
             data: their_payload,
         })
         .map_err(|e| anyhow::anyhow!("payload processing failed: {:?}", e))?;

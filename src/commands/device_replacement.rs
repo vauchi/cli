@@ -82,12 +82,12 @@ fn run_wizard(mut engine: DeviceReplacementEngine) -> Result<()> {
                 println!();
                 break;
             }
-            ActionResult::ExchangeCommands { commands } => {
-                use vauchi_core::exchange::{ExchangeCommand, FilePickPurpose};
+            ActionResult::Commands { commands } => {
+                use vauchi_core::{Command, FilePickPurpose};
                 let backup_pick = commands.iter().any(|c| {
                     matches!(
                         c,
-                        ExchangeCommand::FilePickFromUser {
+                        Command::FilePickFromUser {
                             purpose: FilePickPurpose::ImportBackup,
                             ..
                         }

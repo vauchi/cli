@@ -59,7 +59,7 @@ pub(crate) enum Commands {
 
     /// Exchange contacts with another user
     #[command(subcommand)]
-    Exchange(ExchangeCommands),
+    Exchange(ExchangeSubcommand),
 
     /// Manage your contacts
     #[command(subcommand)]
@@ -316,7 +316,7 @@ pub(crate) enum CardCommands {
 }
 
 #[derive(Subcommand)]
-pub(crate) enum ExchangeCommands {
+pub(crate) enum ExchangeSubcommand {
     /// Generate QR code for contact exchange
     Start,
 
