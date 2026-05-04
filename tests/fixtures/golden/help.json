@@ -1,0 +1,88 @@
+{
+  "schema_version": 3,
+  "screen_id": "help",
+  "title": "Help & FAQ",
+  "subtitle": null,
+  "components": [
+    {
+      "TextInput": {
+        "id": "help_search",
+        "label": "Search",
+        "value": "",
+        "placeholder": "Search help topics…",
+        "max_length": null,
+        "validation_error": null,
+        "input_type": "Text",
+        "a11y": null
+      }
+    },
+    {
+      "ActionList": {
+        "id": "Getting Started",
+        "items": [
+          {
+            "id": "faq1",
+            "label": "How do I exchange contacts?",
+            "icon": null,
+            "detail": null,
+            "a11y": null
+          }
+        ]
+      }
+    },
+    {
+      "ActionList": {
+        "id": "Security",
+        "items": [
+          {
+            "id": "faq2",
+            "label": "What is a duress PIN?",
+            "icon": null,
+            "detail": null,
+            "a11y": null
+          }
+        ]
+      }
+    }
+  ],
+  "actions": [],
+  "progress": null,
+  "tokens": {
+    "spacing": {
+      "xs": 4,
+      "sm": 8,
+      "sm_md": 12,
+      "md": 16,
+      "lg": 24,
+      "xl": 32
+    },
+    "spacing_direction": {
+      "content_start": 16,
+      "content_end": 16,
+      "list_item_start": 8,
+      "list_item_end": 8,
+      "list_item_inline_start": 12,
+      "list_item_inline_end": 12
+    },
+    "typography": {
+      "title_size": 24,
+      "subtitle_size": 18,
+      "body_size": 16,
+      "caption_size": 14
+    },
+    "border_radius": {
+      "sm": 4,
+      "md": 8,
+      "md_lg": 12,
+      "lg": 16
+    },
+    "touch_target": {
+      "minimum": 44
+    },
+    "motion": {
+      "enter_duration_ms": 200,
+      "exit_duration_ms": 150,
+      "emphasis_duration_ms": 300
+    }
+  }
+}

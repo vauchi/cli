@@ -1,0 +1,85 @@
+{
+  "schema_version": 3,
+  "screen_id": "identity_check",
+  "title": "Welcome to Vauchi",
+  "subtitle": "Privacy-focused contact cards.",
+  "components": [
+    {
+      "InfoPanel": {
+        "id": "identity_check_info",
+        "icon": null,
+        "title": "",
+        "items": [
+          {
+            "icon": "lock",
+            "title": "Private by design",
+            "detail": "Your data is end-to-end encrypted and never leaves your control."
+          },
+          {
+            "icon": "devices",
+            "title": "Multi-device",
+            "detail": "Use Vauchi on all your devices with seamless sync."
+          }
+        ],
+        "a11y": {
+          "label": "Welcome to Vauchi",
+          "hint": null,
+          "role": "Heading"
+        }
+      }
+    }
+  ],
+  "actions": [
+    {
+      "id": "create_new",
+      "label": "Create new identity",
+      "style": "Primary",
+      "enabled": true
+    },
+    {
+      "id": "have_identity",
+      "label": "I already have an identity",
+      "style": "Secondary",
+      "enabled": true
+    }
+  ],
+  "progress": null,
+  "tokens": {
+    "spacing": {
+      "xs": 4,
+      "sm": 8,
+      "sm_md": 12,
+      "md": 16,
+      "lg": 24,
+      "xl": 32
+    },
+    "spacing_direction": {
+      "content_start": 16,
+      "content_end": 16,
+      "list_item_start": 8,
+      "list_item_end": 8,
+      "list_item_inline_start": 12,
+      "list_item_inline_end": 12
+    },
+    "typography": {
+      "title_size": 24,
+      "subtitle_size": 18,
+      "body_size": 16,
+      "caption_size": 14
+    },
+    "border_radius": {
+      "sm": 4,
+      "md": 8,
+      "md_lg": 12,
+      "lg": 16
+    },
+    "touch_target": {
+      "minimum": 44
+    },
+    "motion": {
+      "enter_duration_ms": 200,
+      "exit_duration_ms": 150,
+      "emphasis_duration_ms": 300
+    }
+  }
+}

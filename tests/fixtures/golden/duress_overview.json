@@ -1,0 +1,90 @@
+{
+  "schema_version": 3,
+  "screen_id": "duress_overview",
+  "title": "Duress PIN",
+  "subtitle": null,
+  "components": [
+    {
+      "InfoPanel": {
+        "id": "duress_info",
+        "icon": "shield",
+        "title": "Duress PIN",
+        "items": [
+          {
+            "icon": "info",
+            "title": "What is a Duress PIN?",
+            "detail": "A secondary PIN that, when entered, silently alerts your chosen contacts while appearing to unlock normally."
+          }
+        ],
+        "a11y": null
+      }
+    },
+    {
+      "ToggleList": {
+        "id": "duress_toggle",
+        "label": "Status",
+        "items": [
+          {
+            "id": "enabled",
+            "label": "Duress PIN enabled",
+            "selected": false,
+            "subtitle": null,
+            "a11y": null
+          }
+        ],
+        "a11y": null
+      }
+    }
+  ],
+  "actions": [
+    {
+      "id": "configure",
+      "label": "Set Up PIN",
+      "style": "Primary",
+      "enabled": true
+    }
+  ],
+  "progress": {
+    "current_step": 1,
+    "total_steps": 4,
+    "label": null
+  },
+  "tokens": {
+    "spacing": {
+      "xs": 4,
+      "sm": 8,
+      "sm_md": 12,
+      "md": 16,
+      "lg": 24,
+      "xl": 32
+    },
+    "spacing_direction": {
+      "content_start": 16,
+      "content_end": 16,
+      "list_item_start": 8,
+      "list_item_end": 8,
+      "list_item_inline_start": 12,
+      "list_item_inline_end": 12
+    },
+    "typography": {
+      "title_size": 24,
+      "subtitle_size": 18,
+      "body_size": 16,
+      "caption_size": 14
+    },
+    "border_radius": {
+      "sm": 4,
+      "md": 8,
+      "md_lg": 12,
+      "lg": 16
+    },
+    "touch_target": {
+      "minimum": 44
+    },
+    "motion": {
+      "enter_duration_ms": 200,
+      "exit_duration_ms": 150,
+      "emphasis_duration_ms": 300
+    }
+  }
+}

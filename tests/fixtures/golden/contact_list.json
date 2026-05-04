@@ -1,0 +1,95 @@
+{
+  "schema_version": 3,
+  "screen_id": "contact_list",
+  "title": "Contacts",
+  "subtitle": null,
+  "components": [
+    {
+      "ContactList": {
+        "id": "contacts",
+        "contacts": [
+          {
+            "id": "c1",
+            "name": "Alice",
+            "subtitle": "Friend",
+            "avatar_initials": "A",
+            "status": null,
+            "searchable_fields": [],
+            "actions": [],
+            "a11y": null
+          },
+          {
+            "id": "c2",
+            "name": "Bob",
+            "subtitle": null,
+            "avatar_initials": "B",
+            "status": "Updated",
+            "searchable_fields": [],
+            "actions": [],
+            "a11y": null
+          }
+        ],
+        "searchable": true
+      }
+    }
+  ],
+  "actions": [
+    {
+      "id": "add_contact",
+      "label": "Add Contact",
+      "style": "Primary",
+      "enabled": true
+    },
+    {
+      "id": "view_archived",
+      "label": "Archived Contacts",
+      "style": "Secondary",
+      "enabled": true
+    },
+    {
+      "id": "find_duplicates",
+      "label": "Find Duplicates",
+      "style": "Secondary",
+      "enabled": true
+    }
+  ],
+  "progress": null,
+  "tokens": {
+    "spacing": {
+      "xs": 4,
+      "sm": 8,
+      "sm_md": 12,
+      "md": 16,
+      "lg": 24,
+      "xl": 32
+    },
+    "spacing_direction": {
+      "content_start": 16,
+      "content_end": 16,
+      "list_item_start": 8,
+      "list_item_end": 8,
+      "list_item_inline_start": 12,
+      "list_item_inline_end": 12
+    },
+    "typography": {
+      "title_size": 24,
+      "subtitle_size": 18,
+      "body_size": 16,
+      "caption_size": 14
+    },
+    "border_radius": {
+      "sm": 4,
+      "md": 8,
+      "md_lg": 12,
+      "lg": 16
+    },
+    "touch_target": {
+      "minimum": 44
+    },
+    "motion": {
+      "enter_duration_ms": 200,
+      "exit_duration_ms": 150,
+      "emphasis_duration_ms": 300
+    }
+  }
+}

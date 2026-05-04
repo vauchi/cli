@@ -553,63 +553,51 @@ fn render_actions_all_styles() {
 
 /// Helper: load a golden fixture JSON and render to string.
 ///
-/// Returns `None` when the fixture is unreachable — CI runners
-/// without a sibling `vauchi/core` checkout cannot read it. Callers
-/// short-circuit the snapshot assertion in that case. The proper
-/// fix (vendor fixtures or have core export them as `pub const`) is
-/// tracked separately; this preserves local validation without
-/// silently failing CI on a sibling-path assumption.
-fn render_golden_fixture(fixture_name: &str) -> Option<String> {
+/// Reads from `cli/tests/fixtures/golden/`, which is vendored from
+/// `core/vauchi-core/tests/fixtures/golden/` via
+/// `just sync-golden-fixtures cli`. Vendoring (vs the previous
+/// sibling-path assumption) makes the tests work the same on every
+/// CI runner, regardless of whether `vauchi/core` is checked out as
+/// a sibling. See `cli/tests/fixtures/golden/README.md`.
+fn render_golden_fixture(fixture_name: &str) -> String {
     console::set_colors_enabled(false);
 
     let fixture_path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-        .join("../core/vauchi-core/tests/fixtures/golden")
+        .join("tests/fixtures/golden")
         .join(fixture_name);
-    let json = match std::fs::read_to_string(&fixture_path) {
-        Ok(j) => j,
-        Err(_) => {
-            eprintln!(
-                "WARN: golden fixture {} unavailable (no sibling core/ checkout) — skipping snapshot",
-                fixture_path.display()
-            );
-            return None;
-        }
-    };
+    let json = std::fs::read_to_string(&fixture_path)
+        .unwrap_or_else(|e| panic!("Failed to read {}: {}", fixture_path.display(), e));
     let screen: ScreenModel =
         serde_json::from_str(&json).expect("Failed to deserialize golden fixture");
-    Some(render_to_string(&screen))
+    render_to_string(&screen)
 }
 
 // @internal
 #[test]
 fn golden_snapshot_default_name() {
-    if let Some(output) = render_golden_fixture("default_name.json") {
-        insta::assert_snapshot!(output);
-    }
+    let output = render_golden_fixture("default_name.json");
+    insta::assert_snapshot!(output);
 }
 
 // @internal
 #[test]
 fn golden_snapshot_groups_setup() {
-    if let Some(output) = render_golden_fixture("groups_setup.json") {
-        insta::assert_snapshot!(output);
-    }
+    let output = render_golden_fixture("groups_setup.json");
+    insta::assert_snapshot!(output);
 }
 
 // @internal
 #[test]
 fn golden_snapshot_contact_info() {
-    if let Some(output) = render_golden_fixture("contact_info.json") {
-        insta::assert_snapshot!(output);
-    }
+    let output = render_golden_fixture("contact_info.json");
+    insta::assert_snapshot!(output);
 }
 
 // @internal
 #[test]
 fn golden_snapshot_what_next() {
-    if let Some(output) = render_golden_fixture("what_next.json") {
-        insta::assert_snapshot!(output);
-    }
+    let output = render_golden_fixture("what_next.json");
+    insta::assert_snapshot!(output);
 }
 
 // --- CC-22 reachability gate for Component renderer ---
