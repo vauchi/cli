@@ -175,6 +175,56 @@ check:design-drift:
     DESIGN_DRIFT_MATCH_MODE: "grep"
     DESIGN_DRIFT_GREP_FILE: "src/ui/screen_renderer.rs"
 
+# Vendored fixtures drift: cli/tests/fixtures/golden/ must match
+# core/vauchi-core/tests/fixtures/golden/. Drift means a `core` change
+# wasn't propagated via `just sync-golden-fixtures cli`. Advisory
+# (allow_failure: true) — surfaces visibly without breaking the
+# pipeline, since the fix is one command + an `insta review` away.
+# Sparse-clone pattern matches scripts/ci-templates/design-drift.yml
+# (CI_JOB_TOKEN supports git but not the Repository Tree API).
+check:fixtures-drift:
+  extends: [.linux-runner-readonly, .timeout-quick]
+  stage: lint
+  needs: []
+  allow_failure: true
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+      changes:
+        - "tests/fixtures/golden/**"
+        - "src/ui/screen_renderer*.rs"
+        - ".gitlab-ci.yml"
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+  script:
+    - |
+      CORE_REPO_URL="https://gitlab-ci-token:${CI_JOB_TOKEN}@gitlab.com/vauchi/core.git"
+      CORE_DIR="/tmp/core-fixtures"
+      rm -rf "$CORE_DIR"
+      git clone --depth=1 --filter=blob:none --sparse \
+        "$CORE_REPO_URL" "$CORE_DIR" 2>/dev/null \
+        && git -C "$CORE_DIR" sparse-checkout set vauchi-core/tests/fixtures/golden 2>/dev/null \
+        || { echo "WARNING: could not clone core — skipping drift check"; exit 0; }
+    - |
+      SRC="/tmp/core-fixtures/vauchi-core/tests/fixtures/golden"
+      DST="tests/fixtures/golden"
+      if [ ! -d "$SRC" ]; then
+        echo "WARNING: core has no fixtures dir at $SRC — skipping"
+        exit 0
+      fi
+      # diff -r reports both content differences AND missing/extra files.
+      # --exclude='*.md' lets cli's vendored README.md coexist with no
+      # corresponding file in core.
+      if diff -r --exclude='*.md' "$DST" "$SRC"; then
+        echo "Vendored fixtures match core/main."
+      else
+        echo ""
+        echo "DRIFT: cli/tests/fixtures/golden/ differs from core/main."
+        echo "Resync from a workspace checkout:"
+        echo "  just sync-golden-fixtures cli"
+        echo "  cargo insta review   # if any snapshot churned"
+        echo "Then commit fixtures + snapshot updates together."
+        exit 1
+      fi
+
 # Removed symbols: detect stale references to removed features
 check:removed-symbols:
   extends: .removed-symbols-job
