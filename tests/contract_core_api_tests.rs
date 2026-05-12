@@ -155,7 +155,7 @@ fn contract_field_type_variants_exist() {
 
 #[test]
 fn contract_contact_field_new_returns_field() {
-    let field = ContactField::new(FieldType::Email, "Work", "test@example.com");
+    let field = ContactField::new(FieldType::Email, "Work", "test@example.com", 0);
     assert_eq!(field.field_type(), FieldType::Email);
     assert_eq!(field.label(), "Work");
     assert_eq!(field.value(), "test@example.com");
@@ -168,7 +168,7 @@ fn contract_contact_field_new_returns_field() {
 #[test]
 fn contract_add_field_to_own_card() {
     let wb = setup();
-    let field = ContactField::new(FieldType::Phone, "Mobile", "+1234567890");
+    let field = ContactField::new(FieldType::Phone, "Mobile", "+1234567890", 0);
     wb.add_own_field(field)
         .expect("add_field must accept ContactField");
 
@@ -183,7 +183,7 @@ fn contract_add_field_to_own_card() {
 
 #[test]
 fn contract_phone_field_secondary_actions_include_sms() {
-    let field = ContactField::new(FieldType::Phone, "Mobile", "+1234567890");
+    let field = ContactField::new(FieldType::Phone, "Mobile", "+1234567890", 0);
     let actions = field.to_secondary_actions();
 
     // Phone fields must offer Call, SendSms, and CopyToClipboard
@@ -212,7 +212,7 @@ fn contract_phone_field_secondary_actions_include_sms() {
 
 #[test]
 fn contract_address_field_secondary_actions_include_directions() {
-    let field = ContactField::new(FieldType::Address, "Home", "123 Main St, Zurich");
+    let field = ContactField::new(FieldType::Address, "Home", "123 Main St, Zurich", 0);
     let actions = field.to_secondary_actions();
 
     assert!(
@@ -231,7 +231,7 @@ fn contract_address_field_secondary_actions_include_directions() {
 
 #[test]
 fn contract_directions_uri_exists_for_address() {
-    let field = ContactField::new(FieldType::Address, "Office", "Bahnhofstrasse 1, Zurich");
+    let field = ContactField::new(FieldType::Address, "Office", "Bahnhofstrasse 1, Zurich", 0);
     let uri = field.to_directions_uri();
     assert!(
         uri.is_some(),
@@ -335,12 +335,22 @@ fn contract_merge_contacts_adds_unique_fields() {
 
     let mut card1 = vauchi_core::ContactCard::new("Primary");
     card1
-        .add_field(ContactField::new(FieldType::Email, "Work", "p@example.com"))
+        .add_field(ContactField::new(
+            FieldType::Email,
+            "Work",
+            "p@example.com",
+            0,
+        ))
         .unwrap();
 
     let mut card2 = vauchi_core::ContactCard::new("Secondary");
     card2
-        .add_field(ContactField::new(FieldType::Phone, "Mobile", "+1234567890"))
+        .add_field(ContactField::new(
+            FieldType::Phone,
+            "Mobile",
+            "+1234567890",
+            0,
+        ))
         .unwrap();
 
     let primary = Contact::from_exchange([1u8; 32], card1, SymmetricKey::generate());

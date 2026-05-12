@@ -55,7 +55,7 @@ pub fn add(config: &CliConfig, field_type: &str, label: &str, value: &str) -> Re
         .own_card()?
         .ok_or_else(|| anyhow::anyhow!("No contact card found"))?;
 
-    let field = ContactField::new(ft, label, value);
+    let field = ContactField::new(ft, label, value, wb.clock().unix_seconds());
     wb.add_own_field(field)?;
 
     display::success(&format!("Added {} field '{}'", field_type, label));
@@ -131,7 +131,12 @@ pub fn add_social_interactive(config: &CliConfig) -> Result<()> {
     }
 
     // Create and add the field (label = network id, value = username)
-    let field = ContactField::new(FieldType::Social, &network_id, &username);
+    let field = ContactField::new(
+        FieldType::Social,
+        &network_id,
+        &username,
+        wb.clock().unix_seconds(),
+    );
     wb.add_own_field(field)?;
 
     display::success(&format!(
@@ -196,7 +201,8 @@ pub fn edit(config: &CliConfig, label: &str, value: &str) -> Result<()> {
         Some(f) => {
             // Remove old and add new
             wb.remove_own_field(label)?;
-            let new_field = ContactField::new(f.field_type(), label, value);
+            let new_field =
+                ContactField::new(f.field_type(), label, value, wb.clock().unix_seconds());
             wb.add_own_field(new_field)?;
 
             display::success(&format!("Updated field '{}'", label));
