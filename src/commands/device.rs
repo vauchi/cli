@@ -430,7 +430,11 @@ pub fn revoke(config: &CliConfig, device_id_prefix: &str) -> Result<()> {
 
     // Update the registry with the revocation
     let mut updated_registry = registry.clone();
-    updated_registry.revoke_device(&device.device_id, identity.signing_keypair())?;
+    updated_registry.revoke_device(
+        &device.device_id,
+        identity.signing_keypair(),
+        wb.clock().unix_seconds(),
+    )?;
 
     // Save the updated registry
     wb.storage().save_device_registry(&updated_registry)?;

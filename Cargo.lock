@@ -256,6 +256,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "bs58"
+version = "0.5.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "bf88ba1141d185c399bee5288d850d63b8369520c1eafc32a0430b5b6c287bf4"
+dependencies = [
+ "tinyvec",
+]
+
+[[package]]
 name = "bumpalo"
 version = "3.20.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -392,9 +401,9 @@ dependencies = [
 
 [[package]]
 name = "clap_complete"
-version = "4.6.3"
+version = "4.6.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "660c0520455b1013b9bcb0393d5f643d7e4454fb69c915b8d6d2aa0e9a45acc3"
+checksum = "e0a7a9bfdb35811f9e59832f0f05975114d2251b415fb534108e6f34060fd772"
 dependencies = [
  "clap",
 ]
@@ -1899,9 +1908,9 @@ checksum = "c08d65885ee38876c4f86fa503fb49d7b507c2b62552df7c70b2fce627e06381"
 
 [[package]]
 name = "open"
-version = "5.3.4"
+version = "5.3.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9f3bab717c29a857abf75fcef718d441ec7cb2725f937343c734740a985d37fd"
+checksum = "2fbaa89d2ddc8473c78a3adf69eea8cffa28c483b8e02a971ef31527cd0fc92c"
 dependencies = [
  "is-wsl",
  "libc",
@@ -2671,11 +2680,12 @@ dependencies = [
 
 [[package]]
 name = "serde_with"
-version = "3.19.0"
+version = "3.20.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f05839ce67618e14a09b286535c0d9c94e85ef25469b0e13cb4f844e5593eb19"
+checksum = "e72c1c2cb7b223fafb600a619537a871c2818583d619401b785e7c0b746ccde2"
 dependencies = [
  "base64",
+ "bs58",
  "chrono",
  "hex",
  "indexmap 1.9.3",
@@ -2690,9 +2700,9 @@ dependencies = [
 
 [[package]]
 name = "serde_with_macros"
-version = "3.19.0"
+version = "3.20.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cf2ebbe86054f9b45bc3881e865683ccfaccce97b9b4cb53f3039d67f355a334"
+checksum = "b90c488738ecb4fb0262f41f43bc40efc5868d9fb744319ddf5f5317f417bfac"
 dependencies = [
  "darling 0.23.0",
  "proc-macro2",
@@ -3325,7 +3335,7 @@ dependencies = [
 [[package]]
 name = "vauchi-app"
 version = "0.51.0"
-source = "git+https://gitlab.com/vauchi/core.git?branch=main#afb88fe8da8af8d8844622786b325e1788efcd4d"
+source = "git+https://gitlab.com/vauchi/core.git?branch=main#40cd584f4a63a900ace6e29272a8385aac0fab9a"
 dependencies = [
  "base64",
  "hex",
@@ -3373,7 +3383,7 @@ dependencies = [
 [[package]]
 name = "vauchi-core"
 version = "0.51.0"
-source = "git+https://gitlab.com/vauchi/core.git?branch=main#afb88fe8da8af8d8844622786b325e1788efcd4d"
+source = "git+https://gitlab.com/vauchi/core.git?branch=main#40cd584f4a63a900ace6e29272a8385aac0fab9a"
 dependencies = [
  "argon2",
  "async-trait",
@@ -3417,7 +3427,7 @@ dependencies = [
 [[package]]
 name = "vauchi-protocol"
 version = "0.51.0"
-source = "git+https://gitlab.com/vauchi/core.git?branch=main#afb88fe8da8af8d8844622786b325e1788efcd4d"
+source = "git+https://gitlab.com/vauchi/core.git?branch=main#40cd584f4a63a900ace6e29272a8385aac0fab9a"
 dependencies = [
  "serde",
  "serde_json",
@@ -3984,9 +3994,9 @@ dependencies = [
 
 [[package]]
 name = "zerofrom"
-version = "0.1.7"
+version = "0.1.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "69faa1f2a1ea75661980b013019ed6687ed0e83d069bc1114e2cc74c6c04c4df"
+checksum = "0ec05a11813ea801ff6d75110ad09cd0824ddba17dfe17128ea0d5f68e6c5272"
 dependencies = [
  "zerofrom-derive",
 ]
