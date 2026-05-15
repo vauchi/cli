@@ -285,9 +285,24 @@ fn contract_find_duplicates_returns_pairs() {
     let card2 = vauchi_core::ContactCard::new("Alice Johnson"); // exact match
     let card3 = vauchi_core::ContactCard::new("Bob Smith");
 
-    let c1 = Contact::from_exchange([1u8; 32], card1, SymmetricKey::generate());
-    let c2 = Contact::from_exchange([2u8; 32], card2, SymmetricKey::generate());
-    let c3 = Contact::from_exchange([3u8; 32], card3, SymmetricKey::generate());
+    let c1 = Contact::from_exchange(
+        [1u8; 32],
+        card1,
+        SymmetricKey::generate(),
+        vauchi_core::clock::SystemClock::shared().unix_seconds(),
+    );
+    let c2 = Contact::from_exchange(
+        [2u8; 32],
+        card2,
+        SymmetricKey::generate(),
+        vauchi_core::clock::SystemClock::shared().unix_seconds(),
+    );
+    let c3 = Contact::from_exchange(
+        [3u8; 32],
+        card3,
+        SymmetricKey::generate(),
+        vauchi_core::clock::SystemClock::shared().unix_seconds(),
+    );
 
     let duplicates: Vec<DuplicatePair> = find_duplicates(&[c1, c2, c3]);
 
@@ -311,8 +326,18 @@ fn contract_merge_contacts_preserves_primary_name() {
     let card1 = vauchi_core::ContactCard::new("Primary Contact");
     let card2 = vauchi_core::ContactCard::new("Secondary Contact");
 
-    let primary = Contact::from_exchange([1u8; 32], card1, SymmetricKey::generate());
-    let secondary = Contact::from_exchange([2u8; 32], card2, SymmetricKey::generate());
+    let primary = Contact::from_exchange(
+        [1u8; 32],
+        card1,
+        SymmetricKey::generate(),
+        vauchi_core::clock::SystemClock::shared().unix_seconds(),
+    );
+    let secondary = Contact::from_exchange(
+        [2u8; 32],
+        card2,
+        SymmetricKey::generate(),
+        vauchi_core::clock::SystemClock::shared().unix_seconds(),
+    );
 
     let merged = merge_contacts(&primary, &secondary);
 
@@ -353,8 +378,18 @@ fn contract_merge_contacts_adds_unique_fields() {
         ))
         .unwrap();
 
-    let primary = Contact::from_exchange([1u8; 32], card1, SymmetricKey::generate());
-    let secondary = Contact::from_exchange([2u8; 32], card2, SymmetricKey::generate());
+    let primary = Contact::from_exchange(
+        [1u8; 32],
+        card1,
+        SymmetricKey::generate(),
+        vauchi_core::clock::SystemClock::shared().unix_seconds(),
+    );
+    let secondary = Contact::from_exchange(
+        [2u8; 32],
+        card2,
+        SymmetricKey::generate(),
+        vauchi_core::clock::SystemClock::shared().unix_seconds(),
+    );
 
     let merged = merge_contacts(&primary, &secondary);
 

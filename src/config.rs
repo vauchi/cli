@@ -165,12 +165,20 @@ impl CliConfig {
         let backup_data = std::fs::read(self.identity_path())?;
         let backup = IdentityBackup::new(backup_data);
 
-        match Identity::import_backup(&backup, &password) {
+        match Identity::import_backup(
+            &backup,
+            &password,
+            vauchi_core::clock::SystemClock::shared().unix_seconds(),
+        ) {
             Ok(identity) => Ok(identity),
             Err(_) => {
                 // Try legacy hardcoded password for migration
-                let identity = Identity::import_backup(&backup, LEGACY_BACKUP_PASSWORD)
-                    .map_err(|e| anyhow::anyhow!("Failed to import identity: {:?}", e))?;
+                let identity = Identity::import_backup(
+                    &backup,
+                    LEGACY_BACKUP_PASSWORD,
+                    vauchi_core::clock::SystemClock::shared().unix_seconds(),
+                )
+                .map_err(|e| anyhow::anyhow!("Failed to import identity: {:?}", e))?;
                 // Re-export with per-installation password
                 let new_backup = identity
                     .export_backup(&password)
@@ -400,7 +408,10 @@ mod tests {
         };
 
         // Create an identity encrypted with the old hardcoded password
-        let identity = Identity::create("Test User");
+        let identity = Identity::create(
+            "Test User",
+            vauchi_core::clock::SystemClock::shared().unix_seconds(),
+        );
         let backup = identity.export_backup("vauchi-local-storage").unwrap();
         std::fs::create_dir_all(&config.data_dir).unwrap();
         std::fs::write(config.identity_path(), backup.as_bytes()).unwrap();
@@ -413,7 +424,12 @@ mod tests {
         let new_password = config.backup_password().unwrap();
         let new_backup_data = std::fs::read(config.identity_path()).unwrap();
         let new_backup = IdentityBackup::new(new_backup_data);
-        let reimported = Identity::import_backup(&new_backup, &new_password).unwrap();
+        let reimported = Identity::import_backup(
+            &new_backup,
+            &new_password,
+            vauchi_core::clock::SystemClock::shared().unix_seconds(),
+        )
+        .unwrap();
         assert_eq!(reimported.display_name(), "Test User");
     }
 
@@ -427,7 +443,10 @@ mod tests {
         };
 
         // Create identity and save with new password
-        let identity = Identity::create("Test User");
+        let identity = Identity::create(
+            "Test User",
+            vauchi_core::clock::SystemClock::shared().unix_seconds(),
+        );
         config.save_local_identity(&identity).unwrap();
 
         // Import should succeed with generated password
@@ -445,7 +464,10 @@ mod tests {
         };
 
         // Create identity with legacy password
-        let identity = Identity::create("Migration User");
+        let identity = Identity::create(
+            "Migration User",
+            vauchi_core::clock::SystemClock::shared().unix_seconds(),
+        );
         let backup = identity.export_backup("vauchi-local-storage").unwrap();
         std::fs::create_dir_all(&config.data_dir).unwrap();
         std::fs::write(config.identity_path(), backup.as_bytes()).unwrap();
@@ -456,7 +478,14 @@ mod tests {
         // Old password should no longer work
         let new_data = std::fs::read(config.identity_path()).unwrap();
         let new_backup = IdentityBackup::new(new_data);
-        assert!(Identity::import_backup(&new_backup, "vauchi-local-storage").is_err());
+        assert!(
+            Identity::import_backup(
+                &new_backup,
+                "vauchi-local-storage",
+                vauchi_core::clock::SystemClock::shared().unix_seconds()
+            )
+            .is_err()
+        );
     }
 
     #[cfg(feature = "secure-storage")]

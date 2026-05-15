@@ -44,9 +44,18 @@ pub fn start(config: &CliConfig) -> Result<()> {
 
     let backup_password = config.backup_password()?;
     let backup = identity.export_backup(&backup_password)?;
-    let identity_owned = Identity::import_backup(&backup, &backup_password)?;
+    let identity_owned = Identity::import_backup(
+        &backup,
+        &backup_password,
+        vauchi_core::clock::SystemClock::shared().unix_seconds(),
+    )?;
 
-    let mut session = ExchangeSession::new_qr(identity_owned, our_card, verifier);
+    let mut session = ExchangeSession::new_qr(
+        identity_owned,
+        our_card,
+        verifier,
+        vauchi_core::clock::SystemClock::shared(),
+    );
 
     session
         .apply(ExchangeEvent::StartQR)
@@ -86,7 +95,7 @@ pub fn complete(config: &CliConfig, data: &str) -> Result<()> {
 
     let qr = ExchangeQR::from_data_string(data)?;
 
-    if qr.is_expired() {
+    if qr.is_expired(vauchi_core::clock::SystemClock::shared().unix_seconds()) {
         bail!("This exchange QR code has expired. Ask them to generate a new one.");
     }
 
@@ -111,9 +120,18 @@ pub fn complete(config: &CliConfig, data: &str) -> Result<()> {
 
     let backup_password = config.backup_password()?;
     let backup = identity.export_backup(&backup_password)?;
-    let identity_owned = Identity::import_backup(&backup, &backup_password)?;
+    let identity_owned = Identity::import_backup(
+        &backup,
+        &backup_password,
+        vauchi_core::clock::SystemClock::shared().unix_seconds(),
+    )?;
 
-    let mut session = ExchangeSession::new_qr(identity_owned, our_card, verifier);
+    let mut session = ExchangeSession::new_qr(
+        identity_owned,
+        our_card,
+        verifier,
+        vauchi_core::clock::SystemClock::shared(),
+    );
 
     session
         .apply(ExchangeEvent::StartQR)
@@ -235,10 +253,19 @@ pub fn usb_exchange(config: &CliConfig, address: &str) -> Result<()> {
 
     let backup_password = config.backup_password()?;
     let backup = identity.export_backup(&backup_password)?;
-    let identity_owned = Identity::import_backup(&backup, &backup_password)?;
+    let identity_owned = Identity::import_backup(
+        &backup,
+        &backup_password,
+        vauchi_core::clock::SystemClock::shared().unix_seconds(),
+    )?;
 
-    let mut session =
-        ExchangeSession::new_usb(identity_owned, our_card, verifier, UsbRole::Initiator);
+    let mut session = ExchangeSession::new_usb(
+        identity_owned,
+        our_card,
+        verifier,
+        UsbRole::Initiator,
+        vauchi_core::clock::SystemClock::shared(),
+    );
 
     session.emit_initial_commands();
     let cmds = session.drain_commands();
@@ -355,10 +382,19 @@ pub fn usb_listen(config: &CliConfig, port: u16) -> Result<()> {
 
     let backup_password = config.backup_password()?;
     let backup = identity.export_backup(&backup_password)?;
-    let identity_owned = Identity::import_backup(&backup, &backup_password)?;
+    let identity_owned = Identity::import_backup(
+        &backup,
+        &backup_password,
+        vauchi_core::clock::SystemClock::shared().unix_seconds(),
+    )?;
 
-    let mut session =
-        ExchangeSession::new_usb(identity_owned, our_card, verifier, UsbRole::Responder);
+    let mut session = ExchangeSession::new_usb(
+        identity_owned,
+        our_card,
+        verifier,
+        UsbRole::Responder,
+        vauchi_core::clock::SystemClock::shared(),
+    );
 
     session.emit_initial_commands();
     let cmds = session.drain_commands();

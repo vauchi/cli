@@ -122,7 +122,7 @@ pub fn retry(config: &CliConfig) -> Result<()> {
     let storage = wb.storage();
 
     let scheduler = vauchi_core::network::RetryScheduler::new();
-    let result = scheduler.tick(storage)?;
+    let result = scheduler.tick(storage, &vauchi_core::rng::OsSecureRng)?;
 
     if result.due == 0 {
         display::info("No retries due.");
@@ -197,7 +197,10 @@ mod tests {
         };
 
         // Initialize identity so open_vauchi works
-        let identity = vauchi_core::Identity::create("TestUser");
+        let identity = vauchi_core::Identity::create(
+            "TestUser",
+            vauchi_core::clock::SystemClock::shared().unix_seconds(),
+        );
         config
             .save_local_identity(&identity)
             .expect("save identity");

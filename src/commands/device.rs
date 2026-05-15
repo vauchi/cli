@@ -100,7 +100,10 @@ pub fn link(config: &CliConfig) -> Result<()> {
     println!();
 
     // Create device link initiator (which generates the QR)
-    let initiator = identity.create_device_link_initiator(registry);
+    let initiator = identity.create_device_link_initiator(
+        registry,
+        vauchi_core::clock::SystemClock::shared().unix_seconds(),
+    );
     let qr = initiator.qr();
 
     // Display QR code
@@ -153,7 +156,7 @@ pub fn join(
     // Parse the QR data
     let qr = DeviceLinkQR::from_data_string(qr_data)?;
 
-    if qr.is_expired() {
+    if qr.is_expired(vauchi_core::clock::SystemClock::shared().unix_seconds()) {
         bail!("Device link QR code has expired. Please generate a new one.");
     }
 
@@ -170,10 +173,15 @@ pub fn join(
     };
 
     // Create responder
-    let mut responder = DeviceLinkResponder::from_qr(qr, device_name.clone())?;
+    let mut responder = DeviceLinkResponder::from_qr(
+        qr,
+        device_name.clone(),
+        vauchi_core::clock::SystemClock::shared().unix_seconds(),
+    )?;
 
     // Create request
-    let encrypted_request = responder.create_request()?;
+    let encrypted_request =
+        responder.create_request(vauchi_core::clock::SystemClock::shared().unix_seconds())?;
 
     // Encode request for display
     let request_b64 = BASE64.encode(&encrypted_request);
@@ -217,7 +225,7 @@ pub fn complete(config: &CliConfig, request_data: &str, auto_confirm: bool) -> R
     let qr_data_string = fs::read_to_string(&pending_link_path)?;
     let saved_qr = DeviceLinkQR::from_data_string(&qr_data_string)?;
 
-    if saved_qr.is_expired() {
+    if saved_qr.is_expired(vauchi_core::clock::SystemClock::shared().unix_seconds()) {
         // Clean up expired link
         let _ = fs::remove_file(&pending_link_path);
         bail!("Device link QR has expired. Please run 'vauchi device link' again.");
@@ -233,8 +241,11 @@ pub fn complete(config: &CliConfig, request_data: &str, auto_confirm: bool) -> R
     let initiator = identity.restore_device_link_initiator(registry.clone(), saved_qr);
 
     // Create sync payload with all existing contacts and own card
-    let sync_orchestrator =
-        DeviceSyncOrchestrator::new(wb.storage(), identity.create_device_info(), registry);
+    let sync_orchestrator = DeviceSyncOrchestrator::new(
+        wb.storage(),
+        identity.create_device_info(vauchi_core::clock::SystemClock::shared().unix_seconds()),
+        registry,
+    );
     let sync_payload = sync_orchestrator
         .create_full_sync_payload()
         .map_err(|e| anyhow::anyhow!("Failed to create sync payload: {}", e))?;
@@ -278,8 +289,12 @@ pub fn complete(config: &CliConfig, request_data: &str, auto_confirm: bool) -> R
     };
 
     // Create response with sync payload
-    let (encrypted_response, updated_registry, new_device) =
-        initiator.confirm_link_with_sync(&request, &sync_json, &proof)?;
+    let (encrypted_response, updated_registry, new_device) = initiator.confirm_link_with_sync(
+        &request,
+        &sync_json,
+        &proof,
+        vauchi_core::clock::SystemClock::shared().unix_seconds(),
+    )?;
 
     // Save the updated registry
     wb.storage().save_device_registry(&updated_registry)?;
@@ -338,6 +353,7 @@ pub fn finish(config: &CliConfig, response_data: &str) -> Result<()> {
         response.display_name().to_string(),
         response.device_index(),
         device_name,
+        vauchi_core::clock::SystemClock::shared().unix_seconds(),
     );
 
     // Save the identity
@@ -366,7 +382,7 @@ pub fn finish(config: &CliConfig, response_data: &str) -> Result<()> {
         // Create orchestrator to apply the sync payload
         let mut orchestrator = DeviceSyncOrchestrator::new(
             wb.storage(),
-            identity.create_device_info(),
+            identity.create_device_info(vauchi_core::clock::SystemClock::shared().unix_seconds()),
             response.registry().clone(),
         );
 

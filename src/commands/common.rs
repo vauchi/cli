@@ -168,7 +168,10 @@ mod tests {
             relay_url: "ws://localhost:8080".to_string(),
             raw: false,
         };
-        let identity = Identity::create("Test User");
+        let identity = Identity::create(
+            "Test User",
+            vauchi_core::clock::SystemClock::shared().unix_seconds(),
+        );
         config.save_local_identity(&identity).unwrap();
         (temp_dir, config)
     }
@@ -213,7 +216,10 @@ mod tests {
         };
 
         // Initialize: create an identity and save it
-        let identity = Identity::create("Test User");
+        let identity = Identity::create(
+            "Test User",
+            vauchi_core::clock::SystemClock::shared().unix_seconds(),
+        );
         config
             .save_local_identity(&identity)
             .expect("save identity");
@@ -234,7 +240,10 @@ mod tests {
             raw: false,
         };
 
-        let identity = Identity::create("Storage Path Test");
+        let identity = Identity::create(
+            "Storage Path Test",
+            vauchi_core::clock::SystemClock::shared().unix_seconds(),
+        );
         config
             .save_local_identity(&identity)
             .expect("save identity");

@@ -70,7 +70,11 @@ pub fn import(config: &CliConfig, input: &Path) -> Result<()> {
         .interact()?;
 
     // Restore identity
-    let identity = Identity::import_backup(&backup, &password)?;
+    let identity = Identity::import_backup(
+        &backup,
+        &password,
+        vauchi_core::clock::SystemClock::shared().unix_seconds(),
+    )?;
 
     let name = identity.display_name().to_string();
 
