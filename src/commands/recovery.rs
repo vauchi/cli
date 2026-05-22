@@ -48,7 +48,7 @@ pub fn claim(config: &CliConfig, old_pk_hex: &str) -> Result<()> {
 
     // Create claim
     let claim = RecoveryClaim::new(
-        &old_pk,
+        old_pk,
         new_pk,
         vauchi_core::clock::SystemClock::shared().unix_seconds(),
     );
@@ -214,8 +214,8 @@ pub fn add_voucher(config: &CliConfig, voucher_data: &str) -> Result<()> {
         // Create new proof using settings
         let settings = RecoverySettings::default();
         RecoveryProof::new(
-            voucher.old_pk(),
-            voucher.new_pk(),
+            *voucher.old_pk(),
+            *voucher.new_pk(),
             settings.recovery_threshold(),
             vauchi_core::clock::SystemClock::shared().unix_seconds(),
         )
@@ -275,8 +275,14 @@ pub fn status(config: &CliConfig) -> Result<()> {
 
         println!("  Recovery proof in progress:");
         println!();
-        println!("  Old Identity: {}...", hex::encode(&proof.old_pk()[..8]));
-        println!("  New Identity: {}...", hex::encode(&proof.new_pk()[..8]));
+        println!(
+            "  Old Identity: {}...",
+            hex::encode(&proof.old_pk().as_bytes()[..8])
+        );
+        println!(
+            "  New Identity: {}...",
+            hex::encode(&proof.new_pk().as_bytes()[..8])
+        );
         println!(
             "  Vouchers:     {}/{}",
             proof.voucher_count(),
@@ -299,8 +305,14 @@ pub fn status(config: &CliConfig) -> Result<()> {
         } else {
             println!("  Recovery claim active:");
             println!();
-            println!("  Old Identity: {}...", hex::encode(&claim.old_pk()[..8]));
-            println!("  New Identity: {}...", hex::encode(&claim.new_pk()[..8]));
+            println!(
+                "  Old Identity: {}...",
+                hex::encode(&claim.old_pk().as_bytes()[..8])
+            );
+            println!(
+                "  New Identity: {}...",
+                hex::encode(&claim.new_pk().as_bytes()[..8])
+            );
             println!();
             display::info("Waiting for vouchers from contacts.");
         }
@@ -339,8 +351,14 @@ pub fn proof_show(config: &CliConfig) -> Result<()> {
     println!("  {}", console::style("Recovery Proof").bold().green());
     println!("{}", "─".repeat(60));
     println!();
-    println!("  Old Identity: {}...", hex::encode(&proof.old_pk()[..8]));
-    println!("  New Identity: {}...", hex::encode(&proof.new_pk()[..8]));
+    println!(
+        "  Old Identity: {}...",
+        hex::encode(&proof.old_pk().as_bytes()[..8])
+    );
+    println!(
+        "  New Identity: {}...",
+        hex::encode(&proof.new_pk().as_bytes()[..8])
+    );
     println!("  Vouchers:     {}", proof.voucher_count());
     println!();
     println!("  Share this proof with your contacts:");
