@@ -27,6 +27,14 @@ pub(crate) fn open_vauchi(config: &CliConfig) -> Result<Vauchi> {
         .with_relay_url(&config.relay_url)
         .with_storage_key(config.storage_key()?);
 
+    // Explicit OHTTP-relay override (`--ohttp-relay`). When unset, core derives
+    // the OHTTP endpoint from the relay URL (production → ohttp.vauchi.app;
+    // self-hosted/local → the relay URL itself). See problem
+    // 2026-05-25-relay-ohttp-forward-hop-502.
+    if let Some(ref ohttp_relay_url) = config.ohttp_relay_url {
+        wb_config = wb_config.with_ohttp_relay_url(ohttp_relay_url);
+    }
+
     // Allow direct (non-OHTTP) requests for testing against local relays.
     //
     // Setting `allow_direct: true` exposes the client's source IP to the
@@ -166,6 +174,7 @@ mod tests {
         let config = CliConfig {
             data_dir: temp_dir.path().to_path_buf(),
             relay_url: "ws://localhost:8080".to_string(),
+            ohttp_relay_url: None,
             raw: false,
         };
         let identity = Identity::create(
@@ -191,6 +200,7 @@ mod tests {
         let config = CliConfig {
             data_dir: temp_dir.path().to_path_buf(),
             relay_url: "ws://localhost:8080".to_string(),
+            ohttp_relay_url: None,
             raw: false,
         };
 
@@ -212,6 +222,7 @@ mod tests {
         let config = CliConfig {
             data_dir: temp_dir.path().to_path_buf(),
             relay_url: "ws://localhost:8080".to_string(),
+            ohttp_relay_url: None,
             raw: false,
         };
 
@@ -237,6 +248,7 @@ mod tests {
         let config = CliConfig {
             data_dir: temp_dir.path().to_path_buf(),
             relay_url: "ws://localhost:9999".to_string(),
+            ohttp_relay_url: None,
             raw: false,
         };
 

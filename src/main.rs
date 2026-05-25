@@ -36,6 +36,7 @@ async fn main() -> Result<()> {
     let config = CliConfig {
         data_dir,
         relay_url: cli.relay,
+        ohttp_relay_url: cli.ohttp_relay,
         raw: cli.raw,
     };
 

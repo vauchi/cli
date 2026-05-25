@@ -29,6 +29,13 @@ pub(crate) struct Cli {
     )]
     pub relay: String,
 
+    /// OHTTP-relay URL — where OHTTP traffic (sync) is sent (the IP-stripping
+    /// hop, ADR-037). Defaults: production `relay.vauchi.app` is derived to
+    /// `ohttp.vauchi.app` automatically; a self-hosted/local relay uses the
+    /// `--relay` URL. Set this only to point at a *separate* OHTTP relay.
+    #[arg(long, global = true, env = "VAUCHI_OHTTP_RELAY_URL")]
+    pub ohttp_relay: Option<String>,
+
     /// Locale for output messages (en, de, fr, es)
     #[arg(long, global = true, env = "VAUCHI_LOCALE", default_value = "en")]
     pub locale: String,
@@ -780,4 +787,46 @@ pub(crate) enum RecoverySettingsCommands {
         #[arg(long, default_value = "2")]
         verification: u32,
     },
+}
+
+// INLINE_TEST_REQUIRED: these exercise clap parsing of the crate-private
+// `Cli`/`Commands` types, which are not reachable from `tests/` without
+// making the whole arg surface `pub`.
+#[cfg(test)]
+mod tests {
+    use clap::{CommandFactory, Parser};
+
+    use super::*;
+
+    // @internal
+    #[test]
+    fn ohttp_relay_flag_parses_when_provided() {
+        let cli = Cli::parse_from([
+            "vauchi",
+            "--ohttp-relay",
+            "https://ohttp.self.example",
+            "sync",
+        ]);
+        assert_eq!(
+            cli.ohttp_relay.as_deref(),
+            Some("https://ohttp.self.example")
+        );
+    }
+
+    // @internal
+    #[test]
+    fn ohttp_relay_defaults_to_none() {
+        // Unset: core derives the OHTTP endpoint from the relay URL.
+        let cli = Cli::parse_from(["vauchi", "sync"]);
+        assert_eq!(cli.ohttp_relay, None);
+    }
+
+    // @internal
+    #[test]
+    fn cli_command_definition_is_valid() {
+        // allow(zero_assertions): debug_assert() validates the clap command
+        // graph (it panics on conflicting/misconfigured args); not a
+        // recognised assertion macro.
+        Cli::command().debug_assert();
+    }
 }

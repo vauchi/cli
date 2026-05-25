@@ -193,6 +193,7 @@ mod tests {
         let config = CliConfig {
             data_dir: dir.path().to_path_buf(),
             relay_url: "wss://test.example.com".to_string(),
+            ohttp_relay_url: None,
             raw: false,
         };
 

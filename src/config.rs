@@ -41,6 +41,10 @@ pub struct CliConfig {
     pub data_dir: PathBuf,
     /// Relay server URL.
     pub relay_url: String,
+    /// Explicit OHTTP-relay URL override (where OHTTP traffic is sent).
+    /// `None` lets core derive it from `relay_url` (production →
+    /// `ohttp.vauchi.app`; self-hosted/local → `relay_url`).
+    pub ohttp_relay_url: Option<String>,
     /// Output raw JSON instead of formatted text.
     pub raw: bool,
 }
@@ -277,6 +281,7 @@ mod tests {
         let config = CliConfig {
             data_dir: temp_dir.path().to_path_buf(),
             relay_url: "ws://localhost:8080".to_string(),
+            ohttp_relay_url: None,
             raw: false,
         };
 
@@ -297,6 +302,7 @@ mod tests {
         let config = CliConfig {
             data_dir: temp_dir.path().to_path_buf(),
             relay_url: "ws://localhost:8080".to_string(),
+            ohttp_relay_url: None,
             raw: false,
         };
 
@@ -356,6 +362,7 @@ mod tests {
         let config = CliConfig {
             data_dir: temp_dir.path().to_path_buf(),
             relay_url: "ws://localhost:8080".to_string(),
+            ohttp_relay_url: None,
             raw: false,
         };
 
@@ -370,6 +377,7 @@ mod tests {
         let config = CliConfig {
             data_dir: temp_dir.path().to_path_buf(),
             relay_url: "ws://localhost:8080".to_string(),
+            ohttp_relay_url: None,
             raw: false,
         };
 
@@ -385,11 +393,13 @@ mod tests {
         let config1 = CliConfig {
             data_dir: temp1.path().to_path_buf(),
             relay_url: "ws://localhost:8080".to_string(),
+            ohttp_relay_url: None,
             raw: false,
         };
         let config2 = CliConfig {
             data_dir: temp2.path().to_path_buf(),
             relay_url: "ws://localhost:8080".to_string(),
+            ohttp_relay_url: None,
             raw: false,
         };
 
@@ -404,6 +414,7 @@ mod tests {
         let config = CliConfig {
             data_dir: temp_dir.path().to_path_buf(),
             relay_url: "ws://localhost:8080".to_string(),
+            ohttp_relay_url: None,
             raw: false,
         };
 
@@ -439,6 +450,7 @@ mod tests {
         let config = CliConfig {
             data_dir: temp_dir.path().to_path_buf(),
             relay_url: "ws://localhost:8080".to_string(),
+            ohttp_relay_url: None,
             raw: false,
         };
 
@@ -460,6 +472,7 @@ mod tests {
         let config = CliConfig {
             data_dir: temp_dir.path().to_path_buf(),
             relay_url: "ws://localhost:8080".to_string(),
+            ohttp_relay_url: None,
             raw: false,
         };
 
@@ -516,6 +529,7 @@ mod tests {
         let config1 = CliConfig {
             data_dir: data_dir.clone(),
             relay_url: "ws://localhost:8080".to_string(),
+            ohttp_relay_url: None,
             raw: false,
         };
         let key1 = config1.storage_key().expect("should create key");
@@ -524,6 +538,7 @@ mod tests {
         let config2 = CliConfig {
             data_dir,
             relay_url: "ws://localhost:8080".to_string(),
+            ohttp_relay_url: None,
             raw: false,
         };
         let key2 = config2.storage_key().expect("should load key");
