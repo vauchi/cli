@@ -1,5 +1,5 @@
 ---
-source: src/ui/screen_renderer.rs
+source: src/ui/screen_renderer_tests.rs
 expression: output
 ---
 
@@ -10,4 +10,4 @@ expression: output
 
 ──────────────────────────────────────────────────
 
-  (1) Exchange cards    (2) Import existing contacts    (3) Read about security    (4) Read about backup    (5) Start using the app
+  (1) Start using the app    (2) Exchange cards    (3) Import existing contacts
