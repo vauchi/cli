@@ -139,15 +139,36 @@ security:audit:
 security:deny:
   extends: [.rust-runner-readonly, .security-deny-job]
 
-# Supply chain verification (cargo-vet) with auto-fix on main.
-# Path overrides in .cargo/config.toml are gitignored and absent in CI, but the
-# committed Cargo.lock records path sources. --regenerate-lockfile removes path
-# overrides and regenerates Cargo.lock so cargo-vet sees git/registry sources.
-# --sync-from=77874344 pre-populates exemptions from vauchi-core so shared
-# transitive deps inherit core's approved exemptions. Requires core in cli's
-# CI_JOB_TOKEN allowlist. On main, remaining unvetted deps are auto-fixed and pushed.
+# Supply chain verification (cargo-vet).
+#
+# Split into two jobs by trigger:
+#   security:vet         — MR pipelines: plain `cargo vet --locked` against
+#                          the committed Cargo.lock. Matches the documented
+#                          principle in security.yml:152 ("never regenerate,
+#                          as newer versions may lack exemptions"). MRs that
+#                          legitimately bump Cargo.lock must also commit the
+#                          matching exemption updates (run `cargo vet
+#                          regenerate exemptions` locally).
+#   security:vet-autofix — main + schedule only: regenerates the lockfile
+#                          (drops path overrides), syncs exemptions from
+#                          vauchi-core via cross-project CI_JOB_TOKEN, and on
+#                          remaining unvetted deps opens an auto-merge MR
+#                          (with the predecessor-cleanup behavior added in
+#                          scripts!374).
+#
+# Pre-2026-05-28 a single `security:vet` extended `.security-vet-autofix-job`
+# for all triggers, so every MR ran the regen step — racing against upstream
+# transitive dep churn (every `compact_str 0.8.1 → 0.8.2` registry push broke
+# MRs that touched Cargo.lock). The split below restores the documented
+# committed-lockfile invariant for MR gating.
 security:vet:
+  extends: [.rust-runner-readonly, .security-vet-job]
+
+security:vet-autofix:
   extends: [.rust-runner-readonly, .security-vet-autofix-job]
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+    - if: $CI_PIPELINE_SOURCE == "schedule"
   script:
     - |
       curl --silent --fail \
