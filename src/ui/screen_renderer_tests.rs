@@ -223,6 +223,7 @@ fn render_does_not_panic_on_all_component_types() {
             },
             Component::Preview {
                 name: "Alice".into(),
+                initials: "A".into(),
                 fields: vec![],
                 variants: vec![],
                 selected_variant: None,
@@ -409,6 +410,7 @@ fn render_card_preview_with_group_selection() {
         subtitle: None,
         components: vec![Component::Preview {
             name: "Bob".into(),
+            initials: "B".into(),
             fields: vec![Field {
                 id: "f0".into(),
                 field_type: "phone".into(),
@@ -661,6 +663,7 @@ fn every_known_component() -> Vec<Component> {
         },
         Component::Preview {
             name: "Alice".into(),
+            initials: "A".into(),
             avatar_data: None,
             fields: vec![],
             variants: vec![],
