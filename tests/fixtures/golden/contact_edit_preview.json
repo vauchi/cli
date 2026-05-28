@@ -7,12 +7,14 @@
     {
       "Preview": {
         "name": "Alice",
+        "initials": "A",
         "fields": [
           {
             "id": "f1",
             "field_type": "Phone",
             "label": "Mobile",
             "value": "+1-555-0100",
+            "icon": "phone",
             "visibility": {
               "Groups": [
                 "Family"
@@ -29,6 +31,7 @@
             "field_type": "Email",
             "label": "Work",
             "value": "alice@example.com",
+            "icon": "envelope",
             "visibility": {
               "Groups": [
                 "Friends",
@@ -52,6 +55,7 @@
                 "field_type": "Phone",
                 "label": "Mobile",
                 "value": "+1-555-0100",
+                "icon": "phone",
                 "visibility": {
                   "Groups": [
                     "Family"
@@ -74,6 +78,7 @@
                 "field_type": "Email",
                 "label": "Work",
                 "value": "alice@example.com",
+                "icon": "envelope",
                 "visibility": {
                   "Groups": [
                     "Friends",
@@ -97,6 +102,7 @@
                 "field_type": "Email",
                 "label": "Work",
                 "value": "alice@example.com",
+                "icon": "envelope",
                 "visibility": {
                   "Groups": [
                     "Friends",
@@ -119,6 +125,7 @@
             "field_type": "Phone",
             "label": "Mobile",
             "value": "+1-555-0100",
+            "icon": "phone",
             "visibility": {
               "Groups": [
                 "Family"
@@ -135,6 +142,7 @@
             "field_type": "Email",
             "label": "Work",
             "value": "alice@example.com",
+            "icon": "envelope",
             "visibility": {
               "Groups": [
                 "Friends",
@@ -212,5 +220,6 @@
       "exit_duration_ms": 150,
       "emphasis_duration_ms": 300
     }
-  }
+  },
+  "presentation_kind": "Page"
 }
