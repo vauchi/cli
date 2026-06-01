@@ -11,10 +11,11 @@ use std::fs;
 use anyhow::{Result, bail};
 use base64::{Engine as _, engine::general_purpose::STANDARD as BASE64};
 use dialoguer::{Confirm, Input};
+use vauchi_core::DeviceSyncOrchestrator;
 use vauchi_core::exchange::{
     DeviceLinkQR, DeviceLinkResponder, DeviceLinkResponse, ProximityProof, compute_confirmation_mac,
 };
-use vauchi_core::sync::{DeviceSyncOrchestrator, DeviceSyncPayload};
+use vauchi_core::sync::DeviceSyncPayload;
 use vauchi_core::{Identity, Vauchi, VauchiConfig};
 
 use crate::commands::common::open_vauchi;
