@@ -3211,9 +3211,9 @@ dependencies = [
 
 [[package]]
 name = "unicode-segmentation"
-version = "1.13.2"
+version = "1.13.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9629274872b2bfaf8d66f5f15725007f635594914870f65218920345aa11aa8c"
+checksum = "c6f5d3c3b1bf09027a88a6bc961fc00497d651009560b5463668dc81b0fa87a8"
 
 [[package]]
 name = "unicode-width"
@@ -3334,8 +3334,8 @@ dependencies = [
 
 [[package]]
 name = "vauchi-app"
-version = "0.51.27"
-source = "git+https://gitlab.com/vauchi/core.git?branch=main#5bd76bec6b5884ed13def93140bf9a815f25f440"
+version = "0.51.31"
+source = "git+https://gitlab.com/vauchi/core.git?branch=main#8a6910fe6078a11e06796c42a24ab3dc2e09e0a3"
 dependencies = [
  "base64",
  "hex",
@@ -3382,8 +3382,8 @@ dependencies = [
 
 [[package]]
 name = "vauchi-core"
-version = "0.51.27"
-source = "git+https://gitlab.com/vauchi/core.git?branch=main#5bd76bec6b5884ed13def93140bf9a815f25f440"
+version = "0.51.31"
+source = "git+https://gitlab.com/vauchi/core.git?branch=main#8a6910fe6078a11e06796c42a24ab3dc2e09e0a3"
 dependencies = [
  "argon2",
  "async-trait",
@@ -3426,8 +3426,8 @@ dependencies = [
 
 [[package]]
 name = "vauchi-protocol"
-version = "0.51.27"
-source = "git+https://gitlab.com/vauchi/core.git?branch=main#5bd76bec6b5884ed13def93140bf9a815f25f440"
+version = "0.51.31"
+source = "git+https://gitlab.com/vauchi/core.git?branch=main#8a6910fe6078a11e06796c42a24ab3dc2e09e0a3"
 dependencies = [
  "serde",
  "serde_json",

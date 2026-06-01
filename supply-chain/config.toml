@@ -839,6 +839,10 @@ criteria = "safe-to-deploy"
 version = "0.15.7"
 criteria = "safe-to-deploy"
 
+[[exemptions.lzma-rust2]]
+version = "0.15.8"
+criteria = "safe-to-deploy"
+
 [[exemptions.matrixmultiply]]
 version = "0.3.10"
 criteria = "safe-to-deploy"
