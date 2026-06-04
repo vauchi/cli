@@ -344,9 +344,9 @@ dependencies = [
 
 [[package]]
 name = "chrono"
-version = "0.4.44"
+version = "0.4.45"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c673075a2e0e5f4a1dde27ce9dee1ea4558c7ffe648f576438a20ca1d2acc4b0"
+checksum = "1aa79e62e7697b8e29b513a68abacf485adcd1fe8284a4316c5ae868e6633327"
 dependencies = [
  "iana-time-zone",
  "js-sys",
@@ -1722,9 +1722,9 @@ dependencies = [
 
 [[package]]
 name = "log"
-version = "0.4.31"
+version = "0.4.32"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "113b30b4cd05f7c06868fdb2854f66a7b9fece9a48425351cd532e810d74024f"
+checksum = "953f07c43838f8e6f9758cab68bf5bed85465e7587ebe0b823f1bcd81978ad3a"
 
 [[package]]
 name = "lru"
@@ -3334,8 +3334,8 @@ dependencies = [
 
 [[package]]
 name = "vauchi-app"
-version = "0.51.38"
-source = "git+https://gitlab.com/vauchi/core.git?branch=main#c61115c7b61f230477379a2a5fe2c7e2350e338f"
+version = "0.51.40"
+source = "git+https://gitlab.com/vauchi/core.git?branch=main#ad17b33284e74a7f2ddac45803253d2d297d64c9"
 dependencies = [
  "base64",
  "hex",
@@ -3382,8 +3382,8 @@ dependencies = [
 
 [[package]]
 name = "vauchi-core"
-version = "0.51.38"
-source = "git+https://gitlab.com/vauchi/core.git?branch=main#c61115c7b61f230477379a2a5fe2c7e2350e338f"
+version = "0.51.40"
+source = "git+https://gitlab.com/vauchi/core.git?branch=main#ad17b33284e74a7f2ddac45803253d2d297d64c9"
 dependencies = [
  "argon2",
  "async-trait",
@@ -3426,8 +3426,8 @@ dependencies = [
 
 [[package]]
 name = "vauchi-protocol"
-version = "0.51.38"
-source = "git+https://gitlab.com/vauchi/core.git?branch=main#c61115c7b61f230477379a2a5fe2c7e2350e338f"
+version = "0.51.40"
+source = "git+https://gitlab.com/vauchi/core.git?branch=main#ad17b33284e74a7f2ddac45803253d2d297d64c9"
 dependencies = [
  "serde",
  "serde_json",
