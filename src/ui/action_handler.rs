@@ -17,7 +17,6 @@ use vauchi_app::ui::{Component, ScreenAction, ScreenModel, UserAction};
 /// 2. If there is a ToggleList component, prompt for toggle selection.
 /// 3. Prompt for an action button selection.
 pub fn prompt_for_action(screen: &ScreenModel) -> io::Result<UserAction> {
-    // Check for text input components that need filling
     for component in &screen.components {
         if let Component::TextInput {
             id, label, value, ..
@@ -32,7 +31,6 @@ pub fn prompt_for_action(screen: &ScreenModel) -> io::Result<UserAction> {
         }
     }
 
-    // Check for toggle lists
     for component in &screen.components {
         if let Component::ToggleList { id, items, .. } = component
             && !items.is_empty()
@@ -41,7 +39,6 @@ pub fn prompt_for_action(screen: &ScreenModel) -> io::Result<UserAction> {
         }
     }
 
-    // Default: prompt for action selection
     prompt_action_selection(&screen.actions)
 }
 
@@ -75,7 +72,6 @@ fn prompt_toggle(component_id: &str, item_count: usize) -> io::Result<UserAction
             });
         }
 
-        // Try to parse as a number for toggle
         if let Ok(num) = trimmed.parse::<usize>()
             && num >= 1
             && num <= item_count
@@ -100,7 +96,6 @@ fn prompt_toggle(component_id: &str, item_count: usize) -> io::Result<UserAction
 /// Prompts the user to select an action from the list.
 fn prompt_action_selection(actions: &[ScreenAction]) -> io::Result<UserAction> {
     if actions.is_empty() {
-        // No actions available, wait for Enter
         print!("  Press Enter to continue > ");
         io::stdout().flush()?;
         let mut input = String::new();
@@ -129,7 +124,6 @@ fn prompt_action_selection(actions: &[ScreenAction]) -> io::Result<UserAction> {
             });
         }
 
-        // Try to parse as number
         if let Ok(num) = trimmed.parse::<usize>()
             && num >= 1
             && num <= actions.len()
@@ -168,7 +162,6 @@ pub fn resolve_toggle_item_id(action: UserAction, screen: &ScreenModel) -> UserA
                 .strip_prefix("__index_")
                 .and_then(|s| s.parse::<usize>().ok())
             {
-                // Find the toggle list component
                 for component in &screen.components {
                     if let Component::ToggleList { id, items, .. } = component
                         && id == component_id

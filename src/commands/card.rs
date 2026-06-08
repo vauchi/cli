@@ -50,7 +50,6 @@ pub fn add(config: &CliConfig, field_type: &str, label: &str, value: &str) -> Re
 
     let (ft, _label_hint) = parse_field_type(field_type)?;
 
-    // Get old card for delta propagation
     let old_card = wb
         .own_card()?
         .ok_or_else(|| anyhow::anyhow!("No contact card found"))?;
@@ -60,7 +59,6 @@ pub fn add(config: &CliConfig, field_type: &str, label: &str, value: &str) -> Re
 
     display::success(&format!("Added {} field '{}'", field_type, label));
 
-    // Propagate update to contacts
     let new_card = wb.own_card()?.unwrap();
     let queued = wb.propagate_card_update(&old_card, &new_card)?;
     if queued > 0 {
@@ -83,12 +81,10 @@ pub fn add_social_interactive(config: &CliConfig) -> Result<()> {
     let wb = open_vauchi(config)?;
     let event_rx = register_activity_log_handler(&wb);
 
-    // Ensure a card exists before prompting
     let old_card = wb
         .own_card()?
         .ok_or_else(|| anyhow::anyhow!("No contact card found. Run 'vauchi init' first."))?;
 
-    // Load the social network registry
     let registry = SocialNetworkRegistry::with_defaults();
     let networks = registry.all();
 
@@ -96,7 +92,6 @@ pub fn add_social_interactive(config: &CliConfig) -> Result<()> {
         bail!("No social networks available in the registry");
     }
 
-    // Build display items for the selector
     let items: Vec<String> = networks
         .iter()
         .map(|n| format!("{} ({})", n.display_name(), n.id()))
@@ -104,7 +99,6 @@ pub fn add_social_interactive(config: &CliConfig) -> Result<()> {
 
     println!();
 
-    // Select allows arrow-key navigation through the list
     let selection = Select::new()
         .with_prompt("Select a social network")
         .items(&items)
@@ -115,7 +109,6 @@ pub fn add_social_interactive(config: &CliConfig) -> Result<()> {
     let network_id = selected.id().to_string();
     let network_name = selected.display_name().to_string();
 
-    // Prompt for username
     let username: String = Input::new()
         .with_prompt(format!("{} username", network_name))
         .interact_text()?;
@@ -125,7 +118,6 @@ pub fn add_social_interactive(config: &CliConfig) -> Result<()> {
         bail!("Username cannot be empty");
     }
 
-    // Show preview with profile URL
     if let Some(url) = registry.profile_url(&network_id, &username) {
         display::info(&format!("Profile URL: {}", url));
     }
@@ -144,7 +136,6 @@ pub fn add_social_interactive(config: &CliConfig) -> Result<()> {
         network_id, username
     ));
 
-    // Propagate update to contacts
     let new_card = wb.own_card()?.unwrap();
     let queued = wb.propagate_card_update(&old_card, &new_card)?;
     if queued > 0 {
@@ -161,7 +152,6 @@ pub fn remove(config: &CliConfig, label: &str) -> Result<()> {
     let wb = open_vauchi(config)?;
     let event_rx = register_activity_log_handler(&wb);
 
-    // Get old card for delta propagation
     let old_card = wb
         .own_card()?
         .ok_or_else(|| anyhow::anyhow!("No contact card found"))?;
@@ -169,7 +159,6 @@ pub fn remove(config: &CliConfig, label: &str) -> Result<()> {
     if wb.remove_own_field(label)? {
         display::success(&format!("Removed field '{}'", label));
 
-        // Propagate update to contacts
         let new_card = wb.own_card()?.unwrap();
         let queued = wb.propagate_card_update(&old_card, &new_card)?;
         if queued > 0 {
@@ -194,12 +183,10 @@ pub fn edit(config: &CliConfig, label: &str, value: &str) -> Result<()> {
         .own_card()?
         .ok_or_else(|| anyhow::anyhow!("No contact card found"))?;
 
-    // Find the field
     let field = old_card.fields().iter().find(|f| f.label() == label);
 
     match field {
         Some(f) => {
-            // Remove old and add new
             wb.remove_own_field(label)?;
             let new_field =
                 ContactField::new(f.field_type(), label, value, wb.clock().unix_seconds());
@@ -207,7 +194,6 @@ pub fn edit(config: &CliConfig, label: &str, value: &str) -> Result<()> {
 
             display::success(&format!("Updated field '{}'", label));
 
-            // Propagate update to contacts
             let new_card = wb.own_card()?.unwrap();
             let queued = wb.propagate_card_update(&old_card, &new_card)?;
             if queued > 0 {
@@ -229,17 +215,14 @@ pub fn edit_name(config: &CliConfig, name: &str) -> Result<()> {
     let mut wb = open_vauchi(config)?;
     let event_rx = register_activity_log_handler(&wb);
 
-    // Get old card for delta propagation
     let old_card = wb
         .own_card()?
         .ok_or_else(|| anyhow::anyhow!("No contact card found"))?;
 
-    // Update display name
     wb.update_display_name(name)?;
 
     display::success(&format!("Display name updated to '{}'", name));
 
-    // Propagate update to contacts
     let new_card = wb.own_card()?.unwrap();
     let queued = wb.propagate_card_update(&old_card, &new_card)?;
     if queued > 0 {
@@ -256,10 +239,6 @@ pub fn edit_name(config: &CliConfig, name: &str) -> Result<()> {
 mod tests {
     use super::*;
     use proptest::prelude::*;
-
-    // ====================================================================
-    // Known-alias unit tests
-    // ====================================================================
 
     #[test]
     fn test_parse_field_type_email_aliases() {
@@ -325,7 +304,6 @@ mod tests {
         ) {
             let aliases = all_valid_aliases();
             let (alias, expected_type) = &aliases[idx];
-            // Apply random casing
             let mixed: String = alias.chars().enumerate().map(|(i, c)| {
                 if *bits.get(i).unwrap_or(&false) {
                     c.to_uppercase().next().unwrap()

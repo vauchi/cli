@@ -33,7 +33,6 @@ pub fn run(config: &CliConfig) -> Result<()> {
     // Sync is the primary source of background events in the CLI.
     let event_rx = register_activity_log_handler(&wb);
 
-    // Connect: bootstrap OHTTP key, health check
     let spinner = ProgressBar::new_spinner();
     spinner.set_style(
         ProgressStyle::default_spinner()
@@ -54,7 +53,6 @@ pub fn run(config: &CliConfig) -> Result<()> {
     spinner.finish_and_clear();
     display::success("Connected");
 
-    // Sync: receive + send
     let sync_spinner = ProgressBar::new_spinner();
     sync_spinner.set_style(
         ProgressStyle::default_spinner()
@@ -70,7 +68,6 @@ pub fn run(config: &CliConfig) -> Result<()> {
 
     drain_activity_log(&wb, event_rx);
 
-    // Display outcome + aha moments
     match outcome {
         VauchiSyncOutcome::Ok {
             received,
@@ -97,7 +94,6 @@ pub fn run(config: &CliConfig) -> Result<()> {
                 display::warning(&format!("Sync error: {err}"));
             }
 
-            // Aha moments
             let mut tracker = load_aha_tracker(config);
             if received > 0
                 && let Some(moment) = tracker.try_trigger(AhaMomentType::FirstUpdateReceived)
@@ -111,7 +107,6 @@ pub fn run(config: &CliConfig) -> Result<()> {
             }
             save_aha_tracker(config, &tracker);
 
-            // Show recent activity
             let now = std::time::SystemTime::now()
                 .duration_since(std::time::UNIX_EPOCH)
                 .unwrap_or_default()

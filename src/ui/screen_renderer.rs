@@ -25,10 +25,8 @@ pub fn render(screen: &ScreenModel) {
 pub fn render_to_string(screen: &ScreenModel) -> String {
     let mut out = String::new();
 
-    // Clear some space
     writeln!(out).unwrap();
 
-    // Progress indicator
     if let Some(progress) = &screen.progress {
         let label = progress.label.as_deref().unwrap_or("");
         writeln!(
@@ -47,22 +45,18 @@ pub fn render_to_string(screen: &ScreenModel) -> String {
         writeln!(out).unwrap();
     }
 
-    // Title
     writeln!(out, "  {}", style(&screen.title).bold().cyan()).unwrap();
 
-    // Subtitle
     if let Some(subtitle) = &screen.subtitle {
         writeln!(out, "  {}", style(subtitle).dim()).unwrap();
     }
 
     writeln!(out).unwrap();
 
-    // Components
     for component in &screen.components {
         render_component_to(&mut out, component);
     }
 
-    // Actions
     if !screen.actions.is_empty() {
         writeln!(out, "{}", "─".repeat(LINE_WIDTH)).unwrap();
         render_actions_to(&mut out, &screen.actions);
@@ -331,7 +325,6 @@ fn render_card_preview_to(
     variants: &[PreviewVariant],
     selected_variant: Option<&str>,
 ) {
-    // Show the view matching the selected variant, or the default card
     if let Some(variant_id) = selected_variant
         && let Some(view) = variants.iter().find(|v| v.variant_id == variant_id)
     {
@@ -340,7 +333,6 @@ fn render_card_preview_to(
         return;
     }
 
-    // Default: show full card
     render_card_box_to(out, name, fields);
 
     if !variants.is_empty() {

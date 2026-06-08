@@ -21,21 +21,17 @@ use crate::display;
 pub fn export(config: &CliConfig, output: &Path) -> Result<()> {
     let wb = open_vauchi(config)?;
 
-    // Get identity
     let identity = wb
         .identity()
         .ok_or_else(|| anyhow::anyhow!("No identity found"))?;
 
-    // Prompt for password
     let password: String = Password::new()
         .with_prompt("Enter backup password")
         .with_confirmation("Confirm password", "Passwords don't match")
         .interact()?;
 
-    // Create encrypted backup
     let backup = identity.export_backup(&password)?;
 
-    // Write to file
     fs::write(output, backup.as_bytes())?;
 
     display::success(&format!("Backup saved to {:?}", output));
@@ -46,7 +42,6 @@ pub fn export(config: &CliConfig, output: &Path) -> Result<()> {
 
 /// Imports an identity from backup.
 pub fn import(config: &CliConfig, input: &Path) -> Result<()> {
-    // Check if already initialized
     if config.is_initialized() {
         display::warning("Vauchi is already initialized.");
 
@@ -60,16 +55,13 @@ pub fn import(config: &CliConfig, input: &Path) -> Result<()> {
         }
     }
 
-    // Read backup file
     let backup_data = fs::read(input)?;
     let backup = IdentityBackup::new(backup_data);
 
-    // Prompt for password
     let password: String = Password::new()
         .with_prompt("Enter backup password")
         .interact()?;
 
-    // Restore identity
     let identity = Identity::import_backup(
         &backup,
         &password,
@@ -78,13 +70,10 @@ pub fn import(config: &CliConfig, input: &Path) -> Result<()> {
 
     let name = identity.display_name().to_string();
 
-    // Create data directory
     fs::create_dir_all(&config.data_dir)?;
 
-    // Save identity to local file for persistence
     config.save_local_identity(&identity)?;
 
-    // Initialize Vauchi with restored identity
     let wb_config = VauchiConfig::with_storage_path(config.storage_path())
         .with_relay_url(&config.relay_url)
         .with_storage_key(config.storage_key()?);

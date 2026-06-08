@@ -24,12 +24,10 @@ pub fn limit(config: &CliConfig, set_value: Option<usize>) -> Result<()> {
 
     match set_value {
         Some(new_limit) => {
-            // Validate the new limit
             if new_limit == 0 {
                 bail!("Contact limit must be at least 1");
             }
 
-            // Check if current count exceeds new limit
             let current_count = wb.contact_count().unwrap_or(0);
             if current_count > new_limit {
                 display::warning(&format!(

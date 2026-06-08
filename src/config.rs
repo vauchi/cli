@@ -89,10 +89,8 @@ pub(crate) fn load_or_generate_fallback_key(data_dir: &std::path::Path) -> Resul
         return Ok(SymmetricKey::from_bytes(arr));
     }
 
-    // Generate a new random key
     let key = SymmetricKey::generate();
 
-    // Ensure parent directory exists
     std::fs::create_dir_all(data_dir).context("Failed to create data directory")?;
 
     write_restricted(&key_path, key.as_bytes())?;
@@ -131,7 +129,6 @@ fn load_or_generate_backup_password(data_dir: &std::path::Path) -> Result<String
         .map(|b| format!("{:02x}", b))
         .collect();
 
-    // Ensure parent directory exists
     std::fs::create_dir_all(data_dir).context("Failed to create data directory")?;
 
     write_restricted(&password_path, &password)?;
@@ -285,10 +282,8 @@ mod tests {
             raw: false,
         };
 
-        // First call should create a key
         let key = config.storage_key().expect("should create key");
 
-        // Key should be 32 bytes
         assert_eq!(key.as_bytes().len(), 32);
     }
 
@@ -306,10 +301,8 @@ mod tests {
             raw: false,
         };
 
-        // First call creates key
         let key1 = config.storage_key().expect("should create key");
 
-        // Second call should return the same key
         let key2 = config.storage_key().expect("should load key");
 
         assert_eq!(key1.as_bytes(), key2.as_bytes());
@@ -418,7 +411,6 @@ mod tests {
             raw: false,
         };
 
-        // Create an identity encrypted with the old hardcoded password
         let identity = Identity::create(
             "Test User",
             vauchi_core::clock::SystemClock::shared().unix_seconds(),
@@ -427,11 +419,9 @@ mod tests {
         std::fs::create_dir_all(&config.data_dir).unwrap();
         std::fs::write(config.identity_path(), backup.as_bytes()).unwrap();
 
-        // Import should succeed via migration
         let imported = config.import_local_identity().unwrap();
         assert_eq!(imported.display_name(), "Test User");
 
-        // After migration, the file should be re-encrypted with new password
         let new_password = config.backup_password().unwrap();
         let new_backup_data = std::fs::read(config.identity_path()).unwrap();
         let new_backup = IdentityBackup::new(new_backup_data);
@@ -454,14 +444,12 @@ mod tests {
             raw: false,
         };
 
-        // Create identity and save with new password
         let identity = Identity::create(
             "Test User",
             vauchi_core::clock::SystemClock::shared().unix_seconds(),
         );
         config.save_local_identity(&identity).unwrap();
 
-        // Import should succeed with generated password
         let imported = config.import_local_identity().unwrap();
         assert_eq!(imported.display_name(), "Test User");
     }
@@ -476,7 +464,6 @@ mod tests {
             raw: false,
         };
 
-        // Create identity with legacy password
         let identity = Identity::create(
             "Migration User",
             vauchi_core::clock::SystemClock::shared().unix_seconds(),
@@ -485,10 +472,8 @@ mod tests {
         std::fs::create_dir_all(&config.data_dir).unwrap();
         std::fs::write(config.identity_path(), backup.as_bytes()).unwrap();
 
-        // Import triggers migration
         config.import_local_identity().unwrap();
 
-        // Old password should no longer work
         let new_data = std::fs::read(config.identity_path()).unwrap();
         let new_backup = IdentityBackup::new(new_data);
         assert!(
@@ -510,11 +495,8 @@ mod tests {
         let key2 = keychain_key_name(&PathBuf::from("/tmp/vauchi-test-2"));
         let key3 = keychain_key_name(&PathBuf::from("/tmp/vauchi-test-1"));
 
-        // Different paths produce different key names
         assert_ne!(key1, key2);
-        // Same path produces the same key name
         assert_eq!(key1, key3);
-        // All start with the expected prefix
         assert!(key1.starts_with("storage_key_"));
         assert!(key2.starts_with("storage_key_"));
     }
@@ -525,7 +507,6 @@ mod tests {
         let temp_dir = tempdir().unwrap();
         let data_dir = temp_dir.path().to_path_buf();
 
-        // First config instance creates key
         let config1 = CliConfig {
             data_dir: data_dir.clone(),
             relay_url: "ws://localhost:8080".to_string(),
@@ -534,7 +515,6 @@ mod tests {
         };
         let key1 = config1.storage_key().expect("should create key");
 
-        // Second config instance with same data_dir loads same key
         let config2 = CliConfig {
             data_dir,
             relay_url: "ws://localhost:8080".to_string(),

@@ -261,7 +261,6 @@ pub async fn execute_deletion(config: &CliConfig) -> Result<()> {
     let wb = open_vauchi(config)?;
     let identity = config.import_local_identity()?;
 
-    // Verify deletion is scheduled and grace period elapsed
     let manager = DeletionManager::new(wb.storage());
     let state = manager.deletion_state()?;
     let token = match state {
@@ -292,7 +291,6 @@ pub async fn execute_deletion(config: &CliConfig) -> Result<()> {
         _ => bail!("Unknown deletion state."),
     };
 
-    // Confirmation prompt
     let confirm: String = Input::new()
         .with_prompt(
             "This will permanently destroy all data and notify contacts. Type 'EXECUTE' to confirm",
@@ -336,7 +334,6 @@ pub async fn panic_shred(config: &CliConfig) -> Result<()> {
     let wb = open_vauchi(config)?;
     let identity = config.import_local_identity()?;
 
-    // Confirmation prompt
     let confirm: String = Input::new()
         .with_prompt("EMERGENCY: This will immediately destroy ALL data. Type 'PANIC' to confirm")
         .interact_text()?;

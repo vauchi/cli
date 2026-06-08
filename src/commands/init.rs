@@ -16,7 +16,6 @@ use crate::display;
 
 /// Creates a new identity.
 pub fn run(name: &str, force: bool, config: &CliConfig) -> Result<()> {
-    // Check if already initialized
     if config.is_initialized() && !force {
         bail!(
             "Vauchi is already initialized in {:?}. Use --force to overwrite or --data-dir for a different location.",
@@ -24,7 +23,6 @@ pub fn run(name: &str, force: bool, config: &CliConfig) -> Result<()> {
         );
     }
 
-    // Create data directory
     fs::create_dir_all(&config.data_dir)?;
 
     // When forcing, remove old storage so Vauchi::new() starts fresh
@@ -35,7 +33,6 @@ pub fn run(name: &str, force: bool, config: &CliConfig) -> Result<()> {
         }
     }
 
-    // Initialize Vauchi with persistent storage key
     let wb_config = VauchiConfig::with_storage_path(config.storage_path())
         .with_relay_url(&config.relay_url)
         .with_storage_key(config.storage_key()?);
@@ -43,19 +40,16 @@ pub fn run(name: &str, force: bool, config: &CliConfig) -> Result<()> {
     let mut wb = Vauchi::new(wb_config)?;
     wb.create_identity(name)?;
 
-    // Initialize demo contact for new users with no contacts
     if let Err(e) = wb.initialize_demo_contact() {
         // Non-fatal: demo contact is a nice-to-have, not blocking
         eprintln!("Note: demo contact setup skipped: {}", e);
     }
 
-    // Save identity to file for persistence
     let identity = wb
         .identity()
         .ok_or_else(|| anyhow::anyhow!("Identity not found after creation"))?;
     config.save_local_identity(identity)?;
 
-    // Get identity info
     let public_id = wb.public_id()?;
 
     display::success(&format!("Identity created: {}", name));

@@ -34,7 +34,6 @@ fn setup() -> Vauchi {
 #[test]
 fn contract_create_identity_succeeds_with_valid_name() {
     let wb = setup();
-    // After create_identity, public_id is available
     let public_id = wb.public_id().unwrap();
     assert!(
         !public_id.is_empty(),
@@ -79,7 +78,6 @@ fn contract_list_contacts_returns_vec() {
     let contacts: Vec<Contact> = wb
         .list_contacts()
         .expect("list_contacts must return VauchiResult<Vec<Contact>>");
-    // Fresh instance has no contacts
     assert!(contacts.is_empty());
 }
 
@@ -186,7 +184,6 @@ fn contract_phone_field_secondary_actions_include_sms() {
     let field = ContactField::new(FieldType::Phone, "Mobile", "+1234567890", 0);
     let actions = field.to_secondary_actions();
 
-    // Phone fields must offer Call, SendSms, and CopyToClipboard
     assert!(
         actions.len() >= 3,
         "phone field must have at least 3 secondary actions, got {}",
@@ -280,7 +277,6 @@ fn contract_find_duplicates_returns_pairs() {
     use vauchi_core::contact::merge::{DuplicatePair, find_duplicates};
     use vauchi_core::crypto::SymmetricKey;
 
-    // Create contacts with similar names
     let card1 = vauchi_core::ContactCard::new("Alice Johnson");
     let card2 = vauchi_core::ContactCard::new("Alice Johnson"); // exact match
     let card3 = vauchi_core::ContactCard::new("Bob Smith");
@@ -306,7 +302,6 @@ fn contract_find_duplicates_returns_pairs() {
 
     let duplicates: Vec<DuplicatePair> = find_duplicates(&[c1, c2, c3]);
 
-    // Exact name match should produce a duplicate pair
     assert!(
         !duplicates.is_empty(),
         "find_duplicates must detect exact name matches"
@@ -489,7 +484,6 @@ fn contract_storage_set_and_get_contact_limit() {
 fn contract_storage_dismiss_and_load_duplicates() {
     let wb = setup();
 
-    // Initially no dismissed duplicates
     let dismissed = wb
         .storage()
         .load_dismissed_duplicates()
@@ -499,7 +493,6 @@ fn contract_storage_dismiss_and_load_duplicates() {
         "initially there should be no dismissed duplicates"
     );
 
-    // Dismiss a pair
     wb.storage()
         .dismiss_duplicate("aaa", "bbb")
         .expect("dismiss_duplicate must accept two IDs");
@@ -511,7 +504,6 @@ fn contract_storage_dismiss_and_load_duplicates() {
         "dismissed set must contain the dismissed pair"
     );
 
-    // Pair should be normalized (aaa < bbb)
     assert!(
         dismissed.contains(&("aaa".to_string(), "bbb".to_string())),
         "dismissed pair must be stored normalized"
@@ -522,7 +514,6 @@ fn contract_storage_dismiss_and_load_duplicates() {
 fn contract_storage_dismiss_is_order_independent() {
     let wb = setup();
 
-    // Dismiss (bbb, aaa) — should normalize to (aaa, bbb)
     wb.storage().dismiss_duplicate("bbb", "aaa").unwrap();
 
     let dismissed = wb.storage().load_dismissed_duplicates().unwrap();
@@ -558,6 +549,5 @@ fn contract_storage_undismiss_duplicate() {
 fn contract_vauchi_storage_accessor_exists() {
     // allow(zero_assertions): Compile-time shape check — fails to compile if accessor removed
     let wb = setup();
-    // Verify that storage() returns a reference to Storage
     let _storage: &vauchi_core::Storage = wb.storage();
 }

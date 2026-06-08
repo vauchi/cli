@@ -48,7 +48,6 @@ use vauchi_core::contact_card::ContactAction;
 
 /// Helper to find contact by ID or name
 fn find_contact(wb: &Vauchi, id_or_name: &str) -> Result<vauchi_core::Contact> {
-    // Try exact ID match first
     if let Some(contact) = wb.get_contact(id_or_name)? {
         return Ok(contact);
     }
@@ -149,7 +148,6 @@ fn execute_action(action: &ContactAction) -> Result<()> {
             }
             Err(e) => {
                 display::error(&format!("Failed to open: {}", e));
-                // Extract the raw value from the action for display
                 let value = match action {
                     ContactAction::Call(v)
                     | ContactAction::SendSms(v)
@@ -189,10 +187,6 @@ fn url_encode_value(value: &str) -> String {
         })
         .collect()
 }
-
-// ===========================================================================
-// Tests
-// ===========================================================================
 
 // INLINE_TEST_REQUIRED: Binary crate without lib.rs — tests cannot be external
 #[cfg(test)]

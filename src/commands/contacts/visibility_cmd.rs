@@ -13,14 +13,11 @@ use crate::display;
 pub fn hide_field(config: &CliConfig, contact_id_or_name: &str, field_label: &str) -> Result<()> {
     let wb = open_vauchi(config)?;
 
-    // Find contact
     let mut contact = find_contact(&wb, contact_id_or_name)?;
     let contact_name = contact.display_name().to_string();
 
-    // Find field ID by label
     let field_id = find_field_id(&wb, field_label)?;
 
-    // Set visibility to nobody for this field
     contact
         .visibility_rules_mut()
         .ok_or_else(|| anyhow::anyhow!("Imported contacts have no visibility rules"))?
@@ -40,14 +37,11 @@ pub fn hide_field(config: &CliConfig, contact_id_or_name: &str, field_label: &st
 pub fn unhide_field(config: &CliConfig, contact_id_or_name: &str, field_label: &str) -> Result<()> {
     let wb = open_vauchi(config)?;
 
-    // Find contact
     let mut contact = find_contact(&wb, contact_id_or_name)?;
     let contact_name = contact.display_name().to_string();
 
-    // Find field ID by label
     let field_id = find_field_id(&wb, field_label)?;
 
-    // Set visibility to everyone for this field
     contact
         .visibility_rules_mut()
         .ok_or_else(|| anyhow::anyhow!("Imported contacts have no visibility rules"))?

@@ -24,7 +24,6 @@ pub fn merge(config: &CliConfig, contact1: &str, contact2: &str) -> Result<()> {
 
     let wb = open_vauchi(config)?;
 
-    // Find both contacts
     let primary = find_contact(&wb, contact1)?;
     let secondary = find_contact(&wb, contact2)?;
 
@@ -37,7 +36,6 @@ pub fn merge(config: &CliConfig, contact1: &str, contact2: &str) -> Result<()> {
     let secondary_name = secondary.display_name().to_string();
     let secondary_id = secondary.id().to_string();
 
-    // Show merge preview
     println!();
     println!("Merge preview:");
     println!("  Primary:   {} (fields kept)", primary_name);
@@ -64,13 +62,10 @@ pub fn merge(config: &CliConfig, contact1: &str, contact2: &str) -> Result<()> {
     }
     println!();
 
-    // Perform the merge
     let merged = merge_contacts(&primary, &secondary);
 
-    // Save merged contact
     wb.update_contact(&merged)?;
 
-    // Remove secondary contact
     wb.remove_contact(&secondary_id)?;
 
     display::success(&format!(
@@ -106,7 +101,6 @@ pub fn duplicates(config: &CliConfig) -> Result<()> {
         return Ok(());
     }
 
-    // Find duplicates
     let all_duplicates = find_duplicates(&contacts);
 
     if all_duplicates.is_empty() {
@@ -114,7 +108,6 @@ pub fn duplicates(config: &CliConfig) -> Result<()> {
         return Ok(());
     }
 
-    // Filter out dismissed pairs
     let dismissed = wb.storage().load_dismissed_duplicates()?;
     let active_duplicates = filter_dismissed(all_duplicates, &dismissed);
 
@@ -131,7 +124,6 @@ pub fn duplicates(config: &CliConfig) -> Result<()> {
     println!();
 
     for (i, pair) in active_duplicates.iter().enumerate() {
-        // Look up contact names
         let name1 = contacts
             .iter()
             .find(|c| c.id() == pair.id1)
@@ -176,7 +168,6 @@ pub fn duplicates(config: &CliConfig) -> Result<()> {
 pub fn dismiss_duplicate(config: &CliConfig, contact1: &str, contact2: &str) -> Result<()> {
     let wb = open_vauchi(config)?;
 
-    // Find both contacts
     let c1 = find_contact(&wb, contact1)?;
     let c2 = find_contact(&wb, contact2)?;
 
@@ -188,7 +179,6 @@ pub fn dismiss_duplicate(config: &CliConfig, contact1: &str, contact2: &str) -> 
     let name1 = c1.display_name().to_string();
     let name2 = c2.display_name().to_string();
 
-    // Dismiss in storage
     wb.storage().dismiss_duplicate(c1.id(), c2.id())?;
 
     display::success(&format!(
@@ -214,14 +204,12 @@ pub fn dismiss_duplicate(config: &CliConfig, contact1: &str, contact2: &str) -> 
 pub fn undismiss_duplicate(config: &CliConfig, contact1: &str, contact2: &str) -> Result<()> {
     let wb = open_vauchi(config)?;
 
-    // Find both contacts
     let c1 = find_contact(&wb, contact1)?;
     let c2 = find_contact(&wb, contact2)?;
 
     let name1 = c1.display_name().to_string();
     let name2 = c2.display_name().to_string();
 
-    // Undismiss in storage
     wb.storage().undismiss_duplicate(c1.id(), c2.id())?;
 
     display::success(&format!(

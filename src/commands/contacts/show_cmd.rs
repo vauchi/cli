@@ -14,9 +14,7 @@ use crate::display;
 pub fn show(config: &CliConfig, pin: Option<&str>, id: &str) -> Result<()> {
     let wb = open_vauchi_authenticated(config, pin)?;
 
-    // Try to find by ID first, then by name
     let contact = wb.get_contact(id)?.or_else(|| {
-        // Search by name
         wb.search_contacts(id)
             .ok()
             .and_then(|results| results.into_iter().next())
@@ -42,11 +40,9 @@ pub fn show(config: &CliConfig, pin: Option<&str>, id: &str) -> Result<()> {
 pub fn show_visibility(config: &CliConfig, contact_id_or_name: &str) -> Result<()> {
     let wb = open_vauchi(config)?;
 
-    // Find contact
     let contact = find_contact(&wb, contact_id_or_name)?;
     let contact_name = contact.display_name().to_string();
 
-    // Get our card fields
     let card = wb
         .own_card()?
         .ok_or_else(|| anyhow::anyhow!("No contact card found"))?;

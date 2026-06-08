@@ -14,11 +14,9 @@ use crate::display;
 pub fn open_field(config: &CliConfig, contact_id_or_name: &str, field_label: &str) -> Result<()> {
     let wb = open_vauchi(config)?;
 
-    // Find contact
     let contact = find_contact(&wb, contact_id_or_name)?;
     let contact_name = contact.display_name().to_string();
 
-    // Find the field by label
     let field = contact
         .card()
         .fields()
@@ -81,7 +79,6 @@ pub fn open_interactive(config: &CliConfig, contact_id_or_name: &str) -> Result<
 
     let wb = open_vauchi(config)?;
 
-    // Find contact
     let contact = find_contact(&wb, contact_id_or_name)?;
     let contact_name = contact.display_name().to_string();
 
@@ -91,7 +88,6 @@ pub fn open_interactive(config: &CliConfig, contact_id_or_name: &str) -> Result<
         return Ok(());
     }
 
-    // Step 1: Select a field
     let field_items: Vec<String> = fields
         .iter()
         .map(|f| {
@@ -114,7 +110,6 @@ pub fn open_interactive(config: &CliConfig, contact_id_or_name: &str) -> Result<
         return open_field(config, contact.id(), selected_field.label());
     }
 
-    // Step 2: Select an action from secondary actions
     let action_items: Vec<String> = actions.iter().map(action_label).collect();
 
     let action_idx = Select::new()

@@ -11,3 +11,6 @@ extend-exclude = [
     "supply-chain/",         # cargo-vet managed — crate names are not typos
     "*.lock",
 ]
+
+[default.extend-words]
+MIS = "MIS"                  # issue-tracker prefix (e.g. MIS-7), not "miss"

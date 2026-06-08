@@ -17,14 +17,11 @@ use crate::display;
 pub fn export(config: &CliConfig, id_or_name: &str, output_path: &str) -> Result<()> {
     let wb = open_vauchi(config)?;
 
-    // Find contact by ID or name
     let contact = find_contact(&wb, id_or_name)?;
     let contact_name = contact.display_name().to_string();
 
-    // Generate vCard from contact's card
     let vcard_content = export_vcard(contact.card());
 
-    // Write to file
     let mut file = File::create(output_path)?;
     file.write_all(vcard_content.as_bytes())?;
 

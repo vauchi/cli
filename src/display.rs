@@ -57,16 +57,12 @@ pub fn display_card(card: &ContactCard) {
     let width = 50;
     let registry = SocialNetworkRegistry::with_defaults();
 
-    // Top border
     println!("{}", "─".repeat(width));
 
-    // Name
     println!("  {}", style(name).bold().cyan());
 
-    // Separator
     println!("{}", "─".repeat(width));
 
-    // Fields
     if card.fields().is_empty() {
         println!("  {}", style("(no fields)").dim());
     } else {
@@ -74,7 +70,6 @@ pub fn display_card(card: &ContactCard) {
             let icon = field_icon(field.field_type());
             let label_style = Style::new().dim();
 
-            // For social fields, try to generate profile URL
             if field.field_type() == FieldType::Social {
                 let label_lower = field.label().to_lowercase();
                 if let Some(url) = registry.profile_url(&label_lower, field.value()) {
@@ -104,7 +99,6 @@ pub fn display_card(card: &ContactCard) {
         }
     }
 
-    // Bottom border
     println!("{}", "─".repeat(width));
 }
 
@@ -141,7 +135,6 @@ pub fn display_contact_details(contact: &Contact) {
 
     println!();
 
-    // Show card fields
     let card = contact.card();
     if card.fields().is_empty() {
         println!("  {}", style("(no visible fields)").dim());
@@ -216,7 +209,6 @@ pub fn display_social_networks(query: Option<&str>) {
     println!("{}", "─".repeat(50));
     println!();
 
-    // Group by category
     let mut printed = 0;
     for network in &networks {
         println!(
@@ -295,10 +287,6 @@ pub fn display_contacts_table(contacts: &[Contact]) {
     println!("{}", table);
 }
 
-// ============================================================
-// FAQ Display Functions
-// ============================================================
-
 use vauchi_app::help::{HelpCategory, get_faqs, get_faqs_by_category, search_faqs};
 use vauchi_app::i18n::{Locale, get_string};
 
@@ -341,7 +329,6 @@ pub fn display_faqs(query: Option<&str>, locale: &str) {
 
     for faq in faqs {
         println!("{}", style(&faq.question).cyan().bold());
-        // Word wrap the answer at 60 chars
         for line in wrap_text(&faq.answer, 60) {
             println!("  {}", line);
         }
@@ -446,10 +433,6 @@ pub fn display_faq_by_id(id: &str, locale: &str) {
         }
     }
 }
-
-// ============================================================
-// Aha Moment Display
-// ============================================================
 
 use vauchi_core::aha_moments::AhaMoment;
 
@@ -579,10 +562,6 @@ fn wrap_text(text: &str, max_width: usize) -> Vec<String> {
 mod tests {
     use super::*;
     use proptest::prelude::*;
-
-    // ====================================================================
-    // Unit tests
-    // ====================================================================
 
     #[test]
     fn test_wrap_text_empty_input() {

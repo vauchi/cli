@@ -164,11 +164,9 @@ mod identity_management {
         let ctx = CliTestContext::new();
         ctx.init("Alice Smith");
 
-        // Re-init with --force should succeed
         let output = ctx.run_success(&["init", "--force", "Bob Jones"]);
         assert!(output.contains("Identity created: Bob Jones"));
 
-        // Verify the new identity is active
         let card_output = ctx.run_success(&["card", "show"]);
         assert!(card_output.contains("Bob Jones"));
     }
@@ -195,14 +193,12 @@ mod identity_management {
     #[test]
     #[ignore = "requires interactive terminal for password input"]
     fn test_import_restores_identity() {
-        // Create first identity and export
         let ctx1 = CliTestContext::new();
         ctx1.init("Alice Smith");
 
         let backup_path = ctx1.data_dir.path().join("backup.json");
         ctx1.run_success(&["export", backup_path.to_str().unwrap()]);
 
-        // Import into new context
         let ctx2 = CliTestContext::new();
         let output = ctx2.run_success(&["import", backup_path.to_str().unwrap()]);
 
@@ -212,7 +208,6 @@ mod identity_management {
                 || output.contains("Identity")
         );
 
-        // Verify name was restored
         let card_output = ctx2.run_success(&["card", "show"]);
         assert!(card_output.contains("Alice Smith"));
     }
@@ -225,7 +220,6 @@ mod identity_management {
         ctx.init("Alice Smith");
 
         let output = ctx.run_success(&["device", "info"]);
-        // Should show public key info
         assert!(
             output.contains("Device") || output.contains("Public") || output.contains("ID"),
             "Expected device info, got: {}",
@@ -353,7 +347,6 @@ mod contact_exchange {
         ctx.init("Alice Smith");
 
         let output = ctx.run_success(&["exchange", "start"]);
-        // Should output exchange data (base64 or URL)
         assert!(
             output.contains("wb://") || output.len() > 50,
             "Expected exchange data, got: {}",
@@ -365,7 +358,6 @@ mod contact_exchange {
     // @scenario: contact_exchange:Successful QR code exchange
     #[test]
     fn test_exchange_complete_flow() {
-        // Alice generates exchange data
         let alice = CliTestContext::new();
         alice.init("Alice Smith");
         alice.run_success(&["card", "add", "email", "Work", "alice@work.com"]);
@@ -378,7 +370,6 @@ mod contact_exchange {
             .trim()
             .to_string();
 
-        // Bob completes exchange with Alice's data
         let bob = CliTestContext::new();
         bob.init("Bob Jones");
         bob.run_success(&["card", "add", "phone", "Mobile", "+1-555-262-1234"]);
@@ -583,7 +574,6 @@ mod device_management {
         ctx.init("Alice Smith");
 
         let output = ctx.run_success(&["device", "list"]);
-        // Should list at least the current device
         assert!(
             output.contains("Device") || output.contains("device") || output.contains("1"),
             "Expected device list, got: {}",
@@ -600,7 +590,6 @@ mod device_management {
         ctx.init("Alice Smith");
 
         let output = ctx.run_success(&["device", "link"]);
-        // Should contain base64-encoded data or a wb:// URL
         let last_line = output.lines().last().unwrap_or("").trim();
         assert!(
             last_line.contains("wb://") || last_line.contains("vdl://") || last_line.len() > 50,
@@ -893,7 +882,6 @@ mod gdpr {
             output
         );
 
-        // Revoke the same consent
         let revoke = ctx.run_success(&["gdpr", "revoke-consent", "data_processing"]);
         assert!(
             revoke.contains("revoked") || revoke.contains("Revoked"),
@@ -931,7 +919,6 @@ mod gdpr {
         );
         assert!(export_path.exists(), "Export file should be created");
 
-        // Verify it's valid JSON
         let contents = std::fs::read_to_string(&export_path).unwrap();
         let parsed: serde_json::Value =
             serde_json::from_str(&contents).expect("Export should be valid JSON");
@@ -962,7 +949,6 @@ mod gdpr {
         // Verify it's NOT plain JSON (it's encrypted binary)
         let contents = std::fs::read(&export_path).unwrap();
         assert_eq!(contents[0], 0x01, "First byte should be version 0x01");
-        // Should not be parseable as JSON
         assert!(
             serde_json::from_slice::<serde_json::Value>(&contents).is_err(),
             "Encrypted export should not be valid JSON"
@@ -1022,7 +1008,6 @@ mod gdpr {
     }
 }
 
-// ===========================================================================
 // ===========================================================================
 // Duress PIN Tests (MIS-9)
 // Trace: features/duress_mode.feature
@@ -1680,8 +1665,6 @@ mod personal_notes {
 mod contact_merge_duplicates_limit {
     use super::*;
 
-    // === Merge Command Tests ===
-
     /// Tests that the merge command requires initialization.
     #[test]
     fn test_merge_requires_init() {
@@ -1708,8 +1691,6 @@ mod contact_merge_duplicates_limit {
         );
     }
 
-    // === Duplicates Command Tests ===
-
     /// Tests that the duplicates command requires initialization.
     #[test]
     fn test_duplicates_requires_init() {
@@ -1735,8 +1716,6 @@ mod contact_merge_duplicates_limit {
             output
         );
     }
-
-    // === Dismiss Duplicate Tests ===
 
     /// Tests that dismiss-duplicate requires initialization.
     #[test]
@@ -1769,8 +1748,6 @@ mod contact_merge_duplicates_limit {
         );
     }
 
-    // === Undismiss Duplicate Tests ===
-
     /// Tests that undismiss-duplicate requires initialization.
     #[test]
     fn test_undismiss_duplicate_requires_init() {
@@ -1782,8 +1759,6 @@ mod contact_merge_duplicates_limit {
             stderr
         );
     }
-
-    // === Limit Command Tests ===
 
     /// Tests that the limit command requires initialization.
     #[test]
@@ -1838,8 +1813,6 @@ mod contact_merge_duplicates_limit {
             stderr
         );
     }
-
-    // === Help Text Tests ===
 
     /// Tests that help includes the new SP-12a subcommands.
     #[test]

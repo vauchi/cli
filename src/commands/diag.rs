@@ -53,7 +53,6 @@ pub fn trace(file: &PathBuf) -> Result<()> {
     let pretty = serde_json::to_string_pretty(&value)?;
     println!("{}", pretty);
 
-    // Print summary if it looks like a trace event array
     if let Some(events) = value.as_array() {
         println!();
         println!("--- Trace Summary ---");

@@ -59,7 +59,6 @@ pub fn untrust(config: &CliConfig, id: &str) -> Result<()> {
     wb.update_contact(&contact)?;
     display::success(&format!("Removed recovery trust from {}", name));
 
-    // Check if trusted count drops below threshold
     let readiness = wb.get_recovery_readiness()?;
     if !readiness.is_ready {
         display::warning(&format!(

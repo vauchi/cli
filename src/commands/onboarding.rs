@@ -22,17 +22,13 @@ pub fn run() -> Result<()> {
     loop {
         let screen = engine.current_screen();
 
-        // Render the current screen
         screen_renderer::render(&screen);
 
-        // Get user input
         let action = action_handler::prompt_for_action(&screen)
             .map_err(|e| anyhow::anyhow!("Input error: {}", e))?;
 
-        // Resolve toggle placeholders
         let action = action_handler::resolve_toggle_item_id(action, &screen);
 
-        // Handle the action
         match engine.handle_action(action) {
             ActionResult::UpdateScreen(_) => {
                 // Screen updated in place, loop will re-render

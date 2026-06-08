@@ -26,7 +26,6 @@ use config::CliConfig;
 async fn main() -> Result<()> {
     let cli = Cli::parse();
 
-    // Resolve data directory
     let data_dir = cli.data_dir.unwrap_or_else(|| {
         dirs::data_dir()
             .unwrap_or_else(|| PathBuf::from("."))

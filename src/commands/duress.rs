@@ -17,7 +17,6 @@ use crate::display;
 pub fn setup(config: &CliConfig) -> Result<()> {
     let mut wb = open_vauchi(config)?;
 
-    // Check if app password is set first
     if !wb.is_password_enabled()? {
         display::info("App password not set. Setting it up first...");
         let password = Password::new()
@@ -28,7 +27,6 @@ pub fn setup(config: &CliConfig) -> Result<()> {
         display::success("App password set");
     }
 
-    // Now set duress PIN
     let duress = Password::new()
         .with_prompt("Enter duress PIN")
         .with_confirmation("Confirm duress PIN", "PINs do not match")

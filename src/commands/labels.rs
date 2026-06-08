@@ -73,7 +73,6 @@ pub fn show(config: &CliConfig, label_name: &str) -> Result<()> {
     println!("Modified: {}", format_timestamp(label.modified_at()));
     println!();
 
-    // Show contacts
     let contact_ids: Vec<_> = label.contacts().iter().cloned().collect();
     if contact_ids.is_empty() {
         println!("Contacts: (none)");
@@ -95,7 +94,6 @@ pub fn show(config: &CliConfig, label_name: &str) -> Result<()> {
     }
     println!();
 
-    // Show visible fields
     let field_ids: Vec<_> = label.visible_fields().iter().cloned().collect();
     if field_ids.is_empty() {
         println!("Visible fields: (none - contacts see default visibility)");

@@ -270,7 +270,6 @@ fn render_does_not_panic_on_all_component_types() {
     render(&screen);
     assert_eq!(screen.components.len(), 7);
 
-    // Verify screen-level fields
     assert_eq!(screen.title, "All Components");
     assert_eq!(screen.subtitle.as_deref(), Some("subtitle"));
     assert_eq!(screen.progress.as_ref().unwrap().current_step, 2);
@@ -280,7 +279,6 @@ fn render_does_not_panic_on_all_component_types() {
         Some("Name")
     );
 
-    // Verify each component's content
     match &screen.components[0] {
         Component::Text {
             id,
@@ -389,7 +387,6 @@ fn render_does_not_panic_on_all_component_types() {
 
     assert!(matches!(screen.components[6], Component::Divider));
 
-    // Verify actions
     assert_eq!(screen.actions.len(), 2);
     assert_eq!(screen.actions[0].id, "ok");
     assert_eq!(screen.actions[0].label, "OK");
@@ -554,8 +551,6 @@ fn render_actions_all_styles() {
     assert!(matches!(actions[3].style, ActionStyle::Primary));
     assert!(!actions[3].enabled);
 }
-
-// --- Golden fixture snapshot tests ---
 
 /// Helper: load a golden fixture JSON and render to string.
 ///

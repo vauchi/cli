@@ -30,7 +30,6 @@ pub fn claim(config: &CliConfig, old_pk_hex: &str) -> Result<()> {
         .identity()
         .ok_or_else(|| anyhow::anyhow!("No identity found"))?;
 
-    // Parse old public key
     let old_pk_bytes = hex::decode(old_pk_hex)?;
     if old_pk_bytes.len() != 32 {
         bail!("Invalid public key: must be 32 bytes (64 hex characters)");
@@ -38,7 +37,6 @@ pub fn claim(config: &CliConfig, old_pk_hex: &str) -> Result<()> {
     let mut old_pk = [0u8; 32];
     old_pk.copy_from_slice(&old_pk_bytes);
 
-    // Get new public key from current identity
     let new_pk = identity.signing_public_key();
 
     // Sanity check - shouldn't claim your own key
@@ -46,14 +44,12 @@ pub fn claim(config: &CliConfig, old_pk_hex: &str) -> Result<()> {
         bail!("Cannot create recovery claim for your own current key");
     }
 
-    // Create claim
     let claim = RecoveryClaim::new(
         old_pk,
         new_pk,
         vauchi_core::clock::SystemClock::shared().unix_seconds(),
     );
 
-    // Encode for display
     let claim_bytes = claim.to_bytes();
     let claim_b64 = BASE64.encode(&claim_bytes);
 
@@ -77,7 +73,6 @@ pub fn claim(config: &CliConfig, old_pk_hex: &str) -> Result<()> {
     display::info("Ask your contacts to run: vauchi recovery vouch <claim>");
     println!();
 
-    // Save pending claim for tracking
     let claim_path = config.data_dir.join(".pending_recovery_claim");
     crate::config::write_restricted(&claim_path, &claim_bytes)?;
     display::info("Claim saved. Use 'vauchi recovery status' to check progress.");
@@ -95,7 +90,6 @@ pub fn vouch(config: &CliConfig, claim_data: &str, auto_confirm: bool) -> Result
         .identity()
         .ok_or_else(|| anyhow::anyhow!("No identity found"))?;
 
-    // Decode claim
     let claim_bytes = BASE64.decode(claim_data.trim())?;
     let claim = RecoveryClaim::from_bytes(&claim_bytes)?;
 
@@ -106,7 +100,6 @@ pub fn vouch(config: &CliConfig, claim_data: &str, auto_confirm: bool) -> Result
     let old_pk_hex = hex::encode(claim.old_pk());
     let new_pk_hex = hex::encode(claim.new_pk());
 
-    // Look up old_pk in contacts
     let contacts = wb.storage().list_contacts()?;
     let contact = contacts.iter().find(|c| {
         c.public_key()
@@ -166,7 +159,6 @@ pub fn vouch(config: &CliConfig, claim_data: &str, auto_confirm: bool) -> Result
         vauchi_core::clock::SystemClock::shared().unix_seconds(),
     )?;
 
-    // Encode for display
     let voucher_bytes = voucher.to_bytes();
     let voucher_b64 = BASE64.encode(&voucher_bytes);
 
@@ -197,7 +189,6 @@ pub fn add_voucher(config: &CliConfig, voucher_data: &str) -> Result<()> {
         .identity()
         .ok_or_else(|| anyhow::anyhow!("No identity found"))?;
 
-    // Decode voucher
     let voucher_bytes = BASE64.decode(voucher_data.trim())?;
     let voucher = RecoveryVoucher::from_bytes(&voucher_bytes)?;
 
@@ -205,13 +196,11 @@ pub fn add_voucher(config: &CliConfig, voucher_data: &str) -> Result<()> {
         bail!("Invalid voucher signature");
     }
 
-    // Load or create proof
     let proof_path = config.data_dir.join(".recovery_proof");
     let mut proof = if proof_path.exists() {
         let proof_bytes = fs::read(&proof_path)?;
         RecoveryProof::from_bytes(&proof_bytes)?
     } else {
-        // Create new proof using settings
         let settings = RecoverySettings::default();
         RecoveryProof::new(
             *voucher.old_pk(),
@@ -221,7 +210,6 @@ pub fn add_voucher(config: &CliConfig, voucher_data: &str) -> Result<()> {
         )
     };
 
-    // Verify voucher matches proof
     if proof.old_pk() != voucher.old_pk() || proof.new_pk() != voucher.new_pk() {
         bail!("Voucher keys don't match the recovery in progress");
     }
@@ -231,7 +219,6 @@ pub fn add_voucher(config: &CliConfig, voucher_data: &str) -> Result<()> {
     // contacts vouching for the recovery claim.
     proof.add_voucher(voucher)?;
 
-    // Save updated proof
     crate::config::write_restricted(&proof_path, proof.to_bytes()?)?;
 
     let voucher_count = proof.voucher_count();
@@ -259,7 +246,6 @@ pub fn add_voucher(config: &CliConfig, voucher_data: &str) -> Result<()> {
 pub fn status(config: &CliConfig) -> Result<()> {
     let _wb = open_vauchi(config)?;
 
-    // Check for pending claim
     let claim_path = config.data_dir.join(".pending_recovery_claim");
     let proof_path = config.data_dir.join(".recovery_proof");
 
@@ -376,26 +362,21 @@ pub fn proof_show(config: &CliConfig) -> Result<()> {
 pub fn verify(config: &CliConfig, proof_data: &str) -> Result<()> {
     let wb = open_vauchi(config)?;
 
-    // Decode proof
     let proof_bytes = BASE64.decode(proof_data.trim())?;
     let proof = RecoveryProof::from_bytes(&proof_bytes)?;
 
-    // Validate the proof structure
     proof.validate()?;
 
     let old_pk_hex = hex::encode(proof.old_pk());
     let new_pk_hex = hex::encode(proof.new_pk());
 
-    // Load contacts
     let contacts = wb.storage().list_contacts()?;
 
-    // Check if old_pk matches a contact
     let contact = contacts.iter().find(|c| {
         c.public_key()
             .is_some_and(|pk| hex::encode(pk) == old_pk_hex)
     });
 
-    // Verify against our contacts
     let settings = RecoverySettings::default();
     let result = proof.verify_for_contact(&contacts, &settings);
 
@@ -463,7 +444,6 @@ pub fn verify(config: &CliConfig, proof_data: &str) -> Result<()> {
     println!("{}", "─".repeat(60));
     println!();
 
-    // Ask if they want to accept
     if contact.is_some() {
         let accept = Confirm::new()
             .with_prompt("Accept this recovery and update contact?")
@@ -502,7 +482,6 @@ pub fn settings_show(config: &CliConfig) -> Result<()> {
         settings.verification_threshold()
     );
 
-    // Show trusted contacts count if initialized
     if config.is_initialized()
         && let Ok(wb) = open_vauchi(config)
         && let Ok(readiness) = wb.get_recovery_readiness()
@@ -529,7 +508,6 @@ pub fn settings_show(config: &CliConfig) -> Result<()> {
 
 /// Sets recovery settings.
 pub fn settings_set(_config: &CliConfig, recovery: u32, verification: u32) -> Result<()> {
-    // Validate settings
     let _settings = RecoverySettings::new(recovery, verification)?;
 
     // TODO: Persist settings via core API when implemented

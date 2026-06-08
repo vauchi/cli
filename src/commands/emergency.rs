@@ -17,7 +17,6 @@ use crate::display;
 pub fn configure(config: &CliConfig) -> Result<()> {
     let mut wb = open_vauchi(config)?;
 
-    // Get contact IDs (comma-separated)
     let ids_input: String = Input::new()
         .with_prompt("Trusted contact IDs (comma-separated, max 10)")
         .interact_text()?;
@@ -52,7 +51,6 @@ pub fn configure(config: &CliConfig) -> Result<()> {
 pub fn send(config: &CliConfig) -> Result<()> {
     let mut wb = open_vauchi(config)?;
 
-    // Check config exists
     if wb.load_emergency_config()?.is_none() {
         bail!("No emergency broadcast configured. Run 'vauchi emergency configure' first.");
     }

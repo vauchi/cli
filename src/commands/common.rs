@@ -226,7 +226,6 @@ mod tests {
             raw: false,
         };
 
-        // Initialize: create an identity and save it
         let identity = Identity::create(
             "Test User",
             vauchi_core::clock::SystemClock::shared().unix_seconds(),
@@ -237,7 +236,6 @@ mod tests {
 
         let wb = open_vauchi(&config).expect("open_vauchi should succeed");
 
-        // Verify the identity was loaded by checking the display name
         let loaded_identity = wb.identity().expect("identity should be loaded");
         assert_eq!(loaded_identity.display_name(), "Test User");
     }
@@ -260,7 +258,6 @@ mod tests {
             .save_local_identity(&identity)
             .expect("save identity");
 
-        // The function should not panic or error — it creates storage at the configured path
         let result = open_vauchi(&config);
         assert!(
             result.is_ok(),
