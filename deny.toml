@@ -20,8 +20,9 @@ db-urls = ["https://github.com/rustsec/advisory-db"]
 ignore = [
     # number_prefix is unmaintained — transitive via indicatif. No fix available.
     "RUSTSEC-2025-0119",
-    # rustls-pemfile unmaintained — transitive via rustls-native-certs. No fix yet.
-    "RUSTSEC-2025-0134",
+    # proc-macro-error2 unmaintained, no safe upgrade — transitive via
+    # tabled -> tabled_derive. Build-time proc-macro only, no runtime risk.
+    "RUSTSEC-2026-0173",
     # Removed 2026-05-21 per audit-06 F1 verification: stale
     # aws-lc-sys advisory suppressions (`RUSTSEC-2026-0044`,
     # `RUSTSEC-2026-0048`) were left after the cargo-update past
