@@ -44,7 +44,7 @@ pub fn list(config: &CliConfig) -> Result<()> {
     );
     println!();
 
-    match wb.storage().load_device_registry() {
+    match wb.storage().device().load_device_registry() {
         Ok(Some(registry)) => {
             println!("Linked Devices:");
             println!("{}", "─".repeat(50));
@@ -92,6 +92,7 @@ pub fn link(config: &CliConfig) -> Result<()> {
 
     let registry = wb
         .storage()
+        .device()
         .load_device_registry()?
         .unwrap_or_else(|| identity.initial_device_registry());
 
@@ -219,6 +220,7 @@ pub fn complete(config: &CliConfig, request_data: &str, auto_confirm: bool) -> R
 
     let registry = wb
         .storage()
+        .device()
         .load_device_registry()?
         .unwrap_or_else(|| identity.initial_device_registry());
 
@@ -275,7 +277,9 @@ pub fn complete(config: &CliConfig, request_data: &str, auto_confirm: bool) -> R
         vauchi_core::clock::SystemClock::shared().unix_seconds(),
     )?;
 
-    wb.storage().save_device_registry(&updated_registry)?;
+    wb.storage()
+        .device()
+        .save_device_registry(&updated_registry)?;
 
     let response_b64 = BASE64.encode(&encrypted_response);
 
@@ -333,7 +337,9 @@ pub fn finish(config: &CliConfig, response_data: &str) -> Result<()> {
         .with_relay_url(&config.relay_url)
         .with_storage_key(config.storage_key()?);
     let wb = Vauchi::new(wb_config)?;
-    wb.storage().save_device_registry(response.registry())?;
+    wb.storage()
+        .device()
+        .save_device_registry(response.registry())?;
 
     display::success(&format!("Joined identity: {}", response.display_name()));
     display::info(&format!("Device index: {}", response.device_index()));
@@ -382,6 +388,7 @@ pub fn revoke(config: &CliConfig, device_id_prefix: &str) -> Result<()> {
 
     let registry = wb
         .storage()
+        .device()
         .load_device_registry()?
         .ok_or_else(|| anyhow::anyhow!("No device registry found"))?;
 
@@ -413,7 +420,9 @@ pub fn revoke(config: &CliConfig, device_id_prefix: &str) -> Result<()> {
         wb.clock().unix_seconds(),
     )?;
 
-    wb.storage().save_device_registry(&updated_registry)?;
+    wb.storage()
+        .device()
+        .save_device_registry(&updated_registry)?;
 
     display::success(&format!(
         "Device '{}' has been revoked.",

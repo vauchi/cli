@@ -457,6 +457,7 @@ fn contract_storage_get_contact_limit_has_default() {
     let wb = setup();
     let limit = wb
         .storage()
+        .contacts()
         .get_contact_limit()
         .expect("get_contact_limit must return a default");
     assert_eq!(limit, 10_000, "default contact limit must be 10,000");
@@ -466,10 +467,11 @@ fn contract_storage_get_contact_limit_has_default() {
 fn contract_storage_set_and_get_contact_limit() {
     let wb = setup();
     wb.storage()
+        .contacts()
         .set_contact_limit(500)
         .expect("set_contact_limit must accept usize");
 
-    let limit = wb.storage().get_contact_limit().unwrap();
+    let limit = wb.storage().contacts().get_contact_limit().unwrap();
     assert_eq!(
         limit, 500,
         "get_contact_limit must return the value that was set"
@@ -486,6 +488,7 @@ fn contract_storage_dismiss_and_load_duplicates() {
 
     let dismissed = wb
         .storage()
+        .contacts()
         .load_dismissed_duplicates()
         .expect("load_dismissed_duplicates must return HashSet");
     assert!(
@@ -494,10 +497,11 @@ fn contract_storage_dismiss_and_load_duplicates() {
     );
 
     wb.storage()
+        .contacts()
         .dismiss_duplicate("aaa", "bbb")
         .expect("dismiss_duplicate must accept two IDs");
 
-    let dismissed = wb.storage().load_dismissed_duplicates().unwrap();
+    let dismissed = wb.storage().contacts().load_dismissed_duplicates().unwrap();
     assert_eq!(
         dismissed.len(),
         1,
@@ -514,9 +518,12 @@ fn contract_storage_dismiss_and_load_duplicates() {
 fn contract_storage_dismiss_is_order_independent() {
     let wb = setup();
 
-    wb.storage().dismiss_duplicate("bbb", "aaa").unwrap();
+    wb.storage()
+        .contacts()
+        .dismiss_duplicate("bbb", "aaa")
+        .unwrap();
 
-    let dismissed = wb.storage().load_dismissed_duplicates().unwrap();
+    let dismissed = wb.storage().contacts().load_dismissed_duplicates().unwrap();
     assert!(
         dismissed.contains(&("aaa".to_string(), "bbb".to_string())),
         "dismiss_duplicate must normalize pair order"
@@ -527,14 +534,25 @@ fn contract_storage_dismiss_is_order_independent() {
 fn contract_storage_undismiss_duplicate() {
     let wb = setup();
 
-    wb.storage().dismiss_duplicate("aaa", "bbb").unwrap();
-    assert_eq!(wb.storage().load_dismissed_duplicates().unwrap().len(), 1);
+    wb.storage()
+        .contacts()
+        .dismiss_duplicate("aaa", "bbb")
+        .unwrap();
+    assert_eq!(
+        wb.storage()
+            .contacts()
+            .load_dismissed_duplicates()
+            .unwrap()
+            .len(),
+        1
+    );
 
     wb.storage()
+        .contacts()
         .undismiss_duplicate("aaa", "bbb")
         .expect("undismiss_duplicate must accept two IDs");
 
-    let dismissed = wb.storage().load_dismissed_duplicates().unwrap();
+    let dismissed = wb.storage().contacts().load_dismissed_duplicates().unwrap();
     assert!(
         dismissed.is_empty(),
         "undismiss_duplicate must remove the dismissed pair"

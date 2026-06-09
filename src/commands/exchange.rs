@@ -37,6 +37,7 @@ pub fn start(config: &CliConfig) -> Result<()> {
 
     let our_card = wb
         .storage()
+        .contacts()
         .load_own_card()?
         .unwrap_or_else(|| ContactCard::new(identity.display_name()));
 
@@ -113,6 +114,7 @@ pub fn complete(config: &CliConfig, data: &str) -> Result<()> {
 
     let our_card = wb
         .storage()
+        .contacts()
         .load_own_card()?
         .unwrap_or_else(|| ContactCard::new(identity.display_name()));
 
@@ -246,6 +248,7 @@ pub fn usb_exchange(config: &CliConfig, address: &str) -> Result<()> {
 
     let our_card = wb
         .storage()
+        .contacts()
         .load_own_card()?
         .unwrap_or_else(|| ContactCard::new(identity.display_name()));
 
@@ -375,6 +378,7 @@ pub fn usb_listen(config: &CliConfig, port: u16) -> Result<()> {
 
     let our_card = wb
         .storage()
+        .contacts()
         .load_own_card()?
         .unwrap_or_else(|| ContactCard::new(identity.display_name()));
 

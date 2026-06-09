@@ -39,11 +39,11 @@ pub fn limit(config: &CliConfig, set_value: Option<usize>) -> Result<()> {
                 );
             }
 
-            wb.storage().set_contact_limit(new_limit)?;
+            wb.storage().contacts().set_contact_limit(new_limit)?;
             display::success(&format!("Contact limit set to {}", new_limit));
         }
         None => {
-            let max_contacts = wb.storage().get_contact_limit()?;
+            let max_contacts = wb.storage().contacts().get_contact_limit()?;
             let current_count = wb.contact_count().unwrap_or(0);
 
             println!();

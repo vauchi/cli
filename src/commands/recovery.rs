@@ -100,7 +100,7 @@ pub fn vouch(config: &CliConfig, claim_data: &str, auto_confirm: bool) -> Result
     let old_pk_hex = hex::encode(claim.old_pk());
     let new_pk_hex = hex::encode(claim.new_pk());
 
-    let contacts = wb.storage().list_contacts()?;
+    let contacts = wb.storage().contacts().list_contacts()?;
     let contact = contacts.iter().find(|c| {
         c.public_key()
             .is_some_and(|pk| hex::encode(pk) == old_pk_hex)
@@ -370,7 +370,7 @@ pub fn verify(config: &CliConfig, proof_data: &str) -> Result<()> {
     let old_pk_hex = hex::encode(proof.old_pk());
     let new_pk_hex = hex::encode(proof.new_pk());
 
-    let contacts = wb.storage().list_contacts()?;
+    let contacts = wb.storage().contacts().list_contacts()?;
 
     let contact = contacts.iter().find(|c| {
         c.public_key()

@@ -108,7 +108,7 @@ pub fn duplicates(config: &CliConfig) -> Result<()> {
         return Ok(());
     }
 
-    let dismissed = wb.storage().load_dismissed_duplicates()?;
+    let dismissed = wb.storage().contacts().load_dismissed_duplicates()?;
     let active_duplicates = filter_dismissed(all_duplicates, &dismissed);
 
     if active_duplicates.is_empty() {
@@ -179,7 +179,9 @@ pub fn dismiss_duplicate(config: &CliConfig, contact1: &str, contact2: &str) -> 
     let name1 = c1.display_name().to_string();
     let name2 = c2.display_name().to_string();
 
-    wb.storage().dismiss_duplicate(c1.id(), c2.id())?;
+    wb.storage()
+        .contacts()
+        .dismiss_duplicate(c1.id(), c2.id())?;
 
     display::success(&format!(
         "Dismissed duplicate pair: {} <-> {}",
@@ -210,7 +212,9 @@ pub fn undismiss_duplicate(config: &CliConfig, contact1: &str, contact2: &str) -
     let name1 = c1.display_name().to_string();
     let name2 = c2.display_name().to_string();
 
-    wb.storage().undismiss_duplicate(c1.id(), c2.id())?;
+    wb.storage()
+        .contacts()
+        .undismiss_duplicate(c1.id(), c2.id())?;
 
     display::success(&format!(
         "Undismissed duplicate pair: {} <-> {}",

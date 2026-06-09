@@ -22,7 +22,7 @@ fn find_label(wb: &Vauchi, label_name: &str) -> Result<vauchi_core::contact::Gro
 /// List all labels.
 pub fn list(config: &CliConfig) -> Result<()> {
     let wb = open_vauchi(config)?;
-    let labels = wb.storage().load_all_groups()?;
+    let labels = wb.storage().labels().load_all_groups()?;
 
     if labels.is_empty() {
         display::info("No labels defined. Create one with 'vauchi labels create <name>'");
@@ -52,7 +52,7 @@ pub fn list(config: &CliConfig) -> Result<()> {
 /// Create a new label.
 pub fn create(config: &CliConfig, name: &str) -> Result<()> {
     let wb = open_vauchi(config)?;
-    let label = wb.storage().create_group(name)?;
+    let label = wb.storage().labels().create_group(name)?;
 
     display::success(&format!(
         "Created label '{}' (ID: {})",
@@ -78,7 +78,7 @@ pub fn show(config: &CliConfig, label_name: &str) -> Result<()> {
         println!("Contacts: (none)");
     } else {
         println!("Contacts:");
-        let all_contacts = wb.storage().list_contacts()?;
+        let all_contacts = wb.storage().contacts().list_contacts()?;
         for contact_id in &contact_ids {
             let name = all_contacts
                 .iter()
@@ -99,7 +99,7 @@ pub fn show(config: &CliConfig, label_name: &str) -> Result<()> {
         println!("Visible fields: (none - contacts see default visibility)");
     } else {
         println!("Visible fields:");
-        if let Some(card) = wb.storage().load_own_card()? {
+        if let Some(card) = wb.storage().contacts().load_own_card()? {
             for field_id in &field_ids {
                 let label_name = card
                     .fields()
@@ -120,7 +120,7 @@ pub fn rename(config: &CliConfig, label_name: &str, new_name: &str) -> Result<()
     let wb = open_vauchi(config)?;
     let label = find_label(&wb, label_name)?;
 
-    wb.storage().rename_group(label.id(), new_name)?;
+    wb.storage().labels().rename_group(label.id(), new_name)?;
     display::success(&format!("Renamed label to '{}'", new_name));
     Ok(())
 }
@@ -131,7 +131,7 @@ pub fn delete(config: &CliConfig, label_name: &str) -> Result<()> {
     let label = find_label(&wb, label_name)?;
 
     let name = label.name().to_string();
-    wb.storage().delete_group(label.id())?;
+    wb.storage().labels().delete_group(label.id())?;
     display::success(&format!("Deleted label '{}'", name));
     Ok(())
 }
@@ -148,6 +148,7 @@ pub fn add_contact(config: &CliConfig, label_name: &str, contact_name: &str) -> 
         .ok_or_else(|| anyhow!("Contact not found: {}", contact_name))?;
 
     wb.storage()
+        .labels()
         .add_contact_to_group(label.id(), contact.id())?;
     display::success(&format!(
         "Added '{}' to label '{}'",
@@ -169,6 +170,7 @@ pub fn remove_contact(config: &CliConfig, label_name: &str, contact_name: &str) 
         .ok_or_else(|| anyhow!("Contact not found: {}", contact_name))?;
 
     wb.storage()
+        .labels()
         .remove_contact_from_group(label.id(), contact.id())?;
     display::success(&format!(
         "Removed '{}' from label '{}'",
@@ -185,6 +187,7 @@ pub fn show_field(config: &CliConfig, label_name: &str, field_label: &str) -> Re
 
     let card = wb
         .storage()
+        .contacts()
         .load_own_card()?
         .ok_or_else(|| anyhow!("No contact card found"))?;
 
@@ -195,6 +198,7 @@ pub fn show_field(config: &CliConfig, label_name: &str, field_label: &str) -> Re
         .ok_or_else(|| anyhow!("Field not found: {}", field_label))?;
 
     wb.storage()
+        .labels()
         .set_group_field_visibility(label.id(), field.id(), true)?;
     display::success(&format!(
         "Field '{}' is now visible to contacts in '{}'",
@@ -211,6 +215,7 @@ pub fn hide_field(config: &CliConfig, label_name: &str, field_label: &str) -> Re
 
     let card = wb
         .storage()
+        .contacts()
         .load_own_card()?
         .ok_or_else(|| anyhow!("No contact card found"))?;
 
@@ -221,6 +226,7 @@ pub fn hide_field(config: &CliConfig, label_name: &str, field_label: &str) -> Re
         .ok_or_else(|| anyhow!("Field not found: {}", field_label))?;
 
     wb.storage()
+        .labels()
         .set_group_field_visibility(label.id(), field.id(), false)?;
     display::success(&format!(
         "Field '{}' is now hidden from contacts in '{}'",

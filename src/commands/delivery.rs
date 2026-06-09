@@ -24,17 +24,23 @@ pub fn status(config: &CliConfig) -> Result<()> {
         .run()
         .map_err(|e| anyhow::anyhow!("Diagnostics failed: {}", e))?;
 
-    let queued =
-        storage.count_deliveries_by_status(&vauchi_core::storage::DeliveryStatus::Queued)?;
-    let sent = storage.count_deliveries_by_status(&vauchi_core::storage::DeliveryStatus::Sent)?;
-    let stored =
-        storage.count_deliveries_by_status(&vauchi_core::storage::DeliveryStatus::Stored)?;
-    let delivered =
-        storage.count_deliveries_by_status(&vauchi_core::storage::DeliveryStatus::Delivered)?;
-    let failed =
-        storage.count_deliveries_by_status(&vauchi_core::storage::DeliveryStatus::Failed {
+    let queued = storage
+        .deliveries()
+        .count_deliveries_by_status(&vauchi_core::storage::DeliveryStatus::Queued)?;
+    let sent = storage
+        .deliveries()
+        .count_deliveries_by_status(&vauchi_core::storage::DeliveryStatus::Sent)?;
+    let stored = storage
+        .deliveries()
+        .count_deliveries_by_status(&vauchi_core::storage::DeliveryStatus::Stored)?;
+    let delivered = storage
+        .deliveries()
+        .count_deliveries_by_status(&vauchi_core::storage::DeliveryStatus::Delivered)?;
+    let failed = storage.deliveries().count_deliveries_by_status(
+        &vauchi_core::storage::DeliveryStatus::Failed {
             reason: String::new(),
-        })?;
+        },
+    )?;
 
     if config.raw {
         #[derive(serde::Serialize)]
@@ -87,13 +93,13 @@ pub fn list(config: &CliConfig, filter: Option<&str>) -> Result<()> {
     let storage = wb.storage();
 
     let records = match filter {
-        Some("failed") => storage.get_delivery_records_by_status(
+        Some("failed") => storage.deliveries().get_delivery_records_by_status(
             &vauchi_core::storage::DeliveryStatus::Failed {
                 reason: String::new(),
             },
         )?,
-        Some("pending") => storage.get_pending_deliveries()?,
-        _ => storage.get_all_delivery_records()?,
+        Some("pending") => storage.deliveries().get_pending_deliveries()?,
+        _ => storage.deliveries().get_all_delivery_records()?,
     };
 
     if records.is_empty() {
