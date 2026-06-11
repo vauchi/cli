@@ -1567,9 +1567,9 @@ dependencies = [
 
 [[package]]
 name = "insta"
-version = "1.47.2"
+version = "1.48.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7b4a6248eb93a4401ed2f37dfe8ea592d3cf05b7cf4f8efa867b6895af7e094e"
+checksum = "86f0f8fee8c926415c58d6ae43a08523a26faccb2323f5e6b644fe7dd4ef6b82"
 dependencies = [
  "console 0.16.3",
  "once_cell",
@@ -3333,8 +3333,8 @@ dependencies = [
 
 [[package]]
 name = "vauchi-app"
-version = "0.51.51"
-source = "git+https://gitlab.com/vauchi/core.git?branch=main#238f4ba6fbc07cc6fdbab963b9987228ddba338a"
+version = "0.51.53"
+source = "git+https://gitlab.com/vauchi/core.git?branch=main#95d2ed85967a1850b1fa5a7bb67e27f9aec3654c"
 dependencies = [
  "base64",
  "hex",
@@ -3381,8 +3381,8 @@ dependencies = [
 
 [[package]]
 name = "vauchi-core"
-version = "0.51.51"
-source = "git+https://gitlab.com/vauchi/core.git?branch=main#238f4ba6fbc07cc6fdbab963b9987228ddba338a"
+version = "0.51.53"
+source = "git+https://gitlab.com/vauchi/core.git?branch=main#95d2ed85967a1850b1fa5a7bb67e27f9aec3654c"
 dependencies = [
  "argon2",
  "async-trait",
@@ -3425,8 +3425,8 @@ dependencies = [
 
 [[package]]
 name = "vauchi-protocol"
-version = "0.51.51"
-source = "git+https://gitlab.com/vauchi/core.git?branch=main#238f4ba6fbc07cc6fdbab963b9987228ddba338a"
+version = "0.51.53"
+source = "git+https://gitlab.com/vauchi/core.git?branch=main#95d2ed85967a1850b1fa5a7bb67e27f9aec3654c"
 dependencies = [
  "serde",
  "serde_json",
