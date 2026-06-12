@@ -6,8 +6,6 @@
 //!
 //! Terminal output formatting and styling.
 
-#![allow(dead_code)] // Utility functions for future use
-
 use console::{Style, style};
 use tabled::{
     Table, Tabled,
@@ -150,38 +148,6 @@ pub fn display_contact_details(contact: &Contact) {
         }
     }
 
-    println!();
-}
-
-/// Displays a QR code in the terminal using Unicode blocks.
-pub fn display_qr_code(data: &str) {
-    use qrcode::QrCode;
-    use qrcode::render::unicode;
-
-    match QrCode::new(data) {
-        Ok(code) => {
-            let image = code
-                .render::<unicode::Dense1x2>()
-                .dark_color(unicode::Dense1x2::Light)
-                .light_color(unicode::Dense1x2::Dark)
-                .build();
-            println!("{}", image);
-        }
-        Err(e) => {
-            error(&format!("Failed to generate QR code: {}", e));
-        }
-    }
-}
-
-/// Displays exchange data for sharing.
-pub fn display_exchange_data(data: &str) {
-    println!();
-    println!("Scan this QR code with another Vauchi user:");
-    println!();
-    display_qr_code(data);
-    println!();
-    println!("Or share this text:");
-    println!("{}", style(data).cyan());
     println!();
 }
 

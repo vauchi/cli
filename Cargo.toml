@@ -51,7 +51,6 @@ serde_json = "1"
 anyhow = "1"
 
 # QR code generation
-qrcode = "0.14"
 
 # Hex encoding
 hex = "0.4"
