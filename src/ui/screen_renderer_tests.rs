@@ -689,6 +689,9 @@ fn every_known_component() -> Vec<Component> {
                 a11y: None,
             }],
             searchable: false,
+            total_count: 0,
+            offset: 0,
+            window: 0,
         },
         Component::SettingsGroup {
             id: "settings".into(),
