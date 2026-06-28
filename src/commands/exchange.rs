@@ -100,7 +100,6 @@ pub fn complete(config: &CliConfig, data: &str) -> Result<()> {
         bail!("This exchange QR code has expired. Ask them to generate a new one.");
     }
 
-    let their_exchange_key = *qr.exchange_key();
     let their_public_id = hex::encode(qr.public_key());
 
     if wb.get_contact(&their_public_id)?.is_some() {
@@ -163,11 +162,6 @@ pub fn complete(config: &CliConfig, data: &str) -> Result<()> {
         .apply(ExchangeEvent::PerformKeyAgreement)
         .map_err(|e| anyhow::anyhow!("Key agreement failed: {:?}", e))?;
 
-    let shared_key = match session.state() {
-        ExchangeState::AwaitingCardExchange { shared_key, .. } => shared_key.clone(),
-        _ => bail!("Session not in expected state after key agreement"),
-    };
-
     let their_name = session
         .their_display_name()
         .filter(|n| !n.is_empty())
@@ -184,6 +178,12 @@ pub fn complete(config: &CliConfig, data: &str) -> Result<()> {
     };
 
     let contact_id = contact.id().to_string();
+    // One initiator, one responder via the session seam — NOT
+    // create_ratchet_as_initiator on both sides, which makes two initiators
+    // that can never decrypt each other (2026-06-28-sync-delivery-sent-not-received).
+    let (ratchet, is_initiator) = session
+        .build_exchange_ratchet(&contact)
+        .map_err(|e| anyhow::anyhow!("failed to build exchange ratchet: {e:?}"))?;
     wb.add_contact(contact)?;
 
     // Aha moment: first contact added
@@ -195,7 +195,7 @@ pub fn complete(config: &CliConfig, data: &str) -> Result<()> {
     }
     save_aha_tracker(config, &tracker);
 
-    wb.create_ratchet_as_initiator(&contact_id, &shared_key, their_exchange_key)?;
+    wb.save_exchange_ratchet(&contact_id, &ratchet, is_initiator)?;
 
     // Queue our card for delivery and sync immediately.
     // The initial card establishes the responder's receive chain so
@@ -299,14 +299,6 @@ pub fn usb_exchange(config: &CliConfig, address: &str) -> Result<()> {
         })
         .map_err(|e| anyhow::anyhow!("payload processing failed: {:?}", e))?;
 
-    // Capture their_exchange_key before PerformKeyAgreement consumes the state
-    let their_exchange_key = match session.state() {
-        ExchangeState::AwaitingKeyAgreement {
-            their_exchange_key, ..
-        } => *their_exchange_key,
-        _ => bail!("unexpected state after DirectPayloadReceived"),
-    };
-
     session
         .apply(ExchangeEvent::PerformKeyAgreement)
         .map_err(|e| anyhow::anyhow!("key agreement failed: {:?}", e))?;
@@ -316,11 +308,6 @@ pub fn usb_exchange(config: &CliConfig, address: &str) -> Result<()> {
             confidence: ProximityConfidence::High,
         })
         .map_err(|e| anyhow::anyhow!("proximity check failed: {:?}", e))?;
-
-    let shared_key = match session.state() {
-        ExchangeState::AwaitingCardExchange { shared_key, .. } => shared_key.clone(),
-        _ => bail!("unexpected state after key agreement"),
-    };
 
     let their_name = session
         .their_display_name()
@@ -338,8 +325,11 @@ pub fn usb_exchange(config: &CliConfig, address: &str) -> Result<()> {
     };
 
     let contact_id = contact.id().to_string();
+    let (ratchet, ratchet_is_initiator) = session
+        .build_exchange_ratchet(&contact)
+        .map_err(|e| anyhow::anyhow!("failed to build exchange ratchet: {e:?}"))?;
     wb.add_contact(contact)?;
-    wb.create_ratchet_as_initiator(&contact_id, &shared_key, their_exchange_key)?;
+    wb.save_exchange_ratchet(&contact_id, &ratchet, ratchet_is_initiator)?;
 
     match wb.queue_initial_card_for_contact(&contact_id) {
         Ok(()) => {
@@ -432,14 +422,6 @@ pub fn usb_listen(config: &CliConfig, port: u16) -> Result<()> {
         })
         .map_err(|e| anyhow::anyhow!("payload processing failed: {:?}", e))?;
 
-    // Capture their_exchange_key before PerformKeyAgreement consumes the state
-    let their_exchange_key = match session.state() {
-        ExchangeState::AwaitingKeyAgreement {
-            their_exchange_key, ..
-        } => *their_exchange_key,
-        _ => bail!("unexpected state after DirectPayloadReceived"),
-    };
-
     session
         .apply(ExchangeEvent::PerformKeyAgreement)
         .map_err(|e| anyhow::anyhow!("key agreement failed: {:?}", e))?;
@@ -449,11 +431,6 @@ pub fn usb_listen(config: &CliConfig, port: u16) -> Result<()> {
             confidence: ProximityConfidence::High,
         })
         .map_err(|e| anyhow::anyhow!("proximity check failed: {:?}", e))?;
-
-    let shared_key = match session.state() {
-        ExchangeState::AwaitingCardExchange { shared_key, .. } => shared_key.clone(),
-        _ => bail!("unexpected state after key agreement"),
-    };
 
     let their_name = session
         .their_display_name()
@@ -471,10 +448,13 @@ pub fn usb_listen(config: &CliConfig, port: u16) -> Result<()> {
     };
 
     let contact_id = contact.id().to_string();
+    // One initiator, one responder via the session seam — a both-initiator
+    // channel can never decrypt (2026-06-28-sync-delivery-sent-not-received).
+    let (ratchet, ratchet_is_initiator) = session
+        .build_exchange_ratchet(&contact)
+        .map_err(|e| anyhow::anyhow!("failed to build exchange ratchet: {e:?}"))?;
     wb.add_contact(contact)?;
-    // USB symmetric session: both sides use create_ratchet_as_initiator
-    // with the peer's exchange public key (same symmetric DH shared secret).
-    wb.create_ratchet_as_initiator(&contact_id, &shared_key, their_exchange_key)?;
+    wb.save_exchange_ratchet(&contact_id, &ratchet, ratchet_is_initiator)?;
 
     match wb.queue_initial_card_for_contact(&contact_id) {
         Ok(()) => {
