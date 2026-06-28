@@ -74,7 +74,7 @@ pub fn run(config: &CliConfig) -> Result<()> {
             sent,
             acknowledged,
             errors,
-            version_policy: _,
+            ..
         } => {
             println!();
             let total = received + sent + acknowledged;
