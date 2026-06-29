@@ -1877,13 +1877,12 @@ checksum = "c08d65885ee38876c4f86fa503fb49d7b507c2b62552df7c70b2fce627e06381"
 
 [[package]]
 name = "open"
-version = "5.3.5"
+version = "5.3.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2fbaa89d2ddc8473c78a3adf69eea8cffa28c483b8e02a971ef31527cd0fc92c"
+checksum = "cd8d3b65c44123a56e0133d2cd06ce4361bd3ca99d41198b2f25e3c3db9b8b4a"
 dependencies = [
  "is-wsl",
  "libc",
- "pathdiff",
 ]
 
 [[package]]
@@ -1936,12 +1935,6 @@ dependencies = [
  "rand_core 0.6.4",
  "subtle",
 ]
-
-[[package]]
-name = "pathdiff"
-version = "0.2.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "df94ce210e5bc13cb6651479fa48d14f601d9858cfe0467f43ae157023b938d3"
 
 [[package]]
 name = "percent-encoding"
@@ -3283,8 +3276,8 @@ dependencies = [
 
 [[package]]
 name = "vauchi-app"
-version = "0.51.54"
-source = "git+https://gitlab.com/vauchi/core.git?branch=main#7d94751739d2f4776a4ceace44abfbab1789f2db"
+version = "0.51.58"
+source = "git+https://gitlab.com/vauchi/core.git?branch=main#02db0d963bf8a9d78d01ec36ce912ccca81b1208"
 dependencies = [
  "base64",
  "hex",
@@ -3330,8 +3323,8 @@ dependencies = [
 
 [[package]]
 name = "vauchi-core"
-version = "0.51.54"
-source = "git+https://gitlab.com/vauchi/core.git?branch=main#7d94751739d2f4776a4ceace44abfbab1789f2db"
+version = "0.51.58"
+source = "git+https://gitlab.com/vauchi/core.git?branch=main#02db0d963bf8a9d78d01ec36ce912ccca81b1208"
 dependencies = [
  "argon2",
  "async-trait",
@@ -3374,8 +3367,8 @@ dependencies = [
 
 [[package]]
 name = "vauchi-protocol"
-version = "0.51.54"
-source = "git+https://gitlab.com/vauchi/core.git?branch=main#7d94751739d2f4776a4ceace44abfbab1789f2db"
+version = "0.51.58"
+source = "git+https://gitlab.com/vauchi/core.git?branch=main#02db0d963bf8a9d78d01ec36ce912ccca81b1208"
 dependencies = [
  "serde",
  "serde_json",
