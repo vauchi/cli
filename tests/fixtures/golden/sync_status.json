@@ -1,39 +1,39 @@
 {
   "schema_version": 3,
-  "screen_id": "backup_choose",
-  "title": "Backup & Recovery",
+  "screen_id": "sync_status",
+  "title": "Sync",
   "subtitle": null,
   "components": [
     {
-      "InfoPanel": {
-        "id": "backup_info",
-        "icon": "backup",
-        "title": "Protect your data",
-        "items": [
-          {
-            "icon": null,
-            "title": "Backup",
-            "detail": "Create an encrypted backup of your identity, contacts, and labels."
-          }
-        ],
+      "StatusIndicator": {
+        "id": "connection_status",
+        "icon": null,
+        "title": "Relay: Offline",
+        "detail": "Changes will sync automatically when connected. Check your internet connection.",
+        "status": "Failed",
         "a11y": null
       }
     },
     {
-      "ToggleList": {
-        "id": "backup_level",
-        "label": "Backup level",
+      "InfoPanel": {
+        "id": "sync_info",
+        "icon": "sync",
+        "title": "Details",
         "items": [
           {
-            "id": "level_toggle",
-            "label": "Full backup (recommended)",
-            "selected": true,
-            "subtitle": null,
-            "a11y": {
-              "label": "Backup level toggle",
-              "hint": "When on, backs up everything. When off, backs up identity only.",
-              "role": "Toggle"
-            }
+            "icon": "relay",
+            "title": "Relay",
+            "detail": "https://relay.vauchi.app"
+          },
+          {
+            "icon": "contacts",
+            "title": "Contacts",
+            "detail": "12"
+          },
+          {
+            "icon": "pending",
+            "title": "Pending Updates",
+            "detail": "2 update(s) waiting to sync"
           }
         ],
         "a11y": null
@@ -42,14 +42,14 @@
   ],
   "actions": [
     {
-      "id": "create",
-      "label": "Create Backup",
+      "id": "sync_now",
+      "label": "Sync Now",
       "style": "Primary",
-      "enabled": true
+      "enabled": false
     },
     {
-      "id": "restore",
-      "label": "Restore Backup",
+      "id": "test_connection",
+      "label": "Retry Connection",
       "style": "Secondary",
       "enabled": true
     }

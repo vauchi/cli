@@ -1,56 +1,68 @@
 {
   "schema_version": 3,
-  "screen_id": "backup_choose",
-  "title": "Backup & Recovery",
+  "screen_id": "privacy_settings",
+  "title": "Privacy & Data",
   "subtitle": null,
   "components": [
     {
       "InfoPanel": {
-        "id": "backup_info",
-        "icon": "backup",
-        "title": "Protect your data",
+        "id": "privacy_info",
+        "icon": "privacy",
+        "title": "Data Status",
         "items": [
           {
             "icon": null,
-            "title": "Backup",
-            "detail": "Create an encrypted backup of your identity, contacts, and labels."
+            "title": "Deletion Status",
+            "detail": "No deletion requested"
+          },
+          {
+            "icon": null,
+            "title": "Consent",
+            "detail": "2 contacts, 1 group"
           }
         ],
         "a11y": null
       }
     },
     {
-      "ToggleList": {
-        "id": "backup_level",
-        "label": "Backup level",
+      "ActionList": {
+        "id": "consent_actions",
         "items": [
           {
-            "id": "level_toggle",
-            "label": "Full backup (recommended)",
-            "selected": true,
-            "subtitle": null,
-            "a11y": {
-              "label": "Backup level toggle",
-              "hint": "When on, backs up everything. When off, backs up identity only.",
-              "role": "Toggle"
-            }
+            "id": "view_data",
+            "label": "View My Data",
+            "icon": "data",
+            "detail": "See what data is stored locally",
+            "a11y": null
+          },
+          {
+            "id": "manage_consent",
+            "label": "Manage Consent",
+            "icon": "consent",
+            "detail": "Review and update data consent",
+            "a11y": null
           }
-        ],
-        "a11y": null
+        ]
       }
     }
   ],
   "actions": [
     {
-      "id": "create",
-      "label": "Create Backup",
+      "id": "export",
+      "label": "Export Data",
       "style": "Primary",
       "enabled": true
     },
     {
-      "id": "restore",
-      "label": "Restore Backup",
-      "style": "Secondary",
+      "id": "delete",
+      "label": "Delete Identity",
+      "style": "Destructive",
+      "enabled": true
+    },
+    {
+      "id": "panic_shred",
+      "label": "Panic Shred",
+      "style": "Destructive",
       "enabled": true
     }
   ],

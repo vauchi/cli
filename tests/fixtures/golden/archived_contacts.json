@@ -1,59 +1,32 @@
 {
   "schema_version": 3,
-  "screen_id": "backup_choose",
-  "title": "Backup & Recovery",
+  "screen_id": "archived_contacts",
+  "title": "Archived Contacts",
   "subtitle": null,
   "components": [
     {
-      "InfoPanel": {
-        "id": "backup_info",
-        "icon": "backup",
-        "title": "Protect your data",
+      "ActionList": {
+        "id": "archived_contacts",
         "items": [
           {
+            "id": "unarchive_c1",
+            "label": "Alice",
             "icon": null,
-            "title": "Backup",
-            "detail": "Create an encrypted backup of your identity, contacts, and labels."
-          }
-        ],
-        "a11y": null
-      }
-    },
-    {
-      "ToggleList": {
-        "id": "backup_level",
-        "label": "Backup level",
-        "items": [
+            "detail": "Tap to unarchive",
+            "a11y": null
+          },
           {
-            "id": "level_toggle",
-            "label": "Full backup (recommended)",
-            "selected": true,
-            "subtitle": null,
-            "a11y": {
-              "label": "Backup level toggle",
-              "hint": "When on, backs up everything. When off, backs up identity only.",
-              "role": "Toggle"
-            }
+            "id": "unarchive_c2",
+            "label": "Bob",
+            "icon": null,
+            "detail": "Tap to unarchive",
+            "a11y": null
           }
-        ],
-        "a11y": null
+        ]
       }
     }
   ],
-  "actions": [
-    {
-      "id": "create",
-      "label": "Create Backup",
-      "style": "Primary",
-      "enabled": true
-    },
-    {
-      "id": "restore",
-      "label": "Restore Backup",
-      "style": "Secondary",
-      "enabled": true
-    }
-  ],
+  "actions": [],
   "progress": null,
   "tokens": {
     "spacing": {

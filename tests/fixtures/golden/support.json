@@ -1,39 +1,24 @@
 {
   "schema_version": 3,
-  "screen_id": "backup_choose",
-  "title": "Backup & Recovery",
+  "screen_id": "support",
+  "title": "Support Vauchi",
   "subtitle": null,
   "components": [
     {
       "InfoPanel": {
-        "id": "backup_info",
-        "icon": "backup",
-        "title": "Protect your data",
+        "id": "support_info",
+        "icon": "heart",
+        "title": "Support the Project",
         "items": [
           {
-            "icon": null,
-            "title": "Backup",
-            "detail": "Create an encrypted backup of your identity, contacts, and labels."
-          }
-        ],
-        "a11y": null
-      }
-    },
-    {
-      "ToggleList": {
-        "id": "backup_level",
-        "label": "Backup level",
-        "items": [
+            "icon": "github",
+            "title": "GitHub Sponsors",
+            "detail": "https://github.com/sponsors/vauchi"
+          },
           {
-            "id": "level_toggle",
-            "label": "Full backup (recommended)",
-            "selected": true,
-            "subtitle": null,
-            "a11y": {
-              "label": "Backup level toggle",
-              "hint": "When on, backs up everything. When off, backs up identity only.",
-              "role": "Toggle"
-            }
+            "icon": "liberapay",
+            "title": "Liberapay",
+            "detail": "https://liberapay.com/vauchi"
           }
         ],
         "a11y": null
@@ -42,14 +27,14 @@
   ],
   "actions": [
     {
-      "id": "create",
-      "label": "Create Backup",
+      "id": "open_github_sponsors",
+      "label": "GitHub Sponsors",
       "style": "Primary",
       "enabled": true
     },
     {
-      "id": "restore",
-      "label": "Restore Backup",
+      "id": "open_liberapay",
+      "label": "Liberapay",
       "style": "Secondary",
       "enabled": true
     }

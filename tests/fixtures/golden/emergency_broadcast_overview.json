@@ -1,19 +1,19 @@
 {
   "schema_version": 3,
-  "screen_id": "backup_choose",
-  "title": "Backup & Recovery",
+  "screen_id": "emergency_overview",
+  "title": "Emergency Broadcast",
   "subtitle": null,
   "components": [
     {
       "InfoPanel": {
-        "id": "backup_info",
-        "icon": "backup",
-        "title": "Protect your data",
+        "id": "emergency_info",
+        "icon": "warning",
+        "title": "Emergency Broadcast",
         "items": [
           {
-            "icon": null,
-            "title": "Backup",
-            "detail": "Create an encrypted backup of your identity, contacts, and labels."
+            "icon": "info",
+            "title": "What is an emergency broadcast?",
+            "detail": "Silently alert your trusted contacts that you may be in danger. The alert is disguised as a normal card update."
           }
         ],
         "a11y": null
@@ -21,19 +21,15 @@
     },
     {
       "ToggleList": {
-        "id": "backup_level",
-        "label": "Backup level",
+        "id": "emergency_toggle",
+        "label": "Status",
         "items": [
           {
-            "id": "level_toggle",
-            "label": "Full backup (recommended)",
-            "selected": true,
+            "id": "configured",
+            "label": "Emergency broadcast configured",
+            "selected": false,
             "subtitle": null,
-            "a11y": {
-              "label": "Backup level toggle",
-              "hint": "When on, backs up everything. When off, backs up identity only.",
-              "role": "Toggle"
-            }
+            "a11y": null
           }
         ],
         "a11y": null
@@ -42,15 +38,9 @@
   ],
   "actions": [
     {
-      "id": "create",
-      "label": "Create Backup",
+      "id": "configure",
+      "label": "Configure",
       "style": "Primary",
-      "enabled": true
-    },
-    {
-      "id": "restore",
-      "label": "Restore Backup",
-      "style": "Secondary",
       "enabled": true
     }
   ],
