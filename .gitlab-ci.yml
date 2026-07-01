@@ -234,8 +234,13 @@ check:fixtures-drift:
       # diff -r reports both content differences AND missing/extra files.
       # --exclude='*.md' lets cli's vendored README.md coexist with no
       # corresponding file in core.
-      if diff -r --exclude='*.md' "$DST" "$SRC"; then
-        echo "Vendored fixtures match core/main."
+      # --exclude='.version' skips the provenance manifest: its core_version
+      # changes on EVERY core release (false, per-bump drift), and its
+      # fixture_count is redundant with the file-set diff. The JSON content
+      # diff is the real signal — stale content or an added/removed fixture
+      # still fails the check.
+      if diff -r --exclude='*.md' --exclude='.version' "$DST" "$SRC"; then
+        echo "Vendored fixtures match core/main (content + file set; core_version provenance ignored)."
       else
         echo ""
         echo "DRIFT: cli/tests/fixtures/golden/ differs from core/main."
