@@ -3278,7 +3278,7 @@ dependencies = [
 [[package]]
 name = "vauchi-app"
 version = "0.52.0"
-source = "git+https://gitlab.com/vauchi/core.git?branch=main#4feabf1c3043a06bc8141408fd4b5b27a863a768"
+source = "git+https://gitlab.com/vauchi/core.git?branch=main#bd896f2ae333cc9c9cf5ccb7b3e1df1a69a19c31"
 dependencies = [
  "base64",
  "hex",
@@ -3325,7 +3325,7 @@ dependencies = [
 [[package]]
 name = "vauchi-core"
 version = "0.52.0"
-source = "git+https://gitlab.com/vauchi/core.git?branch=main#4feabf1c3043a06bc8141408fd4b5b27a863a768"
+source = "git+https://gitlab.com/vauchi/core.git?branch=main#bd896f2ae333cc9c9cf5ccb7b3e1df1a69a19c31"
 dependencies = [
  "argon2",
  "async-trait",
@@ -3369,7 +3369,7 @@ dependencies = [
 [[package]]
 name = "vauchi-protocol"
 version = "0.52.0"
-source = "git+https://gitlab.com/vauchi/core.git?branch=main#4feabf1c3043a06bc8141408fd4b5b27a863a768"
+source = "git+https://gitlab.com/vauchi/core.git?branch=main#bd896f2ae333cc9c9cf5ccb7b3e1df1a69a19c31"
 dependencies = [
  "serde",
  "serde_json",
@@ -3914,15 +3914,3 @@ dependencies = [
  "wasm-bindgen",
  "web-sys",
 ]
-
-[[patch.unused]]
-name = "vauchi-app"
-version = "0.52.0"
-
-[[patch.unused]]
-name = "vauchi-core"
-version = "0.52.0"
-
-[[patch.unused]]
-name = "vauchi-protocol"
-version = "0.52.0"
