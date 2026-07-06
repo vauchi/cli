@@ -272,6 +272,25 @@ mod tests {
     use super::*;
     use tempfile::tempdir;
 
+    /// Creates a v2 backup encrypted with `password` without enforcing password
+    /// strength. Tests use this to simulate legacy backups that were created
+    /// before core started rejecting weak passwords.
+    fn create_test_backup(identity: &Identity, password: &str) -> IdentityBackup {
+        use vauchi_core::crypto::{encryption::encrypt, password_kdf::derive_key_argon2id};
+
+        let salt: [u8; 16] = vauchi_core::crypto::random_bytes();
+        let encryption_key = derive_key_argon2id(password.as_bytes(), &salt).unwrap();
+        let plaintext = identity.to_storage_bytes();
+        let ciphertext = encrypt(&encryption_key, &plaintext).unwrap();
+
+        let mut backup_data = Vec::with_capacity(1 + 16 + ciphertext.len());
+        backup_data.push(0x02); // BACKUP_VERSION_V2
+        backup_data.extend_from_slice(&salt);
+        backup_data.extend_from_slice(&ciphertext);
+
+        IdentityBackup::new(backup_data)
+    }
+
     #[test]
     fn test_storage_key_creates_key_on_first_call() {
         let temp_dir = tempdir().unwrap();
@@ -415,7 +434,7 @@ mod tests {
             "Test User",
             vauchi_core::clock::SystemClock::shared().unix_seconds(),
         );
-        let backup = identity.export_backup("vauchi-local-storage").unwrap();
+        let backup = create_test_backup(&identity, LEGACY_BACKUP_PASSWORD);
         std::fs::create_dir_all(&config.data_dir).unwrap();
         std::fs::write(config.identity_path(), backup.as_bytes()).unwrap();
 
@@ -468,7 +487,7 @@ mod tests {
             "Migration User",
             vauchi_core::clock::SystemClock::shared().unix_seconds(),
         );
-        let backup = identity.export_backup("vauchi-local-storage").unwrap();
+        let backup = create_test_backup(&identity, LEGACY_BACKUP_PASSWORD);
         std::fs::create_dir_all(&config.data_dir).unwrap();
         std::fs::write(config.identity_path(), backup.as_bytes()).unwrap();
 
@@ -479,7 +498,7 @@ mod tests {
         assert!(
             Identity::import_backup(
                 &new_backup,
-                "vauchi-local-storage",
+                LEGACY_BACKUP_PASSWORD,
                 vauchi_core::clock::SystemClock::shared().unix_seconds()
             )
             .is_err()
