@@ -35,18 +35,13 @@ pub fn info(msg: &str) {
     println!("{} {}", style("ℹ").blue().bold(), msg);
 }
 
-/// Returns the icon for a field type.
+/// Returns the platform-neutral icon token for a field type.
+///
+/// Delegates to [`FieldType::icon`] in `vauchi-core` so the CLI never
+/// duplicates the `field_type → icon` switch carried by wire consumers
+/// (ADR-044 Humble UI).
 pub fn field_icon(field_type: FieldType) -> &'static str {
-    match field_type {
-        FieldType::Email => "mail",
-        FieldType::Phone => "phone",
-        FieldType::Website => "web",
-        FieldType::Address => "home",
-        FieldType::Social => "share",
-        FieldType::Birthday => "cake",
-        FieldType::Custom => "note",
-        _ => "note",
-    }
+    field_type.icon()
 }
 
 /// Displays a contact card in a formatted box.
