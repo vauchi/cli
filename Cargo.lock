@@ -148,17 +148,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "async-trait"
-version = "0.1.89"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9035ad2d096bed7955a320ee7e2230574d28fd3c3a0f186cbea1ff3c7eed5dbb"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn",
-]
-
-[[package]]
 name = "atomic-polyfill"
 version = "1.0.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2963,7 +2952,7 @@ dependencies = [
 [[package]]
 name = "vauchi-app"
 version = "0.52.3"
-source = "git+https://gitlab.com/vauchi/core.git?branch=main#d296a7db0bcd9db0ad3e8cae9eff083344cfbe90"
+source = "git+https://gitlab.com/vauchi/core.git?branch=main#2b6713005a9b96cb89d1973ca573a1733c177b86"
 dependencies = [
  "base64",
  "hex",
@@ -3010,10 +2999,9 @@ dependencies = [
 [[package]]
 name = "vauchi-core"
 version = "0.52.3"
-source = "git+https://gitlab.com/vauchi/core.git?branch=main#d296a7db0bcd9db0ad3e8cae9eff083344cfbe90"
+source = "git+https://gitlab.com/vauchi/core.git?branch=main#2b6713005a9b96cb89d1973ca573a1733c177b86"
 dependencies = [
  "argon2",
- "async-trait",
  "base64",
  "bitflags",
  "chacha20poly1305",
@@ -3053,7 +3041,7 @@ dependencies = [
 [[package]]
 name = "vauchi-protocol"
 version = "0.52.3"
-source = "git+https://gitlab.com/vauchi/core.git?branch=main#d296a7db0bcd9db0ad3e8cae9eff083344cfbe90"
+source = "git+https://gitlab.com/vauchi/core.git?branch=main#2b6713005a9b96cb89d1973ca573a1733c177b86"
 dependencies = [
  "serde",
  "serde_json",
