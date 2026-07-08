@@ -21,7 +21,7 @@
 # Include shared templates
 include:
   - project: 'vauchi/scripts'
-    ref: main
+    ref: ci-templates-v2026.07.1
     file:
       - '/ci-templates/rust-base.yml'
       - '/ci-templates/security.yml'
@@ -39,6 +39,9 @@ include:
       - '/ci-templates/removed-symbols.yml'
       - '/ci-templates/badges.yml'
       - '/ci-templates/github-mirror.yml'
+
+variables:
+  VAUCHI_SCRIPTS_REF: "ci-templates-v2026.07.1"
 
 stages:
   - auto-tag
@@ -172,7 +175,7 @@ security:vet-autofix:
   script:
     - |
       curl --silent --fail \
-        "${CI_API_V4_URL}/projects/77957857/repository/files/scripts%2Fci%2Fvet-autofix.sh/raw?ref=main" \
+        "${CI_API_V4_URL}/projects/77957857/repository/files/scripts%2Fci%2Fvet-autofix.sh/raw?ref=${VAUCHI_SCRIPTS_REF}" \
         -o vet-autofix.sh
       chmod +x vet-autofix.sh
     - ./vet-autofix.sh --regenerate-lockfile --sync-from=77874344
@@ -195,6 +198,18 @@ check:design-drift:
   variables:
     DESIGN_DRIFT_MATCH_MODE: "grep"
     DESIGN_DRIFT_GREP_FILE: "src/ui/screen_renderer.rs"
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+      changes:
+        compare_to: refs/heads/$CI_DEFAULT_BRANCH
+        paths:
+          - "src/ui/screen_renderer.rs"
+          - ".gitlab-ci.yml"
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+      changes:
+        paths:
+          - "src/ui/screen_renderer.rs"
+          - ".gitlab-ci.yml"
 
 # Vendored fixtures drift: cli/tests/fixtures/golden/ must match
 # core/vauchi-core/tests/fixtures/golden/. Drift means a `core` change
