@@ -177,8 +177,7 @@ pub fn consent_status(config: &CliConfig) -> Result<()> {
 pub fn grant_consent(config: &CliConfig, type_str: &str) -> Result<()> {
     let wb = open_vauchi(config)?;
     let consent_type = parse_consent_type(type_str)?;
-    let manager = ConsentManager::new(wb.storage());
-    manager.grant(consent_type)?;
+    wb.grant_consent(consent_type)?;
 
     display::success(&format!("Consent granted for: {}", type_str));
     Ok(())
@@ -188,8 +187,7 @@ pub fn grant_consent(config: &CliConfig, type_str: &str) -> Result<()> {
 pub fn revoke_consent(config: &CliConfig, type_str: &str) -> Result<()> {
     let wb = open_vauchi(config)?;
     let consent_type = parse_consent_type(type_str)?;
-    let manager = ConsentManager::new(wb.storage());
-    manager.revoke(consent_type)?;
+    wb.revoke_consent(consent_type)?;
 
     display::success(&format!("Consent revoked for: {}", type_str));
     Ok(())
