@@ -10,6 +10,8 @@ use anyhow::Result;
 use clap::Subcommand;
 use vauchi_core::exchange::transport::animated_qr::{AnimatedQrConfig, AnimatedQrSession};
 
+use crate::display;
+
 /// Diagnostic subcommands.
 #[derive(Subcommand)]
 pub enum DiagCommands {
@@ -43,7 +45,7 @@ pub enum AnimatedQrCommands {
 }
 
 /// Run the `vauchi diag trace` subcommand.
-pub fn trace(file: &PathBuf) -> Result<()> {
+pub fn trace(file: &PathBuf, locale: &str) -> Result<()> {
     let content = std::fs::read_to_string(file)
         .map_err(|e| anyhow::anyhow!("Failed to read trace file '{}': {}", file.display(), e))?;
 
@@ -55,8 +57,15 @@ pub fn trace(file: &PathBuf) -> Result<()> {
 
     if let Some(events) = value.as_array() {
         println!();
-        println!("--- Trace Summary ---");
-        println!("Total events: {}", events.len());
+        println!("{}", display::t("cli.cmd.diag.trace.summary", locale));
+        println!(
+            "{}",
+            display::tf(
+                "cli.cmd.diag.trace.total_events",
+                locale,
+                &[("count", &events.len().to_string())]
+            )
+        );
 
         if let (Some(first), Some(last)) = (events.first(), events.last())
             && let (Some(t0), Some(t1)) = (
@@ -73,7 +82,7 @@ pub fn trace(file: &PathBuf) -> Result<()> {
 }
 
 /// Run the `vauchi diag animated-qr encode` subcommand.
-pub fn animated_qr_encode(file: &PathBuf, fps: u8, chunk_size: usize) -> Result<()> {
+pub fn animated_qr_encode(file: &PathBuf, fps: u8, chunk_size: usize, locale: &str) -> Result<()> {
     let payload = std::fs::read(file)
         .map_err(|e| anyhow::anyhow!("Failed to read file '{}': {}", file.display(), e))?;
 
@@ -86,17 +95,62 @@ pub fn animated_qr_encode(file: &PathBuf, fps: u8, chunk_size: usize) -> Result<
     let mut session = AnimatedQrSession::new_sender(payload.clone(), config);
     let frame_count = session.frame_count();
 
-    println!("Animated QR Encoding");
-    println!("  Input:      {}", file.display());
-    println!("  Payload:    {} bytes", payload.len());
-    println!("  Chunk size: {} bytes", chunk_size);
-    println!("  FPS:        {}", fps);
-    println!("  Frames:     {}", frame_count);
+    println!("{}", display::t("cli.cmd.diag.animated_qr.title", locale));
+    println!(
+        "{}",
+        display::tf(
+            "cli.cmd.diag.animated_qr.input",
+            locale,
+            &[("file", &file.display().to_string())]
+        )
+    );
+    println!(
+        "{}",
+        display::tf(
+            "cli.cmd.diag.animated_qr.payload",
+            locale,
+            &[("size", &payload.len().to_string())]
+        )
+    );
+    println!(
+        "{}",
+        display::tf(
+            "cli.cmd.diag.animated_qr.chunk_size",
+            locale,
+            &[("size", &chunk_size.to_string())]
+        )
+    );
+    println!(
+        "{}",
+        display::tf(
+            "cli.cmd.diag.animated_qr.fps",
+            locale,
+            &[("fps", &fps.to_string())]
+        )
+    );
+    println!(
+        "{}",
+        display::tf(
+            "cli.cmd.diag.animated_qr.frames",
+            locale,
+            &[("count", &frame_count.to_string())]
+        )
+    );
     println!();
 
     for i in 0..frame_count {
         if let Some(frame) = session.next_frame() {
-            println!("Frame {}/{}:", i + 1, frame_count);
+            println!(
+                "{}",
+                display::tf(
+                    "cli.cmd.diag.animated_qr.frame",
+                    locale,
+                    &[
+                        ("current", &(i + 1).to_string()),
+                        ("total", &frame_count.to_string()),
+                    ]
+                )
+            );
             println!("  {}", frame);
         }
     }

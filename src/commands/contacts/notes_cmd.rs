@@ -25,7 +25,7 @@ pub fn add_note(config: &CliConfig, id_or_name: &str, note_text: &str) -> Result
 }
 
 /// Shows the personal note for a contact.
-pub fn show_note(config: &CliConfig, id_or_name: &str) -> Result<()> {
+pub fn show_note(config: &CliConfig, id_or_name: &str, locale: &str) -> Result<()> {
     let wb = open_vauchi(config)?;
 
     let contact = find_contact(&wb, id_or_name)?;
@@ -35,7 +35,14 @@ pub fn show_note(config: &CliConfig, id_or_name: &str) -> Result<()> {
     match wb.read_personal_note(&contact_id)? {
         Some(note_text) => {
             println!();
-            println!("Note for {}:", contact_name);
+            println!(
+                "{}",
+                display::tf(
+                    "cli.contacts.notes.header",
+                    locale,
+                    &[("name", &contact_name)]
+                )
+            );
             println!("{}", note_text);
             println!();
         }

@@ -34,7 +34,7 @@ pub fn unarchive(config: &CliConfig, id: &str) -> Result<()> {
     Ok(())
 }
 
-pub fn list_archived(config: &CliConfig) -> Result<()> {
+pub fn list_archived(config: &CliConfig, locale: &str) -> Result<()> {
     let wb = open_vauchi(config)?;
     let archived = wb.list_archived_contacts()?;
 
@@ -44,7 +44,14 @@ pub fn list_archived(config: &CliConfig) -> Result<()> {
     }
 
     println!();
-    println!("Archived contacts ({}):", archived.len());
+    println!(
+        "{}",
+        display::tf(
+            "cli.contacts.archived.header",
+            locale,
+            &[("count", &archived.len().to_string())]
+        )
+    );
     println!();
 
     display::display_contacts_table(&archived);

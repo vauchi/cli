@@ -9,13 +9,22 @@ use crate::config::CliConfig;
 use crate::display;
 
 /// Lists all contacts (respects auth mode — duress PIN shows decoys).
-pub fn list(config: &CliConfig, pin: Option<&str>, offset: usize, limit: usize) -> Result<()> {
+pub fn list(
+    config: &CliConfig,
+    pin: Option<&str>,
+    offset: usize,
+    limit: usize,
+    locale: &str,
+) -> Result<()> {
     let wb = open_vauchi_authenticated(config, pin)?;
     let total = wb.contact_count().unwrap_or(0);
 
     if total == 0 {
-        display::info("No contacts yet. Exchange with someone using:");
-        println!("  vauchi exchange start");
+        display::info(&display::t("cli.contacts.list.no_contacts", locale));
+        println!(
+            "  {}",
+            display::t("cli.contacts.list.exchange_command", locale)
+        );
         return Ok(());
     }
 
@@ -30,13 +39,26 @@ pub fn list(config: &CliConfig, pin: Option<&str>, offset: usize, limit: usize) 
     println!();
     if paginated {
         println!(
-            "Contacts (showing {}-{} of {}):",
-            offset + 1,
-            offset + contacts.len(),
-            total
+            "{}",
+            display::tf(
+                "cli.contacts.list.paginated_header",
+                locale,
+                &[
+                    ("start", &(offset + 1).to_string()),
+                    ("end", &(offset + contacts.len()).to_string()),
+                    ("total", &total.to_string()),
+                ]
+            )
         );
     } else {
-        println!("Contacts ({}):", total);
+        println!(
+            "{}",
+            display::tf(
+                "cli.contacts.list.header",
+                locale,
+                &[("count", &total.to_string())]
+            )
+        );
     }
     println!();
 
@@ -53,7 +75,7 @@ pub fn list(config: &CliConfig, pin: Option<&str>, offset: usize, limit: usize) 
 }
 
 /// Searches contacts by query (respects auth mode).
-pub fn search(config: &CliConfig, pin: Option<&str>, query: &str) -> Result<()> {
+pub fn search(config: &CliConfig, pin: Option<&str>, query: &str, locale: &str) -> Result<()> {
     let wb = open_vauchi_authenticated(config, pin)?;
     let results = wb.search_contacts(query)?;
 
@@ -63,7 +85,10 @@ pub fn search(config: &CliConfig, pin: Option<&str>, query: &str) -> Result<()> 
     }
 
     println!();
-    println!("Search results for '{}':", query);
+    println!(
+        "{}",
+        display::tf("cli.contacts.search.header", locale, &[("query", query)])
+    );
     println!();
 
     for (i, contact) in results.iter().enumerate() {

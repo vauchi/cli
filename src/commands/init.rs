@@ -15,7 +15,7 @@ use crate::config::CliConfig;
 use crate::display;
 
 /// Creates a new identity.
-pub fn run(name: &str, force: bool, config: &CliConfig) -> Result<()> {
+pub fn run(name: &str, force: bool, config: &CliConfig, locale: &str) -> Result<()> {
     if config.is_initialized() && !force {
         bail!(
             "Vauchi is already initialized in {:?}. Use --force to overwrite or --data-dir for a different location.",
@@ -42,7 +42,14 @@ pub fn run(name: &str, force: bool, config: &CliConfig) -> Result<()> {
 
     if let Err(e) = wb.initialize_demo_contact() {
         // Non-fatal: demo contact is a nice-to-have, not blocking
-        eprintln!("Note: demo contact setup skipped: {}", e);
+        eprintln!(
+            "{}",
+            display::tf(
+                "cli.cmd.init.demo_skipped",
+                locale,
+                &[("error", &e.to_string())]
+            )
+        );
     }
 
     let identity = wb

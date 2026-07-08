@@ -20,7 +20,7 @@ fn find_label(wb: &Vauchi, label_name: &str) -> Result<vauchi_core::contact::Gro
 }
 
 /// List all labels.
-pub fn list(config: &CliConfig) -> Result<()> {
+pub fn list(config: &CliConfig, locale: &str) -> Result<()> {
     let wb = open_vauchi(config)?;
     let labels = wb.storage().labels().load_all_groups()?;
 
@@ -33,7 +33,7 @@ pub fn list(config: &CliConfig) -> Result<()> {
         return Ok(());
     }
 
-    println!("Visibility Labels:");
+    println!("{}", display::t("cli.labels.header", locale));
     println!();
     for label in labels {
         let contacts = label.contact_count();
@@ -63,21 +63,44 @@ pub fn create(config: &CliConfig, name: &str) -> Result<()> {
 }
 
 /// Show label details.
-pub fn show(config: &CliConfig, label_name: &str) -> Result<()> {
+pub fn show(config: &CliConfig, label_name: &str, locale: &str) -> Result<()> {
     let wb = open_vauchi(config)?;
     let label = find_label(&wb, label_name)?;
 
-    println!("Label: {}", label.name());
-    println!("ID: {}", label.id());
-    println!("Created: {}", format_timestamp(label.created_at()));
-    println!("Modified: {}", format_timestamp(label.modified_at()));
+    println!(
+        "{}",
+        display::tf("cli.labels.detail.label", locale, &[("name", label.name())])
+    );
+    println!(
+        "{}",
+        display::tf("cli.labels.detail.id", locale, &[("id", label.id())])
+    );
+    println!(
+        "{}",
+        display::tf(
+            "cli.labels.detail.created",
+            locale,
+            &[("timestamp", &format_timestamp(label.created_at()))]
+        )
+    );
+    println!(
+        "{}",
+        display::tf(
+            "cli.labels.detail.modified",
+            locale,
+            &[("timestamp", &format_timestamp(label.modified_at()))]
+        )
+    );
     println!();
 
     let contact_ids: Vec<_> = label.contacts().iter().cloned().collect();
     if contact_ids.is_empty() {
-        println!("Contacts: (none)");
+        println!("{}", display::t("cli.labels.detail.contacts_none", locale));
     } else {
-        println!("Contacts:");
+        println!(
+            "{}",
+            display::t("cli.labels.detail.contacts_header", locale)
+        );
         let all_contacts = wb.storage().contacts().list_contacts()?;
         for contact_id in &contact_ids {
             let name = all_contacts
@@ -96,9 +119,9 @@ pub fn show(config: &CliConfig, label_name: &str) -> Result<()> {
 
     let field_ids: Vec<_> = label.visible_fields().iter().cloned().collect();
     if field_ids.is_empty() {
-        println!("Visible fields: (none - contacts see default visibility)");
+        println!("{}", display::t("cli.labels.detail.fields_none", locale));
     } else {
-        println!("Visible fields:");
+        println!("{}", display::t("cli.labels.detail.fields_header", locale));
         if let Some(card) = wb.storage().contacts().load_own_card()? {
             for field_id in &field_ids {
                 let label_name = card

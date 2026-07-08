@@ -47,7 +47,7 @@ pub fn unblock(config: &CliConfig, id: &str) -> Result<()> {
 }
 
 /// Lists all blocked contacts.
-pub fn list_blocked(config: &CliConfig) -> Result<()> {
+pub fn list_blocked(config: &CliConfig, locale: &str) -> Result<()> {
     let wb = open_vauchi(config)?;
 
     let blocked = wb.list_blocked_contacts()?;
@@ -58,7 +58,14 @@ pub fn list_blocked(config: &CliConfig) -> Result<()> {
     }
 
     println!();
-    println!("Blocked contacts ({}):", blocked.len());
+    println!(
+        "{}",
+        display::tf(
+            "cli.contacts.blocked.header",
+            locale,
+            &[("count", &blocked.len().to_string())]
+        )
+    );
     println!();
 
     display::display_contacts_table(&blocked);

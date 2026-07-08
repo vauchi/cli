@@ -37,7 +37,7 @@ pub fn show(config: &CliConfig, pin: Option<&str>, id: &str) -> Result<()> {
 }
 
 /// Shows visibility rules for a specific contact.
-pub fn show_visibility(config: &CliConfig, contact_id_or_name: &str) -> Result<()> {
+pub fn show_visibility(config: &CliConfig, contact_id_or_name: &str, locale: &str) -> Result<()> {
     let wb = open_vauchi(config)?;
 
     let contact = find_contact(&wb, contact_id_or_name)?;
@@ -48,7 +48,14 @@ pub fn show_visibility(config: &CliConfig, contact_id_or_name: &str) -> Result<(
         .ok_or_else(|| anyhow::anyhow!("No contact card found"))?;
 
     println!();
-    println!("Visibility rules for {}:", contact_name);
+    println!(
+        "{}",
+        display::tf(
+            "cli.contacts.show.visibility_rules",
+            locale,
+            &[("name", &contact_name)]
+        )
+    );
     println!();
 
     if card.fields().is_empty() {

@@ -24,7 +24,7 @@ pub(crate) async fn run(
 ) -> Result<()> {
     match command {
         Commands::Init { name, force } => {
-            commands::init::run(&name, force, config)?;
+            commands::init::run(&name, force, config, locale)?;
         }
         Commands::Card(cmd) => match cmd {
             CardCommands::Show => commands::card::show(config)?,
@@ -69,9 +69,9 @@ pub(crate) async fn run(
             }
         },
         Commands::Exchange(cmd) => match cmd {
-            ExchangeSubcommand::Start => commands::exchange::start(config)?,
+            ExchangeSubcommand::Start => commands::exchange::start(config, locale)?,
             ExchangeSubcommand::Complete { data } => {
-                commands::exchange::complete(config, &data)?;
+                commands::exchange::complete(config, &data, locale)?;
             }
             ExchangeSubcommand::Usb { address } => {
                 commands::exchange::usb_exchange(config, &address)?;
@@ -87,13 +87,15 @@ pub(crate) async fn run(
                 archived,
             } => {
                 if archived {
-                    commands::contacts::list_archived(config)?;
+                    commands::contacts::list_archived(config, locale)?;
                 } else {
-                    commands::contacts::list(config, pin, offset, limit)?;
+                    commands::contacts::list(config, pin, offset, limit, locale)?;
                 }
             }
             ContactCommands::Show { id } => commands::contacts::show(config, pin, &id)?,
-            ContactCommands::Search { query } => commands::contacts::search(config, pin, &query)?,
+            ContactCommands::Search { query } => {
+                commands::contacts::search(config, pin, &query, locale)?
+            }
             ContactCommands::Remove { id } => commands::contacts::remove(config, &id)?,
             ContactCommands::Verify { id } => commands::contacts::verify(config, &id)?,
             ContactCommands::Hide { contact, field } => {
@@ -103,7 +105,7 @@ pub(crate) async fn run(
                 commands::contacts::unhide_field(config, &contact, &field)?;
             }
             ContactCommands::Visibility { contact } => {
-                commands::contacts::show_visibility(config, &contact)?;
+                commands::contacts::show_visibility(config, &contact, locale)?;
             }
             ContactCommands::Open { contact, field } => {
                 if let Some(field_label) = field {
@@ -125,7 +127,7 @@ pub(crate) async fn run(
                 commands::contacts::unhide_contact(config, &id)?;
             }
             ContactCommands::ListHidden => {
-                commands::contacts::list_hidden(config)?;
+                commands::contacts::list_hidden(config, locale)?;
             }
             ContactCommands::Block { id } => {
                 commands::contacts::block(config, &id)?;
@@ -134,7 +136,7 @@ pub(crate) async fn run(
                 commands::contacts::unblock(config, &id)?;
             }
             ContactCommands::ListBlocked => {
-                commands::contacts::list_blocked(config)?;
+                commands::contacts::list_blocked(config, locale)?;
             }
             ContactCommands::Favorite { id } => {
                 commands::contacts::favorite(config, &id)?;
@@ -152,7 +154,7 @@ pub(crate) async fn run(
                 commands::contacts::add_note(config, &id, &note)?;
             }
             ContactCommands::ShowNote { id } => {
-                commands::contacts::show_note(config, &id)?;
+                commands::contacts::show_note(config, &id, locale)?;
             }
             ContactCommands::EditNote { id, note } => {
                 commands::contacts::edit_note(config, &id, &note)?;
@@ -161,7 +163,7 @@ pub(crate) async fn run(
                 commands::contacts::delete_note(config, &id)?;
             }
             ContactCommands::Merge { contact1, contact2 } => {
-                commands::contacts::merge(config, &contact1, &contact2)?;
+                commands::contacts::merge(config, &contact1, &contact2, locale)?;
             }
             ContactCommands::Duplicates => {
                 commands::contacts::duplicates(config)?;
@@ -173,7 +175,7 @@ pub(crate) async fn run(
                 commands::contacts::undismiss_duplicate(config, &contact1, &contact2)?;
             }
             ContactCommands::Limit { set } => {
-                commands::contacts::limit(config, set)?;
+                commands::contacts::limit(config, set, locale)?;
             }
             ContactCommands::Delete { id, yes } => {
                 commands::contacts::delete(config, &id, yes)?;
@@ -187,7 +189,7 @@ pub(crate) async fn run(
         },
         Commands::Social(cmd) => match cmd {
             SocialCommands::List { query } => {
-                display::display_social_networks(query.as_deref());
+                display::display_social_networks(query.as_deref(), locale);
             }
             SocialCommands::Url { network, username } => {
                 use vauchi_core::SocialNetworkRegistry;
@@ -202,7 +204,7 @@ pub(crate) async fn run(
             }
         },
         Commands::Device(cmd) => match cmd {
-            DeviceCommands::List => commands::device::list(config)?,
+            DeviceCommands::List => commands::device::list(config, locale)?,
             DeviceCommands::Info => commands::device::info(config)?,
             DeviceCommands::Link => commands::device::link(config)?,
             DeviceCommands::Join {
@@ -228,9 +230,9 @@ pub(crate) async fn run(
             },
         },
         Commands::Labels(cmd) => match cmd {
-            LabelCommands::List => commands::labels::list(config)?,
+            LabelCommands::List => commands::labels::list(config, locale)?,
             LabelCommands::Create { name } => commands::labels::create(config, &name)?,
-            LabelCommands::Show { label } => commands::labels::show(config, &label)?,
+            LabelCommands::Show { label } => commands::labels::show(config, &label, locale)?,
             LabelCommands::Rename { label, new_name } => {
                 commands::labels::rename(config, &label, &new_name)?
             }
@@ -382,15 +384,15 @@ pub(crate) async fn run(
                 display::display_faq_by_id(&id, locale);
             }
         },
-        Commands::SupportUs => commands::support::run(),
+        Commands::SupportUs => commands::support::run(locale),
         Commands::Diag(cmd) => match cmd {
-            commands::diag::DiagCommands::Trace { file } => commands::diag::trace(&file)?,
+            commands::diag::DiagCommands::Trace { file } => commands::diag::trace(&file, locale)?,
             commands::diag::DiagCommands::AnimatedQr(qr_cmd) => match qr_cmd {
                 commands::diag::AnimatedQrCommands::Encode {
                     file,
                     fps,
                     chunk_size,
-                } => commands::diag::animated_qr_encode(&file, fps, chunk_size)?,
+                } => commands::diag::animated_qr_encode(&file, fps, chunk_size, locale)?,
             },
         },
         Commands::Onboarding => {

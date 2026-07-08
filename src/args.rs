@@ -11,7 +11,7 @@ use clap_complete::Shell;
 
 #[derive(Parser)]
 #[command(name = "vauchi")]
-#[command(version, about = "Privacy-focused contact card exchange")]
+#[command(version, about = env!("CARGO_PKG_DESCRIPTION"))]
 pub(crate) struct Cli {
     #[command(subcommand)]
     pub command: Commands,

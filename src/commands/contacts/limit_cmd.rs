@@ -19,7 +19,7 @@ use crate::display;
 /// vauchi contacts limit
 /// vauchi contacts limit --set 500
 /// ```
-pub fn limit(config: &CliConfig, set_value: Option<usize>) -> Result<()> {
+pub fn limit(config: &CliConfig, set_value: Option<usize>, locale: &str) -> Result<()> {
     let wb = open_vauchi(config)?;
 
     match set_value {
@@ -47,7 +47,17 @@ pub fn limit(config: &CliConfig, set_value: Option<usize>) -> Result<()> {
             let current_count = wb.contact_count().unwrap_or(0);
 
             println!();
-            println!("Contact limit: {} / {}", current_count, max_contacts);
+            println!(
+                "{}",
+                display::tf(
+                    "cli.contacts.limit.status",
+                    locale,
+                    &[
+                        ("current", &current_count.to_string()),
+                        ("max", &max_contacts.to_string()),
+                    ]
+                )
+            );
 
             if current_count >= max_contacts {
                 display::warning("Contact limit reached. Remove contacts or increase the limit.");

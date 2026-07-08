@@ -19,7 +19,7 @@ use crate::display;
 /// ```text
 /// vauchi contacts merge "Alice" "Alice Work"
 /// ```
-pub fn merge(config: &CliConfig, contact1: &str, contact2: &str) -> Result<()> {
+pub fn merge(config: &CliConfig, contact1: &str, contact2: &str, locale: &str) -> Result<()> {
     use vauchi_core::contact::merge::merge_contacts;
 
     let wb = open_vauchi(config)?;
@@ -37,7 +37,7 @@ pub fn merge(config: &CliConfig, contact1: &str, contact2: &str) -> Result<()> {
     let secondary_id = secondary.id().to_string();
 
     println!();
-    println!("Merge preview:");
+    println!("{}", display::t("cli.contacts.merge.preview", locale));
     println!("  Primary:   {} (fields kept)", primary_name);
     println!(
         "  Secondary: {} (unique fields added, then removed)",

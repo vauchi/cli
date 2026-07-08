@@ -54,7 +54,7 @@ pub fn unhide_contact(config: &CliConfig, id: &str) -> Result<()> {
 }
 
 /// Lists all hidden contacts.
-pub fn list_hidden(config: &CliConfig) -> Result<()> {
+pub fn list_hidden(config: &CliConfig, locale: &str) -> Result<()> {
     let wb = open_vauchi(config)?;
 
     let hidden = wb.list_hidden_contacts()?;
@@ -65,7 +65,14 @@ pub fn list_hidden(config: &CliConfig) -> Result<()> {
     }
 
     println!();
-    println!("Hidden contacts ({}):", hidden.len());
+    println!(
+        "{}",
+        display::tf(
+            "cli.contacts.hidden.header",
+            locale,
+            &[("count", &hidden.len().to_string())]
+        )
+    );
     println!();
 
     display::display_contacts_table(&hidden);

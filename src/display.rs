@@ -147,7 +147,7 @@ pub fn display_contact_details(contact: &Contact) {
 }
 
 /// Displays the list of available social networks.
-pub fn display_social_networks(query: Option<&str>) {
+pub fn display_social_networks(query: Option<&str>, locale: &str) {
     let registry = SocialNetworkRegistry::with_defaults();
 
     let networks: Vec<_> = if let Some(q) = query {
@@ -158,9 +158,16 @@ pub fn display_social_networks(query: Option<&str>) {
 
     if networks.is_empty() {
         if let Some(q) = query {
-            println!("No social networks matching '{}'", q);
+            println!(
+                "{}",
+                tf(
+                    "cli.display.social_networks.empty.search",
+                    locale,
+                    &[("query", q)]
+                )
+            );
         } else {
-            println!("No social networks available");
+            println!("{}", t("cli.display.social_networks.empty.all", locale));
         }
         return;
     }
@@ -190,15 +197,31 @@ pub fn display_social_networks(query: Option<&str>) {
 
     println!();
     println!("{}", "─".repeat(50));
+    let cmd = style("vauchi card add social").cyan().to_string();
+    let network_placeholder = style("<network>").yellow().to_string();
+    let username_placeholder = style("<username>").yellow().to_string();
     println!(
-        "Use: {} {} {}",
-        style("vauchi card add social").cyan(),
-        style("<network>").yellow(),
-        style("<username>").yellow()
+        "{}",
+        tf(
+            "cli.display.social_networks.use",
+            locale,
+            &[
+                ("cmd", &cmd),
+                ("network", &network_placeholder),
+                ("username", &username_placeholder),
+            ]
+        )
     );
+    let example = style("vauchi card add social github octocat")
+        .dim()
+        .to_string();
     println!(
-        "Example: {}",
-        style("vauchi card add social github octocat").dim()
+        "{}",
+        tf(
+            "cli.display.social_networks.example",
+            locale,
+            &[("example", &example)]
+        )
     );
     println!();
 }
@@ -249,7 +272,7 @@ pub fn display_contacts_table(contacts: &[Contact]) {
 }
 
 use vauchi_app::help::{HelpCategory, get_faqs, get_faqs_by_category, search_faqs};
-use vauchi_app::i18n::{Locale, get_string};
+use vauchi_app::i18n::{Locale, get_string, get_string_with_args};
 
 /// Parse locale code to Locale enum
 fn parse_locale(code: &str) -> Locale {
@@ -257,8 +280,13 @@ fn parse_locale(code: &str) -> Locale {
 }
 
 /// Get localized string
-fn t(key: &str, locale: &str) -> String {
+pub(crate) fn t(key: &str, locale: &str) -> String {
     get_string(parse_locale(locale), key)
+}
+
+/// Get localized string with named placeholders replaced.
+pub(crate) fn tf(key: &str, locale: &str, args: &[(&str, &str)]) -> String {
+    get_string_with_args(parse_locale(locale), key, args)
 }
 
 /// Displays FAQ items, optionally filtered by search query.
@@ -271,9 +299,12 @@ pub fn display_faqs(query: Option<&str>, locale: &str) {
 
     if faqs.is_empty() {
         if let Some(q) = query {
-            println!("No FAQs matching '{}'", q);
+            println!(
+                "{}",
+                tf("cli.display.faqs.empty.search", locale, &[("query", q)])
+            );
         } else {
-            println!("No FAQs available");
+            println!("{}", t("cli.display.faqs.empty.all", locale));
         }
         return;
     }
@@ -325,7 +356,15 @@ pub fn display_faq_categories(locale: &str) {
 
     println!();
     println!("{}", "─".repeat(40));
-    println!("Use: {}", style("vauchi help category <name>").cyan());
+    let help_cmd = style("vauchi help category <name>").cyan().to_string();
+    println!(
+        "{}",
+        tf(
+            "cli.display.faq_categories.use",
+            locale,
+            &[("cmd", &help_cmd)]
+        )
+    );
     println!();
 }
 
@@ -342,7 +381,14 @@ pub fn display_faqs_by_category(category_name: &str, locale: &str) {
     let faqs = get_faqs_by_category(cat);
 
     if faqs.is_empty() {
-        println!("No FAQs in category '{}'", category_name);
+        println!(
+            "{}",
+            tf(
+                "cli.display.faq_categories.empty",
+                locale,
+                &[("category", category_name)]
+            )
+        );
         return;
     }
 

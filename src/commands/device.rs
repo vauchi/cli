@@ -23,7 +23,7 @@ use crate::config::CliConfig;
 use crate::display;
 
 /// Lists all linked devices.
-pub fn list(config: &CliConfig) -> Result<()> {
+pub fn list(config: &CliConfig, locale: &str) -> Result<()> {
     let wb = open_vauchi(config)?;
 
     let identity = wb
@@ -46,7 +46,7 @@ pub fn list(config: &CliConfig) -> Result<()> {
 
     match wb.storage().device().load_device_registry() {
         Ok(Some(registry)) => {
-            println!("Linked Devices:");
+            println!("{}", display::t("cli.cmd.device.linked_devices", locale));
             println!("{}", "─".repeat(50));
 
             for (i, device) in registry.all_devices().iter().enumerate() {
@@ -72,7 +72,14 @@ pub fn list(config: &CliConfig) -> Result<()> {
                 println!("     ID: {}...", hex::encode(&device.device_id[..8]));
             }
             println!("{}", "─".repeat(50));
-            println!("Total: {} device(s)", registry.device_count());
+            println!(
+                "{}",
+                display::tf(
+                    "cli.cmd.device.total_devices",
+                    locale,
+                    &[("count", &registry.device_count().to_string())]
+                )
+            );
         }
         _ => {
             display::info("No device registry found. This is the only device.");

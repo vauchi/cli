@@ -28,7 +28,7 @@ use crate::display;
 ///
 /// Uses ExchangeSession state machine with ManualConfirmationVerifier
 /// since CLI doesn't have audio hardware for proximity verification.
-pub fn start(config: &CliConfig) -> Result<()> {
+pub fn start(config: &CliConfig, locale: &str) -> Result<()> {
     let wb = open_vauchi(config)?;
 
     let identity = wb
@@ -67,15 +67,18 @@ pub fn start(config: &CliConfig) -> Result<()> {
         None => bail!("QR code not generated"),
     };
 
-    display::info("Share this with another Vauchi user:");
+    display::info(&display::t("cli.cmd.exchange.share_with_user", locale));
     println!();
     println!("{}", qr_image);
     println!();
-    println!("Or share this data string:");
+    println!(
+        "{}",
+        display::t("cli.cmd.exchange.share_data_string", locale)
+    );
     println!("  {}", qr_data);
     println!();
 
-    display::info("After they complete the exchange, run 'vauchi sync' to receive their info.");
+    display::info(&display::t("cli.cmd.exchange.after_complete", locale));
 
     Ok(())
 }
@@ -88,7 +91,7 @@ pub fn start(config: &CliConfig) -> Result<()> {
 ///
 /// After creating the contact, queues our initial card for delivery
 /// and runs a sync to send it immediately.
-pub fn complete(config: &CliConfig, data: &str) -> Result<()> {
+pub fn complete(config: &CliConfig, data: &str, locale: &str) -> Result<()> {
     let mut wb = open_vauchi(config)?;
 
     // Capture exchange events (ContactAdded) for the activity log.
@@ -141,11 +144,14 @@ pub fn complete(config: &CliConfig, data: &str) -> Result<()> {
     if let Some(our_qr) = session.qr() {
         let qr_data = our_qr.to_data_string();
         let qr_image = our_qr.to_qr_image_string();
-        display::info("Your QR code (share with the other user):");
+        display::info(&display::t("cli.cmd.exchange.your_qr_code", locale));
         println!();
         println!("{}", qr_image);
         println!();
-        println!("Or share this data string:");
+        println!(
+            "{}",
+            display::t("cli.cmd.exchange.share_data_string", locale)
+        );
         println!("  {}", qr_data);
         println!();
     }
