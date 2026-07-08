@@ -74,7 +74,7 @@ fn run_wizard(mut engine: DeviceReplacementEngine) -> Result<()> {
                 println!();
                 break;
             }
-            ActionResult::StartDeviceLink => {
+            ActionResult::StartDeviceLink { role: _ } => {
                 println!();
                 display::info("To complete the transfer, use the device link flow:");
                 display::info("  On this device:  vauchi device join <qr_data>");
