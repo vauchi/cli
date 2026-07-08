@@ -22,8 +22,8 @@ vauchi-app = { git = "https://gitlab.com/vauchi/core.git", branch = "main", feat
 clap = { version = "4", features = ["derive", "env"] }
 clap_complete = "4"
 
-# Async runtime
-tokio = { version = "1", features = ["full"] }
+# Async runtime (only rt-multi-thread + macros are used by #[tokio::main])
+tokio = { version = "1", features = ["rt-multi-thread", "macros"] }
 
 # Interactive prompts
 dialoguer = "0.11"
@@ -41,7 +41,7 @@ tabled = "0.20"
 dirs = "5"
 
 # Time and date formatting
-chrono = "0.4"
+chrono = { version = "0.4", default-features = false, features = ["std", "clock"] }
 
 # Serialization
 serde = { version = "1", features = ["derive"] }
