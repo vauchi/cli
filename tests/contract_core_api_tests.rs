@@ -569,3 +569,52 @@ fn contract_vauchi_storage_accessor_exists() {
     let wb = setup();
     let _storage: &vauchi_core::Storage = wb.storage();
 }
+
+// ============================================================
+// Device-link intent + decommission (core MR !1353)
+// ============================================================
+
+/// The device-link sync payload API takes an explicit intent; only
+/// ReplaceDevice may clone ratchet sessions (ADR-035 limitation).
+// @internal
+#[test]
+fn contract_sync_payload_takes_device_link_intent() {
+    use vauchi_core::identity::DeviceRegistry;
+    use vauchi_core::sync::DeviceLinkIntent;
+
+    let wb = setup();
+    let identity = wb.identity().unwrap();
+    let registry = DeviceRegistry::new(
+        identity.device_info().to_registered(identity.master_seed()),
+        identity.signing_keypair(),
+    );
+    let orchestrator = vauchi_core::DeviceSyncOrchestrator::new(
+        wb.storage(),
+        identity.create_device_info(0),
+        registry,
+    );
+
+    let add = orchestrator
+        .create_full_sync_payload(DeviceLinkIntent::AddDevice)
+        .unwrap();
+    assert!(
+        add.ratchet_states.is_empty(),
+        "add-device payload must not carry ratchet sessions"
+    );
+    let replace = orchestrator
+        .create_full_sync_payload(DeviceLinkIntent::ReplaceDevice)
+        .unwrap();
+    assert!(
+        replace.ratchet_states.is_empty(),
+        "no contacts yet, but the ReplaceDevice call shape must exist"
+    );
+}
+
+/// Decommission wipes ratchet sessions and reports the count.
+// @internal
+#[test]
+fn contract_decommission_current_device_returns_count() {
+    let wb = setup();
+
+    assert_eq!(wb.decommission_current_device().unwrap(), 0);
+}
