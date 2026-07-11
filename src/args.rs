@@ -636,6 +636,18 @@ pub(crate) enum DeviceCommands {
         /// Skip confirmation prompt (for scripted/E2E use)
         #[arg(long, short = 'y')]
         yes: bool,
+
+        /// Transfer ratchet sessions: the new device replaces this one
+        /// (decommission this device afterwards)
+        #[arg(long)]
+        replace: bool,
+    },
+
+    /// Decommission this device after a replacement handover
+    Decommission {
+        /// Skip confirmation prompt (for scripted/E2E use)
+        #[arg(long, short = 'y')]
+        yes: bool,
     },
 
     /// Finish device join (on new device)

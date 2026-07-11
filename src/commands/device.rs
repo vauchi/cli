@@ -15,7 +15,7 @@ use vauchi_core::DeviceSyncOrchestrator;
 use vauchi_core::exchange::{
     DeviceLinkQR, DeviceLinkResponder, DeviceLinkResponse, ProximityProof, compute_confirmation_mac,
 };
-use vauchi_core::sync::DeviceSyncPayload;
+use vauchi_core::sync::{DeviceLinkIntent, DeviceSyncPayload};
 use vauchi_core::{Identity, Vauchi, VauchiConfig};
 
 use crate::commands::common::open_vauchi;
@@ -205,7 +205,17 @@ pub fn join(
 }
 
 /// Completes the device linking on the existing device (processes request, sends response).
-pub fn complete(config: &CliConfig, request_data: &str, auto_confirm: bool) -> Result<()> {
+///
+/// `replace` transfers ratchet sessions so the new device takes over
+/// existing-contact communication; run `device decommission` here
+/// afterwards. Without it the new device joins alongside this one and
+/// bootstraps no contact sessions (ADR-035 limitation).
+pub fn complete(
+    config: &CliConfig,
+    request_data: &str,
+    auto_confirm: bool,
+    replace: bool,
+) -> Result<()> {
     let wb = open_vauchi(config)?;
 
     let identity = wb
@@ -238,8 +248,13 @@ pub fn complete(config: &CliConfig, request_data: &str, auto_confirm: bool) -> R
         identity.create_device_info(vauchi_core::clock::SystemClock::shared().unix_seconds()),
         registry,
     );
+    let intent = if replace {
+        DeviceLinkIntent::ReplaceDevice
+    } else {
+        DeviceLinkIntent::AddDevice
+    };
     let sync_payload = sync_orchestrator
-        .create_full_sync_payload()
+        .create_full_sync_payload(intent)
         .map_err(|e| anyhow::anyhow!("Failed to create sync payload: {}", e))?;
     let sync_json = serde_json::to_string(&sync_payload)?;
 
@@ -436,6 +451,41 @@ pub fn revoke(config: &CliConfig, device_id_prefix: &str) -> Result<()> {
         device.device_name
     ));
     display::info("The revocation will be propagated to contacts on next sync.");
+
+    Ok(())
+}
+
+/// Decommissions this device after a replacement handover.
+pub fn decommission(config: &CliConfig, auto_confirm: bool) -> Result<()> {
+    let wb = open_vauchi(config)?;
+
+    if wb.identity().is_none() {
+        bail!("No identity found");
+    }
+
+    let confirmed = if auto_confirm {
+        display::info("Auto-confirming decommission (--yes)");
+        true
+    } else {
+        Confirm::new()
+            .with_prompt(
+                "Decommission this device? It will no longer send or read contact updates \
+                 (irrevocable on this device).",
+            )
+            .default(false)
+            .interact()?
+    };
+
+    if !confirmed {
+        display::info("Decommission cancelled.");
+        return Ok(());
+    }
+
+    let wiped = wb.decommission_current_device()?;
+    display::success(&format!(
+        "Device decommissioned. {wiped} contact session(s) wiped."
+    ));
+    display::info("Contact communication now belongs to the replacement device.");
 
     Ok(())
 }
