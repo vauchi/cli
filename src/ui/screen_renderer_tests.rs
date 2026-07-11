@@ -721,6 +721,7 @@ fn every_known_component() -> Vec<Component> {
             title: "Connected".into(),
             detail: Some("relay.example".into()),
             status: Status::Success,
+            status_label: "Success".into(),
             a11y: None,
         },
         Component::PinInput {
