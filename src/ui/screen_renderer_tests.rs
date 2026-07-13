@@ -737,6 +737,7 @@ fn every_known_component() -> Vec<Component> {
         Component::QrCode {
             id: "qr".into(),
             data: "vauchi://test".into(),
+            frames: vec![],
             mode: QrMode::Display,
             label: Some("scan me".into()),
             scan_quality: None,
