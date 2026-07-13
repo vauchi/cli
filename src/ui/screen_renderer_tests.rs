@@ -84,7 +84,7 @@ fn render_dropdown_shows_placeholder_when_selected_id_missing() {
     assert!(out.contains('—'), "expected placeholder, got: {out:?}");
 }
 
-/// `Component::AvatarPreview` must render something user-visible
+/// `Component::ImageCircle` must render something user-visible
 /// — historically dropped by the catch-all `_` arm. Placeholder
 /// surface acceptable for CLI.
 // @internal
@@ -94,13 +94,14 @@ fn render_avatar_preview_emits_visible_placeholder() {
     let mut out = String::new();
     render_component_to(
         &mut out,
-        &Component::AvatarPreview {
+        &Component::ImageCircle {
             id: "avatar".into(),
             image_data: None,
             initials: "AB".into(),
             bg_color: None,
             brightness: 0.0,
             editable: false,
+            edit_action_id: None,
             a11y: None,
         },
     );
@@ -218,7 +219,7 @@ fn render_does_not_panic_on_all_component_types() {
                     a11y: None,
                 }],
                 visibility_mode: VisibilityMode::ShowHide,
-                available_groups: vec![],
+                available_scopes: vec![],
                 a11y: None,
             },
             Component::Preview {
@@ -228,7 +229,7 @@ fn render_does_not_panic_on_all_component_types() {
                 variants: vec![],
                 selected_variant: None,
                 visible_fields: vec![],
-                avatar_data: None,
+                image_data: None,
                 a11y: None,
             },
             Component::InfoPanel {
@@ -335,7 +336,7 @@ fn render_does_not_panic_on_all_component_types() {
             id,
             fields,
             visibility_mode,
-            available_groups,
+            available_scopes,
             ..
         } => {
             assert_eq!(id, "fl");
@@ -345,7 +346,7 @@ fn render_does_not_panic_on_all_component_types() {
             assert_eq!(fields[0].field_type, "email");
             assert!(matches!(fields[0].visibility, UiFieldVisibility::Shown));
             assert!(matches!(visibility_mode, VisibilityMode::ShowHide));
-            assert!(available_groups.is_empty());
+            assert!(available_scopes.is_empty());
         }
         other => panic!("Expected FieldList component, got {:?}", other),
     }
@@ -440,7 +441,7 @@ fn render_card_preview_with_group_selection() {
                 visibility: UiFieldVisibility::Shown,
                 a11y: None,
             }],
-            avatar_data: None,
+            image_data: None,
             a11y: None,
         }],
         actions: vec![],
@@ -653,13 +654,13 @@ fn every_known_component() -> Vec<Component> {
                 a11y: None,
             }],
             visibility_mode: VisibilityMode::ShowHide,
-            available_groups: vec![],
+            available_scopes: vec![],
             a11y: None,
         },
         Component::Preview {
             name: "Alice".into(),
             initials: "A".into(),
-            avatar_data: None,
+            image_data: None,
             fields: vec![],
             variants: vec![],
             selected_variant: None,
@@ -683,7 +684,7 @@ fn every_known_component() -> Vec<Component> {
                 id: "c1".into(),
                 name: "Bob".into(),
                 subtitle: None,
-                avatar_initials: "B".into(),
+                initials: "B".into(),
                 status: None,
                 actions: vec![],
                 a11y: None,
@@ -775,13 +776,14 @@ fn every_known_component() -> Vec<Component> {
             }],
             a11y: None,
         },
-        Component::AvatarPreview {
+        Component::ImageCircle {
             id: "avatar".into(),
             image_data: None,
             initials: "AB".into(),
             bg_color: None,
             brightness: 0.0,
             editable: false,
+            edit_action_id: None,
             a11y: None,
         },
         Component::Slider {

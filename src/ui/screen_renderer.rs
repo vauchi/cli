@@ -96,10 +96,10 @@ fn render_component_to(out: &mut String, component: &Component) {
         Component::FieldList {
             fields,
             visibility_mode,
-            available_groups,
+            available_scopes,
             ..
         } => {
-            render_field_list_to(out, fields, visibility_mode, available_groups);
+            render_field_list_to(out, fields, visibility_mode, available_scopes);
         }
         Component::Preview {
             name,
@@ -178,7 +178,7 @@ fn render_component_to(out: &mut String, component: &Component) {
         } => {
             render_dropdown_to(out, label, selected.as_deref(), options);
         }
-        Component::AvatarPreview { initials, .. } => {
+        Component::ImageCircle { initials, .. } => {
             writeln!(out, "  [Avatar: {}]", initials).unwrap();
         }
         Component::Slider { label, value, .. } => {
@@ -267,7 +267,7 @@ fn render_field_list_to(
     out: &mut String,
     fields: &[Field],
     visibility_mode: &VisibilityMode,
-    available_groups: &[String],
+    available_scopes: &[String],
 ) {
     if fields.is_empty() {
         writeln!(out, "  {}", style("(no fields added)").dim()).unwrap();
@@ -279,7 +279,7 @@ fn render_field_list_to(
         let vis = match &field.visibility {
             UiFieldVisibility::Shown => style("visible").green().to_string(),
             UiFieldVisibility::Hidden => style("hidden").red().to_string(),
-            UiFieldVisibility::Groups(groups) => {
+            UiFieldVisibility::Scopes(groups) => {
                 if groups.is_empty() {
                     style("no groups").yellow().to_string()
                 } else {
@@ -306,12 +306,12 @@ fn render_field_list_to(
         .unwrap();
     }
 
-    if *visibility_mode == VisibilityMode::PerGroup && !available_groups.is_empty() {
+    if *visibility_mode == VisibilityMode::PerGroup && !available_scopes.is_empty() {
         writeln!(out).unwrap();
         writeln!(
             out,
             "  Groups: {}",
-            style(available_groups.join(", ")).dim()
+            style(available_scopes.join(", ")).dim()
         )
         .unwrap();
     }
