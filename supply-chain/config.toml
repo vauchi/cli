@@ -503,10 +503,6 @@ criteria = "safe-to-deploy"
 version = "0.4.6"
 criteria = "safe-to-deploy"
 
-[[exemptions.num-conv]]
-version = "0.2.2"
-criteria = "safe-to-deploy"
-
 [[exemptions.num-iter]]
 version = "0.1.46"
 criteria = "safe-to-deploy"
@@ -783,10 +779,6 @@ criteria = "safe-to-deploy"
 version = "0.3.53"
 criteria = "safe-to-deploy"
 
-[[exemptions.time-core]]
-version = "0.1.9"
-criteria = "safe-to-deploy"
-
 [[exemptions.time-macros]]
 version = "0.2.31"
 criteria = "safe-to-deploy"
@@ -876,7 +868,7 @@ version = "0.8.1"
 criteria = "safe-to-deploy"
 
 [[exemptions.uuid]]
-version = "1.23.4"
+version = "1.23.5"
 criteria = "safe-to-deploy"
 
 [[exemptions.version_check]]
@@ -1076,7 +1068,7 @@ version = "0.11.3"
 criteria = "safe-to-deploy"
 
 [[exemptions.zmij]]
-version = "1.0.21"
+version = "1.0.22"
 criteria = "safe-to-deploy"
 
 [[exemptions.zune-core]]
