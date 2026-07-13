@@ -42,8 +42,8 @@
     },
     {
       "SettingsGroup": {
-        "id": "privacy",
-        "label": "Privacy",
+        "id": "privacy_notifications",
+        "label": "Privacy & Notifications",
         "items": [
           {
             "id": "delivery_receipts",
@@ -72,15 +72,35 @@
               "hint": "When enabled, hides your online status from contacts",
               "role": null
             }
-          }
-        ]
-      }
-    },
-    {
-      "SettingsGroup": {
-        "id": "notifications",
-        "label": "Notifications",
-        "items": [
+          },
+          {
+            "id": "new_field_default",
+            "label": "New Entries Start Visible",
+            "kind": {
+              "Toggle": {
+                "enabled": false
+              }
+            },
+            "a11y": {
+              "label": "Toggle whether new contact card entries start visible",
+              "hint": "When on, new contact card entries are shared with all contacts. When off, they stay hidden until you share them.",
+              "role": null
+            }
+          },
+          {
+            "id": "card_update",
+            "label": "Card Updates",
+            "kind": {
+              "Toggle": {
+                "enabled": true
+              }
+            },
+            "a11y": {
+              "label": "Card update notifications",
+              "hint": "Notify me when a contact updates their card",
+              "role": null
+            }
+          },
           {
             "id": "contact_added",
             "label": "New Contact Added",
@@ -176,20 +196,6 @@
             }
           },
           {
-            "id": "high_contrast",
-            "label": "High Contrast",
-            "kind": {
-              "Toggle": {
-                "enabled": false
-              }
-            },
-            "a11y": {
-              "label": "High Contrast toggle",
-              "hint": "When enabled, increases color contrast for better visibility",
-              "role": null
-            }
-          },
-          {
             "id": "large_touch",
             "label": "Large Touch Targets",
             "kind": {
@@ -208,8 +214,8 @@
     },
     {
       "SettingsGroup": {
-        "id": "security",
-        "label": "Security",
+        "id": "security_backup",
+        "label": "Security & Backup",
         "items": [
           {
             "id": "change_password",
@@ -267,15 +273,7 @@
               "hint": "Opens the decoy contact list shown in duress mode",
               "role": null
             }
-          }
-        ]
-      }
-    },
-    {
-      "SettingsGroup": {
-        "id": "backup",
-        "label": "Backup & Recovery",
-        "items": [
+          },
           {
             "id": "backup_export",
             "label": "Create Backup",
@@ -351,80 +349,8 @@
     },
     {
       "SettingsGroup": {
-        "id": "network",
-        "label": "Network",
-        "items": [
-          {
-            "id": "relay_url",
-            "label": "Relay URL",
-            "kind": {
-              "Link": {
-                "detail": "https://relay.vauchi.app"
-              }
-            },
-            "a11y": {
-              "label": "Relay URL",
-              "hint": "The relay server used for message delivery",
-              "role": null
-            }
-          }
-        ]
-      }
-    },
-    {
-      "SettingsGroup": {
-        "id": "delivery",
-        "label": "Message Delivery",
-        "items": [
-          {
-            "id": "sync",
-            "label": "Sync Status",
-            "kind": {
-              "Link": {
-                "detail": ""
-              }
-            },
-            "a11y": {
-              "label": "Sync Status",
-              "hint": "Opens the sync status detail screen",
-              "role": null
-            }
-          },
-          {
-            "id": "pending_updates",
-            "label": "Pending Updates",
-            "kind": {
-              "Value": {
-                "value": "0"
-              }
-            },
-            "a11y": {
-              "label": "Pending Updates",
-              "hint": "Number of contact updates waiting to be delivered",
-              "role": null
-            }
-          },
-          {
-            "id": "failed_deliveries",
-            "label": "Failed Deliveries",
-            "kind": {
-              "Value": {
-                "value": "0"
-              }
-            },
-            "a11y": {
-              "label": "Failed Deliveries",
-              "hint": "Number of updates that failed to deliver",
-              "role": null
-            }
-          }
-        ]
-      }
-    },
-    {
-      "SettingsGroup": {
-        "id": "help",
-        "label": "Help & Support",
+        "id": "help_about",
+        "label": "Help & About",
         "items": [
           {
             "id": "help_center",
@@ -467,15 +393,7 @@
               "hint": "Opens the privacy policy",
               "role": null
             }
-          }
-        ]
-      }
-    },
-    {
-      "SettingsGroup": {
-        "id": "about",
-        "label": "About",
-        "items": [
+          },
           {
             "id": "what_is_vauchi",
             "label": "What is Vauchi?",
@@ -523,20 +441,20 @@
     },
     {
       "SettingsGroup": {
-        "id": "danger",
-        "label": "Danger Zone",
+        "id": "advanced_nav",
+        "label": "",
         "items": [
           {
-            "id": "emergency_wipe",
-            "label": "Emergency Wipe",
+            "id": "advanced",
+            "label": "Advanced",
             "kind": {
-              "Destructive": {
-                "label": "Wipe All Data"
+              "Link": {
+                "detail": null
               }
             },
             "a11y": {
-              "label": "Emergency Wipe",
-              "hint": "Permanently deletes all app data. This action cannot be undone",
+              "label": "Advanced",
+              "hint": "Network, delivery status, and emergency controls",
               "role": null
             }
           }

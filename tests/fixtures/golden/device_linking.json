@@ -16,13 +16,6 @@
           "role": "Image"
         }
       }
-    },
-    {
-      "Text": {
-        "id": "join_hint",
-        "content": "To join from another device, use: vauchi device join <qr_data>",
-        "style": "Caption"
-      }
     }
   ],
   "actions": [
@@ -30,7 +23,12 @@
       "id": "cancel",
       "label": "Cancel",
       "style": "Secondary",
-      "enabled": true
+      "enabled": true,
+      "a11y": {
+        "label": "Cancel",
+        "hint": null,
+        "role": null
+      }
     }
   ],
   "progress": {

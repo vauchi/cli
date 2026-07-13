@@ -7,7 +7,7 @@
     {
       "InfoPanel": {
         "id": "help_intro",
-        "icon": "recovery",
+        "icon": "lifebuoy",
         "title": "Help a Contact Recover",
         "items": [
           {
@@ -26,6 +26,7 @@
         "title": "Verify in person",
         "detail": "Only vouch for someone you can verify IN PERSON. This prevents identity theft.",
         "status": "Warning",
+        "status_label": "Warning",
         "a11y": null
       }
     },
@@ -65,7 +66,12 @@
       "id": "vouch",
       "label": "Vouch for Someone",
       "style": "Primary",
-      "enabled": true
+      "enabled": true,
+      "a11y": {
+        "label": "Vouch for Someone",
+        "hint": null,
+        "role": null
+      }
     }
   ],
   "progress": null,

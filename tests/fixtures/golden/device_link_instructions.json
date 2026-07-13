@@ -1,57 +1,56 @@
 {
   "schema_version": 3,
-  "screen_id": "sync_status",
-  "title": "Sync",
-  "subtitle": null,
+  "screen_id": "device_link_instructions",
+  "title": "Link this device",
+  "subtitle": "Use your other signed-in device to invite this one.",
   "components": [
     {
-      "StatusIndicator": {
-        "id": "connection_status",
-        "icon": null,
-        "title": "Relay: Offline",
-        "detail": "Changes will sync automatically when connected. Check your internet connection.",
-        "status": "Failed",
-        "a11y": null
-      }
-    },
-    {
       "InfoPanel": {
-        "id": "sync_info",
-        "icon": "sync",
-        "title": "Details",
+        "id": "device_link_instructions_info",
+        "icon": "devices",
+        "title": "",
         "items": [
           {
-            "icon": "relay",
-            "title": "Relay",
-            "detail": "https://relay.vauchi.app"
+            "icon": "qr",
+            "title": "Scan the QR code",
+            "detail": "On your other signed-in device, go to Settings → Linked Devices and tap “Link a device”. Then scan the code with this camera."
           },
           {
-            "icon": "contacts",
-            "title": "Contacts",
-            "detail": "12"
-          },
-          {
-            "icon": "pending",
-            "title": "Pending Updates",
-            "detail": "2 update(s) waiting to sync"
+            "icon": "link",
+            "title": "Or open the invitation link",
+            "detail": "Tap the link your other device sent you and Vauchi will continue here."
           }
         ],
-        "a11y": null
+        "a11y": {
+          "label": "Link this device",
+          "hint": null,
+          "role": "Heading"
+        }
       }
     }
   ],
   "actions": [
     {
-      "id": "sync_now",
-      "label": "Sync Now",
+      "id": "scan_qr",
+      "label": "Scan QR Code",
       "style": "Primary",
-      "enabled": false
+      "enabled": true,
+      "a11y": {
+        "label": "Scan QR Code",
+        "hint": null,
+        "role": null
+      }
     },
     {
-      "id": "test_connection",
-      "label": "Retry Connection",
+      "id": "back",
+      "label": "Back",
       "style": "Secondary",
-      "enabled": true
+      "enabled": true,
+      "a11y": {
+        "label": "Back",
+        "hint": null,
+        "role": null
+      }
     }
   ],
   "progress": null,
