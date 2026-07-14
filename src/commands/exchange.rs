@@ -135,7 +135,7 @@ pub fn start(config: &CliConfig, locale: &str) -> Result<()> {
 ///
 /// After creating the contact, queues our initial card for delivery
 /// and runs a sync to send it immediately.
-pub fn complete(config: &CliConfig, data: &str, locale: &str) -> Result<()> {
+pub fn complete(config: &CliConfig, data: &str, _locale: &str) -> Result<()> {
     let mut wb = open_vauchi(config)?;
 
     // Capture exchange events (ContactAdded) for the activity log.
