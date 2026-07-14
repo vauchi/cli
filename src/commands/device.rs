@@ -15,8 +15,8 @@ use vauchi_core::DeviceSyncOrchestrator;
 use vauchi_core::exchange::{
     DeviceLinkQR, DeviceLinkResponder, DeviceLinkResponse, ProximityProof, compute_confirmation_mac,
 };
-use vauchi_core::sync::{DeviceLinkIntent, DeviceSyncPayload};
-use vauchi_core::{Identity, Vauchi, VauchiConfig};
+use vauchi_core::sync::DeviceLinkIntent;
+use vauchi_core::{Vauchi, VauchiConfig};
 
 use crate::commands::common::open_vauchi;
 use crate::config::CliConfig;
@@ -345,23 +345,19 @@ pub fn finish(config: &CliConfig, response_data: &str) -> Result<()> {
 
     let response = DeviceLinkResponse::decrypt(&encrypted_response, qr.link_key())?;
 
-    let identity = Identity::from_device_link(
-        *response.master_seed(),
-        response.display_name().to_string(),
-        response.device_index(),
-        device_name,
-        vauchi_core::clock::SystemClock::shared().unix_seconds(),
-    );
-
-    config.save_local_identity(&identity)?;
-
     let wb_config = VauchiConfig::with_storage_path(config.storage_path())
         .with_relay_url(&config.relay_url)
         .with_storage_key(config.storage_key()?);
-    let wb = Vauchi::new(wb_config)?;
-    wb.storage()
-        .device()
-        .save_device_registry(response.registry())?;
+    let mut wb = Vauchi::new(wb_config)?;
+    wb.adopt_device_link_response(&response, device_name)?;
+
+    // Keep the CLI's portable recovery copy in sync with the identity core
+    // adopted into encrypted storage. Device-link interpretation and sync
+    // application remain wholly inside core.
+    let identity = wb
+        .identity()
+        .ok_or_else(|| anyhow::anyhow!("Core did not retain the linked identity"))?;
+    config.save_local_identity(identity)?;
 
     display::success(&format!("Joined identity: {}", response.display_name()));
     display::info(&format!("Device index: {}", response.device_index()));
@@ -369,25 +365,8 @@ pub fn finish(config: &CliConfig, response_data: &str) -> Result<()> {
     let _ = fs::remove_file(&link_key_path);
     let _ = fs::remove_file(&device_name_path);
 
-    if !response.sync_payload_json().is_empty()
-        && let Ok(payload) = DeviceSyncPayload::from_json(response.sync_payload_json())
-    {
-        let contact_count = payload.contact_count();
-
-        let mut orchestrator = DeviceSyncOrchestrator::new(
-            wb.storage(),
-            identity.create_device_info(vauchi_core::clock::SystemClock::shared().unix_seconds()),
-            response.registry().clone(),
-        );
-
-        if let Err(e) = orchestrator.apply_full_sync(payload) {
-            display::warning(&format!("Failed to sync contacts: {}", e));
-        } else if contact_count > 0 {
-            display::success(&format!(
-                "Synced {} contacts from existing device.",
-                contact_count
-            ));
-        }
+    if !response.sync_payload_json().is_empty() {
+        display::success("Synced data from the existing device.");
     }
 
     display::info("Device linking complete. Run 'vauchi sync' to fetch updates.");
@@ -435,16 +414,12 @@ pub fn revoke(config: &CliConfig, device_id_prefix: &str) -> Result<()> {
         return Ok(());
     }
 
-    let mut updated_registry = registry.clone();
-    updated_registry.revoke_device(
-        &device.device_id,
-        identity.signing_keypair(),
-        wb.clock().unix_seconds(),
-    )?;
-
-    wb.storage()
-        .device()
-        .save_device_registry(&updated_registry)?;
+    let device_index = registry
+        .all_devices()
+        .iter()
+        .position(|candidate| candidate.device_id == device.device_id)
+        .ok_or_else(|| anyhow::anyhow!("Device disappeared from the registry"))?;
+    wb.revoke_device(device_index)?;
 
     display::success(&format!(
         "Device '{}' has been revoked.",

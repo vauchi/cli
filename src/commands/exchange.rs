@@ -190,7 +190,7 @@ pub fn complete(config: &CliConfig, data: &str, locale: &str) -> Result<()> {
     let (ratchet, is_initiator) = session
         .build_exchange_ratchet(&contact)
         .map_err(|e| anyhow::anyhow!("failed to build exchange ratchet: {e:?}"))?;
-    wb.add_contact(contact)?;
+    wb.save_exchanged_contact(&contact, &ratchet, is_initiator)?;
 
     // Aha moment: first contact added
     let mut tracker = load_aha_tracker(config);
@@ -200,8 +200,6 @@ pub fn complete(config: &CliConfig, data: &str, locale: &str) -> Result<()> {
         display::display_aha_moment(&moment);
     }
     save_aha_tracker(config, &tracker);
-
-    wb.save_exchange_ratchet(&contact_id, &ratchet, is_initiator)?;
 
     // Queue our card for delivery and sync immediately.
     // The initial card establishes the responder's receive chain so
@@ -334,8 +332,7 @@ pub fn usb_exchange(config: &CliConfig, address: &str) -> Result<()> {
     let (ratchet, ratchet_is_initiator) = session
         .build_exchange_ratchet(&contact)
         .map_err(|e| anyhow::anyhow!("failed to build exchange ratchet: {e:?}"))?;
-    wb.add_contact(contact)?;
-    wb.save_exchange_ratchet(&contact_id, &ratchet, ratchet_is_initiator)?;
+    wb.save_exchanged_contact(&contact, &ratchet, ratchet_is_initiator)?;
 
     match wb.queue_initial_card_for_contact(&contact_id) {
         Ok(()) => {
@@ -459,8 +456,7 @@ pub fn usb_listen(config: &CliConfig, port: u16) -> Result<()> {
     let (ratchet, ratchet_is_initiator) = session
         .build_exchange_ratchet(&contact)
         .map_err(|e| anyhow::anyhow!("failed to build exchange ratchet: {e:?}"))?;
-    wb.add_contact(contact)?;
-    wb.save_exchange_ratchet(&contact_id, &ratchet, ratchet_is_initiator)?;
+    wb.save_exchanged_contact(&contact, &ratchet, ratchet_is_initiator)?;
 
     match wb.queue_initial_card_for_contact(&contact_id) {
         Ok(()) => {

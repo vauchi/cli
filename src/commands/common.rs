@@ -22,7 +22,6 @@ pub(crate) fn open_vauchi(config: &CliConfig) -> Result<Vauchi> {
 
     // `mut` is only needed on debug builds where the direct-HTTP escape
     // hatch below may flip `ohttp.allow_direct`.
-    #[cfg_attr(not(debug_assertions), allow(unused_mut))]
     let mut wb_config = VauchiConfig::with_storage_path(config.storage_path())
         .with_relay_url(&config.relay_url)
         .with_storage_key(config.storage_key()?);
@@ -33,23 +32,6 @@ pub(crate) fn open_vauchi(config: &CliConfig) -> Result<Vauchi> {
     // 2026-05-25-relay-ohttp-forward-hop-502.
     if let Some(ref ohttp_relay_url) = config.ohttp_relay_url {
         wb_config = wb_config.with_ohttp_relay_url(ohttp_relay_url);
-    }
-
-    // Allow direct (non-OHTTP) requests for testing against local relays.
-    //
-    // Setting `allow_direct: true` exposes the client's source IP to the
-    // relay, defeating ADR-037's IP-privacy property. Release builds
-    // therefore drop this branch entirely — a leaked env var in a
-    // production deployment cannot re-enable it. Debug builds honor the
-    // env var so CI smoke tests (which traditionally built --release)
-    // must now build without --release to exercise the direct path.
-    //
-    // See problem record
-    // `_private/docs/problems/2026-04-17-ohttp-allow-direct-fallback/`
-    // for the threat-model rationale.
-    #[cfg(debug_assertions)]
-    if std::env::var("VAUCHI_ALLOW_DIRECT").is_ok() {
-        wb_config.ohttp.allow_direct = true;
     }
 
     // Test-only override: `VAUCHI_OVERRIDE_BUNDLED_OHTTP_KEY_HEX` (a
