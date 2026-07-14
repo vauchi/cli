@@ -9,7 +9,7 @@
 use std::fs;
 use std::net::{TcpListener, TcpStream};
 
-use anyhow::{Result, bail};
+use anyhow::{Context, Result, bail};
 use vauchi_core::Identity;
 use vauchi_core::contact_card::ContactCard;
 use vauchi_core::exchange::tcp_transport::TcpDirectTransport;
@@ -19,10 +19,53 @@ use vauchi_core::exchange::{
 };
 use vauchi_core::types::{AhaMomentTracker, AhaMomentType};
 use vauchi_core::{Command, Event};
+use zeroize::Zeroizing;
 
 use crate::commands::common::{drain_activity_log, open_vauchi, register_activity_log_handler};
 use crate::config::CliConfig;
 use crate::display;
+
+const PENDING_QR_FILE: &str = ".pending_qr_exchange";
+const PENDING_QR_MAGIC: &[u8; 5] = b"VQRS1";
+
+fn save_pending_qr(config: &CliConfig, session: &ExchangeSession) -> Result<()> {
+    let secret = session
+        .qr_resume_secret()
+        .ok_or_else(|| anyhow::anyhow!("QR session has no resumable secret"))?;
+    let qr_data = session
+        .qr()
+        .ok_or_else(|| anyhow::anyhow!("QR session has no displayed QR"))?
+        .to_data_string();
+
+    let mut encoded = Zeroizing::new(Vec::with_capacity(
+        PENDING_QR_MAGIC.len() + secret.len() + qr_data.len(),
+    ));
+    encoded.extend_from_slice(PENDING_QR_MAGIC);
+    encoded.extend_from_slice(secret.as_ref());
+    encoded.extend_from_slice(qr_data.as_bytes());
+
+    fs::create_dir_all(&config.data_dir)?;
+    crate::config::write_restricted(&config.data_dir.join(PENDING_QR_FILE), encoded.as_slice())
+}
+
+fn load_pending_qr(config: &CliConfig) -> Result<(Zeroizing<[u8; 32]>, ExchangeQR)> {
+    let path = config.data_dir.join(PENDING_QR_FILE);
+    let encoded = Zeroizing::new(fs::read(&path).with_context(|| {
+        "No pending QR exchange. Both people must run 'vauchi exchange start' before either runs 'vauchi exchange complete'."
+    })?);
+    let header_len = PENDING_QR_MAGIC.len() + 32;
+    if encoded.len() <= header_len || &encoded[..PENDING_QR_MAGIC.len()] != PENDING_QR_MAGIC {
+        bail!("Pending QR exchange state is invalid. Run 'vauchi exchange start' again.");
+    }
+
+    let mut secret = Zeroizing::new([0u8; 32]);
+    secret.copy_from_slice(&encoded[PENDING_QR_MAGIC.len()..header_len]);
+    let qr_data = std::str::from_utf8(&encoded[header_len..])
+        .context("Pending QR exchange contains invalid text")?;
+    let qr = ExchangeQR::from_data_string(qr_data)
+        .context("Pending QR exchange contains an invalid QR")?;
+    Ok((secret, qr))
+}
 
 /// Starts a contact exchange by generating a QR code.
 ///
@@ -66,6 +109,7 @@ pub fn start(config: &CliConfig, locale: &str) -> Result<()> {
         Some(qr) => (qr.to_data_string(), qr.to_qr_image_string()),
         None => bail!("QR code not generated"),
     };
+    save_pending_qr(config, &session)?;
 
     display::info(&display::t("cli.cmd.exchange.share_with_user", locale));
     println!();
@@ -85,9 +129,9 @@ pub fn start(config: &CliConfig, locale: &str) -> Result<()> {
 
 /// Completes a contact exchange with received data.
 ///
-/// Uses the mutual QR exchange flow: both sides generate a QR and scan each
-/// other's QR code. The mutual scan serves as proximity verification.
-/// Flow: StartQR -> ProcessQR -> TheyScannedOurQR -> PerformKeyAgreement -> CompleteExchange.
+/// Resumes the QR session persisted by `start`, then processes the other
+/// person's QR. Both people must run `start` before either runs `complete` so
+/// both sides derive the channel from the same two ephemeral keys.
 ///
 /// After creating the contact, queues our initial card for delivery
 /// and runs a sync to send it immediately.
@@ -130,31 +174,16 @@ pub fn complete(config: &CliConfig, data: &str, locale: &str) -> Result<()> {
         vauchi_core::clock::SystemClock::shared().unix_seconds(),
     )?;
 
-    let mut session = ExchangeSession::new_qr(
+    let (resume_secret, our_qr) = load_pending_qr(config)?;
+    let mut session = ExchangeSession::resume_qr(
         identity_owned,
         our_card,
         verifier,
+        *resume_secret,
+        our_qr,
         vauchi_core::clock::SystemClock::shared(),
-    );
-
-    session
-        .apply(ExchangeEvent::StartQR)
-        .map_err(|e| anyhow::anyhow!("Failed to start QR: {:?}", e))?;
-
-    if let Some(our_qr) = session.qr() {
-        let qr_data = our_qr.to_data_string();
-        let qr_image = our_qr.to_qr_image_string();
-        display::info(&display::t("cli.cmd.exchange.your_qr_code", locale));
-        println!();
-        println!("{}", qr_image);
-        println!();
-        println!(
-            "{}",
-            display::t("cli.cmd.exchange.share_data_string", locale)
-        );
-        println!("  {}", qr_data);
-        println!();
-    }
+    )
+    .map_err(|e| anyhow::anyhow!("Failed to resume QR exchange: {e:?}"))?;
 
     session
         .apply(ExchangeEvent::ProcessQR(qr))
@@ -191,6 +220,8 @@ pub fn complete(config: &CliConfig, data: &str, locale: &str) -> Result<()> {
         .build_exchange_ratchet(&contact)
         .map_err(|e| anyhow::anyhow!("failed to build exchange ratchet: {e:?}"))?;
     wb.save_exchanged_contact(&contact, &ratchet, is_initiator)?;
+    fs::remove_file(config.data_dir.join(PENDING_QR_FILE))
+        .context("Failed to remove completed QR exchange state")?;
 
     // Aha moment: first contact added
     let mut tracker = load_aha_tracker(config);

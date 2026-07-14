@@ -58,6 +58,9 @@ hex = "0.4"
 # Base64 encoding
 base64 = "0.22"
 
+# Secret cleanup for persisted exchange-session material
+zeroize = "1"
+
 # Open URLs in system browser/app
 open = "5"
 
