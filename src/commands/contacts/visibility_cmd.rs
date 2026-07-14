@@ -13,16 +13,14 @@ use crate::display;
 pub fn hide_field(config: &CliConfig, contact_id_or_name: &str, field_label: &str) -> Result<()> {
     let wb = open_vauchi(config)?;
 
-    let mut contact = find_contact(&wb, contact_id_or_name)?;
+    let contact = find_contact(&wb, contact_id_or_name)?;
     let contact_name = contact.display_name().to_string();
+    let contact_id = contact.id().to_string();
 
     let field_id = find_field_id(&wb, field_label)?;
 
-    contact
-        .visibility_rules_mut()
-        .ok_or_else(|| anyhow::anyhow!("Imported contacts have no visibility rules"))?
-        .set_nobody(&field_id);
-    wb.update_contact(&contact)?;
+    wb.set_contact_visibility_override(&contact_id, &field_id, false)?;
+    wb.mark_own_card_repropagate()?;
 
     display::success(&format!(
         "Hidden '{}' field from {}",
@@ -37,16 +35,14 @@ pub fn hide_field(config: &CliConfig, contact_id_or_name: &str, field_label: &st
 pub fn unhide_field(config: &CliConfig, contact_id_or_name: &str, field_label: &str) -> Result<()> {
     let wb = open_vauchi(config)?;
 
-    let mut contact = find_contact(&wb, contact_id_or_name)?;
+    let contact = find_contact(&wb, contact_id_or_name)?;
     let contact_name = contact.display_name().to_string();
+    let contact_id = contact.id().to_string();
 
     let field_id = find_field_id(&wb, field_label)?;
 
-    contact
-        .visibility_rules_mut()
-        .ok_or_else(|| anyhow::anyhow!("Imported contacts have no visibility rules"))?
-        .set_everyone(&field_id);
-    wb.update_contact(&contact)?;
+    wb.set_contact_visibility_override(&contact_id, &field_id, true)?;
+    wb.mark_own_card_repropagate()?;
 
     display::success(&format!(
         "'{}' field is now visible to {}",
