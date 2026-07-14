@@ -339,6 +339,20 @@ mod contact_card_management {
 mod contact_exchange {
     use super::*;
 
+    fn exchange_data(output: &str) -> String {
+        output
+            .lines()
+            .map(str::trim)
+            .find(|line| {
+                line.len() >= 20
+                    && line
+                        .chars()
+                        .all(|c| c.is_alphanumeric() || matches!(c, '+' | '/' | '='))
+            })
+            .expect("exchange output contains QR data")
+            .to_string()
+    }
+
     /// Trace: contact_exchange.feature - "Generate exchange QR code"
     // @scenario: contact_exchange:Generate exchange QR code
     #[test]
@@ -363,31 +377,32 @@ mod contact_exchange {
         alice.run_success(&["card", "add", "email", "Work", "alice@work.com"]);
 
         let alice_exchange = alice.run_success(&["exchange", "start"]);
-        let alice_data: String = alice_exchange
-            .lines()
-            .last()
-            .unwrap_or("")
-            .trim()
-            .to_string();
+        let alice_data = exchange_data(&alice_exchange);
 
         let bob = CliTestContext::new();
         bob.init("Bob Jones");
         bob.run_success(&["card", "add", "phone", "Mobile", "+1-555-262-1234"]);
 
-        // Try to complete - this may fail without relay but tests the flow
-        let result = bob.run(&["exchange", "complete", &alice_data]);
+        let bob_exchange = bob.run_success(&["exchange", "start"]);
+        let bob_data = exchange_data(&bob_exchange);
 
-        // The exchange flow should at least parse the data
-        // Full exchange requires relay connectivity
-        let stdout = String::from_utf8_lossy(&result.stdout);
-        let stderr = String::from_utf8_lossy(&result.stderr);
-        let combined = format!("{}{}", stdout, stderr);
+        assert!(alice.data_dir.path().join(".pending_qr_exchange").is_file());
+        assert!(bob.data_dir.path().join(".pending_qr_exchange").is_file());
 
-        // Should either succeed or fail with connectivity error, not parsing error
+        bob.run_success(&["exchange", "complete", &alice_data]);
+        alice.run_success(&["exchange", "complete", &bob_data]);
+
+        assert!(!alice.data_dir.path().join(".pending_qr_exchange").exists());
+        assert!(!bob.data_dir.path().join(".pending_qr_exchange").exists());
+
         assert!(
-            !combined.contains("malformed"),
-            "Exchange data parsing failed: {}",
-            combined
+            alice
+                .run_success(&["contacts", "list"])
+                .contains("Bob Jones")
+        );
+        assert!(
+            bob.run_success(&["contacts", "list"])
+                .contains("Alice Smith")
         );
     }
 
