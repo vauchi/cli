@@ -574,8 +574,9 @@ fn contract_vauchi_storage_accessor_exists() {
 // Device-link intent + decommission (core MR !1353)
 // ============================================================
 
-/// The device-link sync payload API takes an explicit intent; only
-/// ReplaceDevice may clone ratchet sessions (ADR-035 limitation).
+/// The device-link sync payload API takes an explicit intent without exposing
+/// transferable ratchet sessions. Peer topology is the only session-bootstrap
+/// material carried by the canonical payload.
 // @internal
 #[test]
 fn contract_sync_payload_takes_device_link_intent() {
@@ -598,15 +599,15 @@ fn contract_sync_payload_takes_device_link_intent() {
         .create_full_sync_payload(DeviceLinkIntent::AddDevice)
         .unwrap();
     assert!(
-        add.ratchet_states.is_empty(),
-        "add-device payload must not carry ratchet sessions"
+        add.contact_device_registries.is_empty(),
+        "no contacts means no peer topology in add-device payload"
     );
     let replace = orchestrator
         .create_full_sync_payload(DeviceLinkIntent::ReplaceDevice)
         .unwrap();
     assert!(
-        replace.ratchet_states.is_empty(),
-        "no contacts yet, but the ReplaceDevice call shape must exist"
+        replace.contact_device_registries.is_empty(),
+        "no contacts yet, but the explicit ReplaceDevice call shape must exist"
     );
 }
 

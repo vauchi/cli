@@ -209,6 +209,7 @@ fn render_does_not_panic_on_all_component_types() {
             },
             Component::FieldList {
                 id: "fl".into(),
+                title: "Fields".into(),
                 fields: vec![Field {
                     id: "f0".into(),
                     field_type: "email".into(),
@@ -644,6 +645,7 @@ fn every_known_component() -> Vec<Component> {
         },
         Component::FieldList {
             id: "fields".into(),
+            title: "Fields".into(),
             fields: vec![Field {
                 id: "email".into(),
                 field_type: "email".into(),
@@ -748,6 +750,8 @@ fn every_known_component() -> Vec<Component> {
             warning: "Are you sure?".into(),
             confirm_text: "Yes".into(),
             cancel_text: "No".into(),
+            confirm_action_id: "confirm".into(),
+            cancel_action_id: "cancel".into(),
             destructive: false,
             a11y: None,
         },
@@ -755,6 +759,12 @@ fn every_known_component() -> Vec<Component> {
             id: "edit".into(),
             label: "Display name".into(),
             value: "Alice".into(),
+            edit_text: "Edit".into(),
+            save_text: "Save".into(),
+            cancel_text: "Cancel".into(),
+            edit_action_id: "edit".into(),
+            save_action_id: "save".into(),
+            cancel_action_id: "cancel".into(),
             editing: false,
             validation_error: None,
             a11y: None,
