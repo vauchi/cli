@@ -19,6 +19,7 @@ use vauchi_core::sync::DeviceLinkIntent;
 use vauchi_core::{Vauchi, VauchiConfig};
 
 use crate::commands::common::open_vauchi;
+use crate::commands::device_link_persistence::persist_updated_registry;
 use crate::config::CliConfig;
 use crate::display;
 
@@ -292,16 +293,11 @@ pub fn complete(
             .as_secs(),
     };
 
-    let (encrypted_response, updated_registry, new_device) = initiator.confirm_link_with_sync(
-        &request,
-        &sync_json,
-        &proof,
-        vauchi_core::clock::SystemClock::shared().unix_seconds(),
-    )?;
+    let now = vauchi_core::clock::SystemClock::shared().unix_seconds();
+    let (encrypted_response, updated_registry, new_device) =
+        initiator.confirm_link_with_sync(&request, &sync_json, &proof, now)?;
 
-    wb.storage()
-        .device()
-        .save_device_registry(&updated_registry)?;
+    persist_updated_registry(&wb, &updated_registry, now)?;
 
     let response_b64 = BASE64.encode(&encrypted_response);
 

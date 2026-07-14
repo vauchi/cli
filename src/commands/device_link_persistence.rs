@@ -2,6 +2,27 @@
 //
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+use anyhow::{Result, anyhow};
+use vauchi_core::identity::DeviceRegistry;
+use vauchi_core::{DeviceSyncOrchestrator, Vauchi};
+
+pub(crate) fn persist_updated_registry(
+    vauchi: &Vauchi,
+    registry: &DeviceRegistry,
+    now: u64,
+) -> Result<()> {
+    let identity = vauchi
+        .identity()
+        .ok_or_else(|| anyhow!("No identity found"))?;
+    DeviceSyncOrchestrator::persist_device_registry_change(
+        vauchi.storage(),
+        identity,
+        registry,
+        now,
+    )
+    .map_err(|error| anyhow!("Failed to persist linked-device registry: {error}"))
+}
+
 // INLINE_TEST_REQUIRED: Binary crate without lib.rs - tests cannot be external
 #[cfg(test)]
 mod tests {
