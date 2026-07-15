@@ -2446,9 +2446,9 @@ checksum = "13c2bddecc57b384dee18652358fb23172facb8a2c51ccc10d74c157bdea3292"
 
 [[package]]
 name = "syn"
-version = "2.0.118"
+version = "2.0.119"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1b9ae57f904213ebb649ce6895b8a66c66f0203b9319718f69a5612a065b1422"
+checksum = "872831b642d1a07999a962a351ed35b955ea2cfc8f3862091e2a240a84f17297"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -2865,8 +2865,8 @@ dependencies = [
 
 [[package]]
 name = "vauchi-app"
-version = "0.55.1"
-source = "git+https://gitlab.com/vauchi/core.git?branch=main#f2b801ccccaf9120864291bf2df803a5f735b410"
+version = "0.55.2"
+source = "git+https://gitlab.com/vauchi/core.git?branch=main#36f0b0c669f9396a51d909a916eac2f82f65c781"
 dependencies = [
  "base64",
  "hex",
@@ -2913,8 +2913,8 @@ dependencies = [
 
 [[package]]
 name = "vauchi-core"
-version = "0.55.1"
-source = "git+https://gitlab.com/vauchi/core.git?branch=main#f2b801ccccaf9120864291bf2df803a5f735b410"
+version = "0.55.2"
+source = "git+https://gitlab.com/vauchi/core.git?branch=main#36f0b0c669f9396a51d909a916eac2f82f65c781"
 dependencies = [
  "argon2",
  "base64",
@@ -2955,8 +2955,8 @@ dependencies = [
 
 [[package]]
 name = "vauchi-protocol"
-version = "0.55.1"
-source = "git+https://gitlab.com/vauchi/core.git?branch=main#f2b801ccccaf9120864291bf2df803a5f735b410"
+version = "0.55.2"
+source = "git+https://gitlab.com/vauchi/core.git?branch=main#36f0b0c669f9396a51d909a916eac2f82f65c781"
 dependencies = [
  "serde",
  "serde_json",
