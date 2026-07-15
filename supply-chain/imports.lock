@@ -2408,13 +2408,6 @@ The only notable change is the ref-cast usage which is a sound pattern for creat
 """
 aggregated-from = "https://raw.githubusercontent.com/zcash/librustzcash/main/supply-chain/audits.toml"
 
-[[audits.zcash.audits.scopeguard]]
-who = "Jack Grigg <jack@electriccoin.co>"
-criteria = "safe-to-deploy"
-delta = "1.1.0 -> 1.2.0"
-notes = "Only change to an `unsafe` block is to replace a `mem::forget` with `ManuallyDrop`."
-aggregated-from = "https://raw.githubusercontent.com/zcash/zcash/master/qa/supply-chain/audits.toml"
-
 [[audits.zcash.audits.signature]]
 who = "Daira Emma Hopwood <daira@jacaranda.org>"
 criteria = "safe-to-deploy"
