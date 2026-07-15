@@ -79,6 +79,17 @@ lint:clippy:
   extends: [.rust-runner-readonly, .lint-clippy, .validation-rust, .timeout-standard]
   needs: []
 
+check:release-provenance:
+  stage: lint
+  image: ${CI_DEPENDENCY_PROXY_GROUP_IMAGE_PREFIX}/alpine:3.21
+  tags: [docker]
+  needs: []
+  script:
+    - ci/tests/release-provenance.test.sh
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+
 # Duplicate dependency check (advisory)
 lint:duplicates:
   extends: [.rust-runner-nocache, .lint-duplicates-job, .timeout-quick]
