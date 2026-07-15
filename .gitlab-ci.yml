@@ -21,7 +21,7 @@
 # Include shared templates
 include:
   - project: 'vauchi/scripts'
-    ref: ci-templates-v2026.07.2
+    ref: ci-templates-v2026.07.5
     file:
       - '/ci-templates/rust-base.yml'
       - '/ci-templates/allow-direct-guard.yml'
@@ -40,9 +40,11 @@ include:
       - '/ci-templates/removed-symbols.yml'
       - '/ci-templates/badges.yml'
       - '/ci-templates/github-mirror.yml'
+      - '/ci-templates/verified-fetch.yml'
+      - '/ci-templates/tool-install.yml'
 
 variables:
-  VAUCHI_SCRIPTS_REF: "ci-templates-v2026.07.4"
+  VAUCHI_SCRIPTS_REF: "ci-templates-v2026.07.5"
 
 stages:
   - auto-tag
@@ -170,16 +172,15 @@ security:vet:
   extends: [.rust-runner-readonly, .security-vet-job]
 
 security:vet-autofix:
-  extends: [.rust-runner-readonly, .security-vet-autofix-job]
+  extends: [.rust-runner-readonly, .security-vet-autofix-job, .verified-fetch-script]
   rules:
     - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
     - if: $CI_PIPELINE_SOURCE == "schedule"
+  variables:
+    FETCH_SCRIPT_PATH: "scripts/ci/vet-autofix.sh"
+    FETCH_SCRIPT_OUTPUT: "vet-autofix.sh"
+    FETCH_SCRIPT_SHA256: "ee37d77f6befea5abe4899c873893b0724d1517bab7608cd080021ae809d7c30"
   script:
-    - |
-      curl --silent --fail \
-        "${CI_API_V4_URL}/projects/77957857/repository/files/scripts%2Fci%2Fvet-autofix.sh/raw?ref=${VAUCHI_SCRIPTS_REF}" \
-        -o vet-autofix.sh
-      chmod +x vet-autofix.sh
     - ./vet-autofix.sh --regenerate-lockfile --sync-from=77874344
 
 # ============================================================
@@ -357,9 +358,18 @@ build:release:
   rules:
     - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
     - if: $CI_COMMIT_TAG =~ /^v\d+\.\d+\.\d+$/
+    # Run in MRs when dependency pins change so check:core-version can
+    # verify the binary embeds the expected vauchi-core revision.
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+      changes:
+        compare_to: refs/heads/$CI_DEFAULT_BRANCH
+        paths:
+          - "Cargo.toml"
+          - "Cargo.lock"
+          - ".gitlab-ci.yml"
 
 # Publish the release binary to the GitLab generic package registry so
-# downstream E2E tests can fetch it by SHA instead of rebuilding from source.
+# downstream E2E tests can fetch it by SHA or tag instead of rebuilding.
 publish:package:cli:
   stage: deploy
   image: ${CI_DEPENDENCY_PROXY_GROUP_IMAGE_PREFIX}/alpine:3.21
@@ -375,16 +385,61 @@ publish:package:cli:
   script:
     - |
       set -euo pipefail
-      ARTIFACT="${BINARY_NAME}-${CI_COMMIT_SHA}"
-      cp target/release/vauchi "${ARTIFACT}"
-      sha256sum "${ARTIFACT}" > "${ARTIFACT}.sha256"
-      UPLOAD_BASE="${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/generic/${PACKAGE_NAME}/${CI_COMMIT_SHA}"
-      curl -fsSL --header "JOB-TOKEN: ${CI_JOB_TOKEN}" \
-        --upload-file "${ARTIFACT}" "${UPLOAD_BASE}/${ARTIFACT}"
-      curl -fsSL --header "JOB-TOKEN: ${CI_JOB_TOKEN}" \
-        --upload-file "${ARTIFACT}.sha256" "${UPLOAD_BASE}/${ARTIFACT}.sha256"
-      echo "✅ Published ${PACKAGE_NAME}@${CI_COMMIT_SHA}"
+      cp target/release/vauchi "${BINARY_NAME}"
+      sha256sum "${BINARY_NAME}" > "${BINARY_NAME}.sha256"
+
+      upload_package() {
+        local version="$1"
+        local base="${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/generic/${PACKAGE_NAME}/${version}"
+        curl -fsSL --header "JOB-TOKEN: ${CI_JOB_TOKEN}" \
+          --upload-file "${BINARY_NAME}" "${base}/${BINARY_NAME}"
+        curl -fsSL --header "JOB-TOKEN: ${CI_JOB_TOKEN}" \
+          --upload-file "${BINARY_NAME}.sha256" "${base}/${BINARY_NAME}.sha256"
+        echo "✅ Published ${PACKAGE_NAME}@${version}"
+      }
+
+      upload_package "${CI_COMMIT_SHA}"
+      if [ -n "${CI_COMMIT_TAG:-}" ]; then
+        upload_package "${CI_COMMIT_TAG}"
+      fi
   rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+    - if: $CI_COMMIT_TAG =~ /^v\d+\.\d+\.\d+$/
+
+# Verify the release binary embeds the vauchi-core revision declared in
+# Cargo.lock. Catches stale lockfile pins before they reach the package
+# registry.
+check:core-version:
+  stage: verify
+  image: ${CI_DEPENDENCY_PROXY_GROUP_IMAGE_PREFIX}/alpine:3.21
+  tags: [docker]
+  needs:
+    - job: build:release
+      artifacts: true
+  before_script:
+    - apk add --no-cache binutils
+  script:
+    - |
+      set -euo pipefail
+      EXPECTED_SHA=$(grep -A2 '^name = "vauchi-core"$' Cargo.lock | grep 'source = "git+https://gitlab.com/vauchi/core.git' | sed -E 's/.*#([0-9a-f]{40}).*/\1/')
+      if [ -z "$EXPECTED_SHA" ]; then
+        echo "ERROR: could not extract vauchi-core SHA from Cargo.lock"
+        exit 1
+      fi
+      echo "Expected vauchi-core SHA: ${EXPECTED_SHA}"
+      if ! strings target/release/vauchi | grep -q "${EXPECTED_SHA:0:7}.*vauchi-core"; then
+        echo "ERROR: release binary does not contain expected vauchi-core source path"
+        exit 1
+      fi
+      echo "✅ Release binary embeds vauchi-core@${EXPECTED_SHA:0:7}"
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+      changes:
+        compare_to: refs/heads/$CI_DEFAULT_BRANCH
+        paths:
+          - "Cargo.toml"
+          - "Cargo.lock"
+          - ".gitlab-ci.yml"
     - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
     - if: $CI_COMMIT_TAG =~ /^v\d+\.\d+\.\d+$/
 
