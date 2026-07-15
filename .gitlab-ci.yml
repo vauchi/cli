@@ -24,6 +24,7 @@ include:
     ref: ci-templates-v2026.07.2
     file:
       - '/ci-templates/rust-base.yml'
+      - '/ci-templates/allow-direct-guard.yml'
       - '/ci-templates/security.yml'
       - '/ci-templates/coverage.yml'
       - '/ci-templates/mr-rules.yml'
