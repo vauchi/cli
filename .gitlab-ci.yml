@@ -361,7 +361,7 @@ build:release:
     - job: lint:format
       optional: true
   script:
-    - cargo build --release
+    - cargo build --release --locked
   artifacts:
     paths:
       - target/release/vauchi
@@ -369,8 +369,7 @@ build:release:
   rules:
     - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
     - if: $CI_COMMIT_TAG =~ /^v\d+\.\d+\.\d+$/
-    # Run in MRs when dependency pins change so check:core-version can
-    # verify the binary embeds the expected vauchi-core revision.
+    # Run in MRs when dependency pins change so Cargo verifies the lockfile.
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
       changes:
         compare_to: refs/heads/$CI_DEFAULT_BRANCH
@@ -414,43 +413,6 @@ publish:package:cli:
         upload_package "${CI_COMMIT_TAG}"
       fi
   rules:
-    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
-    - if: $CI_COMMIT_TAG =~ /^v\d+\.\d+\.\d+$/
-
-# Verify the release binary embeds the vauchi-core revision declared in
-# Cargo.lock. Catches stale lockfile pins before they reach the package
-# registry.
-check:core-version:
-  stage: verify
-  image: ${CI_DEPENDENCY_PROXY_GROUP_IMAGE_PREFIX}/alpine:3.21
-  tags: [docker]
-  needs:
-    - job: build:release
-      artifacts: true
-  before_script:
-    - apk add --no-cache binutils
-  script:
-    - |
-      set -euo pipefail
-      EXPECTED_SHA=$(grep -A2 '^name = "vauchi-core"$' Cargo.lock | grep 'source = "git+https://gitlab.com/vauchi/core.git' | sed -E 's/.*#([0-9a-f]{40}).*/\1/')
-      if [ -z "$EXPECTED_SHA" ]; then
-        echo "ERROR: could not extract vauchi-core SHA from Cargo.lock"
-        exit 1
-      fi
-      echo "Expected vauchi-core SHA: ${EXPECTED_SHA}"
-      if ! strings target/release/vauchi | grep -q "${EXPECTED_SHA:0:7}.*vauchi-core"; then
-        echo "ERROR: release binary does not contain expected vauchi-core source path"
-        exit 1
-      fi
-      echo "✅ Release binary embeds vauchi-core@${EXPECTED_SHA:0:7}"
-  rules:
-    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
-      changes:
-        compare_to: refs/heads/$CI_DEFAULT_BRANCH
-        paths:
-          - "Cargo.toml"
-          - "Cargo.lock"
-          - ".gitlab-ci.yml"
     - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
     - if: $CI_COMMIT_TAG =~ /^v\d+\.\d+\.\d+$/
 
