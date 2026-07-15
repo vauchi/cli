@@ -18,21 +18,10 @@ version = 2
 db-path = "~/.cargo/advisory-db"
 db-urls = ["https://github.com/rustsec/advisory-db"]
 ignore = [
-    # number_prefix is unmaintained — transitive via indicatif. No fix available.
-    "RUSTSEC-2025-0119",
-    # proc-macro-error2 unmaintained, no safe upgrade — transitive via
+    # proc-macro-error2 is unmaintained — transitive via
     # tabled -> tabled_derive. Build-time proc-macro only, no runtime risk.
+    # Remove once tabled upgrades away from it (tracked: RUSTSEC-2026-0173).
     "RUSTSEC-2026-0173",
-    # Removed 2026-05-21 per audit-06 F1 verification: stale
-    # aws-lc-sys advisory suppressions (`RUSTSEC-2026-0044`,
-    # `RUSTSEC-2026-0048`) were left after the cargo-update past
-    # the patched `aws-lc-sys >= 0.39.0`. Current `Cargo.lock`
-    # resolves to a patched version so the ignores muzzle a CVE
-    # that isn't present. A future lockfile downgrade would
-    # silently pass — CC-21 / Chesterton's Fence guard against
-    # ignoring checks for vulnerabilities not currently in the
-    # build. Re-add specifically when a fresh advisory matches a
-    # version actually in the lockfile.
 ]
 
 [licenses]
@@ -62,9 +51,11 @@ external-default-features = "allow"
 
 # Deny specific crates known to be problematic
 deny = [
-    # No direct openssl usage — allowed only via native-tls (transitive from vauchi-core)
-    { name = "openssl", wrappers = ["native-tls"] },
-    { name = "openssl-sys", wrappers = ["native-tls", "openssl"] },
+    # Prefer rustls over OpenSSL for pure-Rust TLS and simpler cross-compilation.
+    # If a platform feature genuinely requires native-tls, add it as an explicit
+    # wrapper here and document the rationale.
+    { name = "openssl" },
+    { name = "openssl-sys" },
 ]
 
 # Allow specific duplicates that are common and unavoidable
