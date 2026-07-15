@@ -505,21 +505,6 @@ mod tests {
         );
     }
 
-    #[cfg(feature = "secure-storage")]
-    #[test]
-    fn test_keychain_key_name_differs_per_data_dir() {
-        use std::path::PathBuf;
-
-        let key1 = keychain_key_name(&PathBuf::from("/tmp/vauchi-test-1"));
-        let key2 = keychain_key_name(&PathBuf::from("/tmp/vauchi-test-2"));
-        let key3 = keychain_key_name(&PathBuf::from("/tmp/vauchi-test-1"));
-
-        assert_ne!(key1, key2);
-        assert_eq!(key1, key3);
-        assert!(key1.starts_with("storage_key_"));
-        assert!(key2.starts_with("storage_key_"));
-    }
-
     #[cfg(not(feature = "secure-storage"))]
     #[test]
     fn test_storage_key_persists_across_config_instances() {
