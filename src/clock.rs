@@ -68,38 +68,50 @@ pub fn unix_seconds() -> u64 {
         .unwrap_or(0)
 }
 
+/// Whether [`ENV_VAR`] is currently set (valid or not). Callers use this
+/// to decide whether to thread the [`EnvClock`] into components whose
+/// own clocks should follow the pin; a malformed value still counts as
+/// pinned so the fail-fast panic surfaces at first use.
+pub fn is_pinned() -> bool {
+    std::env::var_os(ENV_VAR).is_some()
+}
+
+/// Test-only serialization for process-global [`ENV_VAR`] access.
+#[cfg(test)]
+pub(crate) static ENV_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
+
+/// Locks the env, tolerating poisoning from a panicking test.
+#[cfg(test)]
+pub(crate) fn env_lock() -> std::sync::MutexGuard<'static, ()> {
+    ENV_LOCK.lock().unwrap_or_else(|e| e.into_inner())
+}
+
+/// Sets [`ENV_VAR`]. Callers must hold [`env_lock`] and keep an
+/// [`EnvReset`] alive so the override is removed again on drop.
+#[cfg(test)]
+pub(crate) fn set_epoch(value: &str) {
+    // SAFETY: callers serialize via env_lock; EnvReset removes the
+    // variable again on drop, including during panic unwinding.
+    unsafe { std::env::set_var(ENV_VAR, value) };
+}
+
+/// Removes [`ENV_VAR`] when dropped — also during panic unwinding, so a
+/// failing test cannot leak the override into other tests.
+#[cfg(test)]
+pub(crate) struct EnvReset;
+
+#[cfg(test)]
+impl Drop for EnvReset {
+    fn drop(&mut self) {
+        // SAFETY: see set_epoch.
+        unsafe { std::env::remove_var(ENV_VAR) };
+    }
+}
+
 // INLINE_TEST_REQUIRED: Binary crate without lib.rs - tests cannot be external
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::sync::{Mutex, MutexGuard};
-
-    /// Serializes access to the process-global [`ENV_VAR`] so these tests
-    /// do not race each other.
-    static ENV_LOCK: Mutex<()> = Mutex::new(());
-
-    /// Locks the env, tolerating poisoning from the panicking test.
-    fn env_lock() -> MutexGuard<'static, ()> {
-        ENV_LOCK.lock().unwrap_or_else(|e| e.into_inner())
-    }
-
-    fn set_epoch(value: &str) {
-        // SAFETY: env mutation is process-global; these tests serialize
-        // their own access via ENV_LOCK and each one removes the variable
-        // again before releasing the guard (EnvReset drops on unwind).
-        unsafe { std::env::set_var(ENV_VAR, value) };
-    }
-
-    /// Removes [`ENV_VAR`] when dropped — also during panic unwinding, so a
-    /// failing test cannot leak the override into other tests.
-    struct EnvReset;
-
-    impl Drop for EnvReset {
-        fn drop(&mut self) {
-            // SAFETY: see set_epoch.
-            unsafe { std::env::remove_var(ENV_VAR) };
-        }
-    }
 
     // @internal
     #[test]

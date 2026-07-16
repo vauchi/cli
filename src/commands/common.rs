@@ -59,7 +59,7 @@ pub(crate) fn open_vauchi(config: &CliConfig) -> Result<Vauchi> {
         wb_config.ohttp.bundled_gateway_key = Some(bytes);
     }
 
-    let mut wb = Vauchi::new(wb_config)?;
+    let mut wb = build_vauchi(wb_config)?;
 
     // Core now auto-loads identity from storage; only set from file if not already loaded
     if wb.identity().is_none() {
@@ -68,6 +68,25 @@ pub(crate) fn open_vauchi(config: &CliConfig) -> Result<Vauchi> {
     }
 
     Ok(wb)
+}
+
+/// Builds the Vauchi instance for `wb_config`. When the test clock is
+/// pinned (`VAUCHI_TEST_CLOCK_EPOCH`), the same `EnvClock` is threaded
+/// into core as the storage clock, so persisted timestamps and
+/// time-gated state machines (e.g. the GDPR deletion grace period)
+/// become deterministic under the test harness's control. Production
+/// behavior is unchanged while the variable is unset.
+fn build_vauchi(wb_config: VauchiConfig) -> Result<Vauchi> {
+    if crate::clock::is_pinned() {
+        Ok(Vauchi::new_with(
+            wb_config,
+            crate::clock::shared(),
+            vauchi_core::rng::OsSecureRng::shared(),
+            None,
+        )?)
+    } else {
+        Ok(Vauchi::new(wb_config)?)
+    }
 }
 
 /// Opens Vauchi and authenticates if a PIN is provided.
@@ -148,6 +167,57 @@ mod tests {
     use super::*;
     use tempfile::tempdir;
     use vauchi_core::Identity;
+
+    #[test]
+    fn pinned_clock_threads_into_core_storage_clock() {
+        let _guard = crate::clock::env_lock();
+        let _reset = crate::clock::EnvReset;
+        crate::clock::set_epoch("1700000000");
+
+        let temp_dir = tempdir().unwrap();
+        let wb_config = VauchiConfig::with_storage_path(temp_dir.path().join("clock-pinned.db"))
+            .with_storage_key(vauchi_core::crypto::SymmetricKey::generate());
+        let wb = build_vauchi(wb_config).expect("vauchi should open with pinned clock");
+
+        assert_eq!(
+            wb.storage().clock().unix_seconds(),
+            1_700_000_000,
+            "core storage clock must follow VAUCHI_TEST_CLOCK_EPOCH"
+        );
+    }
+
+    #[test]
+    fn unpinned_clock_keeps_system_storage_clock() {
+        let _guard = crate::clock::env_lock();
+        let _reset = crate::clock::EnvReset;
+
+        let temp_dir = tempdir().unwrap();
+        let wb_config = VauchiConfig::with_storage_path(temp_dir.path().join("clock-system.db"))
+            .with_storage_key(vauchi_core::crypto::SymmetricKey::generate());
+
+        let before = std::time::SystemTime::now();
+        let wb = build_vauchi(wb_config).expect("vauchi should open with system clock");
+        let after = std::time::SystemTime::now();
+        let got = wb
+            .storage()
+            .clock()
+            .now()
+            .duration_since(std::time::SystemTime::UNIX_EPOCH)
+            .map(|d| d.as_secs())
+            .unwrap_or(0);
+        let lo = before
+            .duration_since(std::time::SystemTime::UNIX_EPOCH)
+            .map(|d| d.as_secs())
+            .unwrap_or(0);
+        let hi = after
+            .duration_since(std::time::SystemTime::UNIX_EPOCH)
+            .map(|d| d.as_secs())
+            .unwrap_or(0);
+        assert!(
+            (lo..=hi + 1).contains(&got),
+            "unset VAUCHI_TEST_CLOCK_EPOCH must keep the system clock: got {got} outside [{lo}, {hi}]"
+        );
+    }
 
     /// Helper: create a CliConfig with a temp dir and initialize identity.
     fn setup_initialized_config() -> (tempfile::TempDir, CliConfig) {
