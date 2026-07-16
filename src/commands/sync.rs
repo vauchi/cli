@@ -45,6 +45,10 @@ pub fn run(config: &CliConfig) -> Result<()> {
     wb.connect()
         .map_err(|e| anyhow::anyhow!("Connection failed: {e}"))?;
 
+    // Real clock on purpose: `start_time` brackets the sync operation so
+    // the activity window below spans the sync's actual duration. The
+    // injected test clock (VAUCHI_TEST_CLOCK_EPOCH) must not distort
+    // elapsed-time measurement.
     let start_time = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
         .unwrap_or_default()
@@ -107,6 +111,9 @@ pub fn run(config: &CliConfig) -> Result<()> {
             }
             save_aha_tracker(config, &tracker);
 
+            // Real clock on purpose: pairs with `start_time` above to
+            // measure the sync's wall-clock window; the injected test
+            // clock must not distort elapsed-time measurement.
             let now = std::time::SystemTime::now()
                 .duration_since(std::time::UNIX_EPOCH)
                 .unwrap_or_default()

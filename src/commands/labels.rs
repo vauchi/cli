@@ -260,9 +260,11 @@ pub fn hide_field(config: &CliConfig, label_name: &str, field_label: &str) -> Re
 }
 
 fn format_timestamp(ts: u64) -> String {
-    use std::time::{Duration, SystemTime, UNIX_EPOCH};
+    use std::time::{Duration, UNIX_EPOCH};
     let dt = UNIX_EPOCH + Duration::from_secs(ts);
-    let now = SystemTime::now();
+    // Relative-age display against the injectable CLI clock so E2E
+    // clock-skew scenarios see a consistent timeline.
+    let now = crate::clock::now();
     let elapsed = now
         .duration_since(dt)
         .unwrap_or(Duration::from_secs(0))

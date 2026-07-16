@@ -7,7 +7,6 @@
 //! View recent activity and notifications from the persistent log.
 
 use anyhow::Result;
-use std::time::{SystemTime, UNIX_EPOCH};
 
 use crate::commands::common::open_vauchi;
 use crate::config::CliConfig;
@@ -17,10 +16,10 @@ use crate::display;
 pub fn run(config: &CliConfig, since_mins: u64) -> Result<()> {
     let wb = open_vauchi(config)?;
 
-    let now = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .expect("Time went backwards")
-        .as_secs();
+    // Read window over persisted activity rows — injectable CLI clock so
+    // E2E scenarios filter against the same timeline the rows were
+    // written with.
+    let now = crate::clock::unix_seconds();
 
     let since_secs = since_mins * 60;
 

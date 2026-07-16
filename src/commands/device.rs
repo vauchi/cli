@@ -107,10 +107,8 @@ pub fn link(config: &CliConfig) -> Result<()> {
     display::info("Generating device link QR code...");
     println!();
 
-    let initiator = identity.create_device_link_initiator(
-        registry,
-        vauchi_core::clock::SystemClock::shared().unix_seconds(),
-    );
+    let initiator =
+        identity.create_device_link_initiator(registry, crate::clock::shared().unix_seconds());
     let qr = initiator.qr();
 
     println!("{}", qr.to_qr_image_string());
@@ -158,7 +156,7 @@ pub fn join(
 
     let qr = DeviceLinkQR::from_data_string(qr_data)?;
 
-    if qr.is_expired(vauchi_core::clock::SystemClock::shared().unix_seconds()) {
+    if qr.is_expired(crate::clock::shared().unix_seconds()) {
         bail!("Device link QR code has expired. Please generate a new one.");
     }
 
@@ -176,11 +174,10 @@ pub fn join(
     let mut responder = DeviceLinkResponder::from_qr(
         qr,
         device_name.clone(),
-        vauchi_core::clock::SystemClock::shared().unix_seconds(),
+        crate::clock::shared().unix_seconds(),
     )?;
 
-    let encrypted_request =
-        responder.create_request(vauchi_core::clock::SystemClock::shared().unix_seconds())?;
+    let encrypted_request = responder.create_request(crate::clock::shared().unix_seconds())?;
 
     let request_b64 = BASE64.encode(&encrypted_request);
 
@@ -231,7 +228,7 @@ pub fn complete(
     let qr_data_string = fs::read_to_string(&pending_link_path)?;
     let saved_qr = DeviceLinkQR::from_data_string(&qr_data_string)?;
 
-    if saved_qr.is_expired(vauchi_core::clock::SystemClock::shared().unix_seconds()) {
+    if saved_qr.is_expired(crate::clock::shared().unix_seconds()) {
         let _ = fs::remove_file(&pending_link_path);
         bail!("Device link QR has expired. Please run 'vauchi device link' again.");
     }
@@ -246,7 +243,7 @@ pub fn complete(
 
     let sync_orchestrator = DeviceSyncOrchestrator::new(
         wb.storage(),
-        identity.create_device_info(vauchi_core::clock::SystemClock::shared().unix_seconds()),
+        identity.create_device_info(crate::clock::shared().unix_seconds()),
         registry,
     );
     let intent = if replace {
@@ -287,13 +284,11 @@ pub fn complete(
         compute_confirmation_mac(initiator.qr().link_key(), &confirmation.confirmation_code);
     let proof = ProximityProof::ManualConfirmation {
         confirmation_code_mac,
-        confirmed_at: std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .unwrap_or_default()
-            .as_secs(),
+        // Protocol payload timestamp — injectable CLI clock.
+        confirmed_at: crate::clock::unix_seconds(),
     };
 
-    let now = vauchi_core::clock::SystemClock::shared().unix_seconds();
+    let now = crate::clock::shared().unix_seconds();
     let (encrypted_response, updated_registry, new_device) =
         initiator.confirm_link_with_sync(&request, &sync_json, &proof, now)?;
 

@@ -62,11 +62,8 @@ pub fn import(config: &CliConfig, input: &Path) -> Result<()> {
         .with_prompt("Enter backup password")
         .interact()?;
 
-    let identity = Identity::import_backup(
-        &backup,
-        &password,
-        vauchi_core::clock::SystemClock::shared().unix_seconds(),
-    )?;
+    let identity =
+        Identity::import_backup(&backup, &password, crate::clock::shared().unix_seconds())?;
 
     let name = identity.display_name().to_string();
 

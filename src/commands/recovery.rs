@@ -44,11 +44,7 @@ pub fn claim(config: &CliConfig, old_pk_hex: &str) -> Result<()> {
         bail!("Cannot create recovery claim for your own current key");
     }
 
-    let claim = RecoveryClaim::new(
-        old_pk,
-        new_pk,
-        vauchi_core::clock::SystemClock::shared().unix_seconds(),
-    );
+    let claim = RecoveryClaim::new(old_pk, new_pk, crate::clock::shared().unix_seconds());
 
     let claim_bytes = claim.to_bytes();
     let claim_b64 = BASE64.encode(&claim_bytes);
@@ -93,7 +89,7 @@ pub fn vouch(config: &CliConfig, claim_data: &str, auto_confirm: bool) -> Result
     let claim_bytes = BASE64.decode(claim_data.trim())?;
     let claim = RecoveryClaim::from_bytes(&claim_bytes)?;
 
-    if claim.is_expired(vauchi_core::clock::SystemClock::shared().unix_seconds()) {
+    if claim.is_expired(crate::clock::shared().unix_seconds()) {
         bail!("This recovery claim has expired (older than 48 hours)");
     }
 
@@ -156,7 +152,7 @@ pub fn vouch(config: &CliConfig, claim_data: &str, auto_confirm: bool) -> Result
         &claim,
         identity.signing_keypair(),
         None,
-        vauchi_core::clock::SystemClock::shared().unix_seconds(),
+        crate::clock::shared().unix_seconds(),
     )?;
 
     let voucher_bytes = voucher.to_bytes();
@@ -206,7 +202,7 @@ pub fn add_voucher(config: &CliConfig, voucher_data: &str) -> Result<()> {
             *voucher.old_pk(),
             *voucher.new_pk(),
             settings.recovery_threshold(),
-            vauchi_core::clock::SystemClock::shared().unix_seconds(),
+            crate::clock::shared().unix_seconds(),
         )
     };
 
@@ -285,7 +281,7 @@ pub fn status(config: &CliConfig) -> Result<()> {
         let claim_bytes = fs::read(&claim_path)?;
         let claim = RecoveryClaim::from_bytes(&claim_bytes)?;
 
-        if claim.is_expired(vauchi_core::clock::SystemClock::shared().unix_seconds()) {
+        if claim.is_expired(crate::clock::shared().unix_seconds()) {
             display::warning("Recovery claim has expired.");
             display::info("Create a new claim: vauchi recovery claim <old-pk>");
         } else {

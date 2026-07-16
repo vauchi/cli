@@ -7,6 +7,7 @@
 //! Command-line interface for Vauchi - privacy-focused contact card exchange.
 
 mod args;
+mod clock;
 mod commands;
 mod config;
 mod dispatch;

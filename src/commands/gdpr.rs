@@ -114,10 +114,8 @@ pub fn deletion_status(config: &CliConfig) -> Result<()> {
             scheduled_at,
             execute_at,
         } => {
-            let now = std::time::SystemTime::now()
-                .duration_since(std::time::UNIX_EPOCH)
-                .map(|d| d.as_secs())
-                .unwrap_or(0);
+            // Countdown against persisted `execute_at` — injectable CLI clock.
+            let now = crate::clock::unix_seconds();
             let remaining = execute_at.saturating_sub(now);
             let days = remaining / 86400;
             let hours = (remaining % 86400) / 3600;
@@ -264,10 +262,9 @@ pub async fn execute_deletion(config: &CliConfig) -> Result<()> {
             scheduled_at,
             execute_at,
         } => {
-            let now = std::time::SystemTime::now()
-                .duration_since(std::time::UNIX_EPOCH)
-                .map(|d| d.as_secs())
-                .unwrap_or(0);
+            // Grace-period gate against persisted `execute_at` — injectable
+            // CLI clock so E2E can fast-forward past the grace period.
+            let now = crate::clock::unix_seconds();
             if now < execute_at {
                 let remaining = execute_at.saturating_sub(now);
                 let days = remaining / 86400;

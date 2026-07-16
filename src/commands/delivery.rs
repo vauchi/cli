@@ -204,10 +204,8 @@ mod tests {
         };
 
         // Initialize identity so open_vauchi works
-        let identity = vauchi_core::Identity::create(
-            "TestUser",
-            vauchi_core::clock::SystemClock::shared().unix_seconds(),
-        );
+        let identity =
+            vauchi_core::Identity::create("TestUser", crate::clock::shared().unix_seconds());
         config
             .save_local_identity(&identity)
             .expect("save identity");

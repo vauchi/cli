@@ -91,15 +91,11 @@ pub fn start(config: &CliConfig, locale: &str) -> Result<()> {
     let identity_owned = Identity::import_backup(
         &backup,
         &backup_password,
-        vauchi_core::clock::SystemClock::shared().unix_seconds(),
+        crate::clock::shared().unix_seconds(),
     )?;
 
-    let mut session = ExchangeSession::new_qr(
-        identity_owned,
-        our_card,
-        verifier,
-        vauchi_core::clock::SystemClock::shared(),
-    );
+    let mut session =
+        ExchangeSession::new_qr(identity_owned, our_card, verifier, crate::clock::shared());
 
     session
         .apply(ExchangeEvent::StartQR)
@@ -143,7 +139,7 @@ pub fn complete(config: &CliConfig, data: &str, _locale: &str) -> Result<()> {
 
     let qr = ExchangeQR::from_data_string(data)?;
 
-    if qr.is_expired(vauchi_core::clock::SystemClock::shared().unix_seconds()) {
+    if qr.is_expired(crate::clock::shared().unix_seconds()) {
         bail!("This exchange QR code has expired. Ask them to generate a new one.");
     }
 
@@ -171,7 +167,7 @@ pub fn complete(config: &CliConfig, data: &str, _locale: &str) -> Result<()> {
     let identity_owned = Identity::import_backup(
         &backup,
         &backup_password,
-        vauchi_core::clock::SystemClock::shared().unix_seconds(),
+        crate::clock::shared().unix_seconds(),
     )?;
 
     let (resume_secret, our_qr) = load_pending_qr(config)?;
@@ -181,7 +177,7 @@ pub fn complete(config: &CliConfig, data: &str, _locale: &str) -> Result<()> {
         verifier,
         *resume_secret,
         our_qr,
-        vauchi_core::clock::SystemClock::shared(),
+        crate::clock::shared(),
     )
     .map_err(|e| anyhow::anyhow!("Failed to resume QR exchange: {e:?}"))?;
 
@@ -294,7 +290,7 @@ pub fn usb_exchange(config: &CliConfig, address: &str) -> Result<()> {
     let identity_owned = Identity::import_backup(
         &backup,
         &backup_password,
-        vauchi_core::clock::SystemClock::shared().unix_seconds(),
+        crate::clock::shared().unix_seconds(),
     )?;
 
     let mut session = ExchangeSession::new_usb(
@@ -302,7 +298,7 @@ pub fn usb_exchange(config: &CliConfig, address: &str) -> Result<()> {
         our_card,
         verifier,
         UsbRole::Initiator,
-        vauchi_core::clock::SystemClock::shared(),
+        crate::clock::shared(),
     );
 
     session.emit_initial_commands();
@@ -413,7 +409,7 @@ pub fn usb_listen(config: &CliConfig, port: u16) -> Result<()> {
     let identity_owned = Identity::import_backup(
         &backup,
         &backup_password,
-        vauchi_core::clock::SystemClock::shared().unix_seconds(),
+        crate::clock::shared().unix_seconds(),
     )?;
 
     let mut session = ExchangeSession::new_usb(
@@ -421,7 +417,7 @@ pub fn usb_listen(config: &CliConfig, port: u16) -> Result<()> {
         our_card,
         verifier,
         UsbRole::Responder,
-        vauchi_core::clock::SystemClock::shared(),
+        crate::clock::shared(),
     );
 
     session.emit_initial_commands();

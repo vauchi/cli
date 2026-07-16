@@ -134,10 +134,9 @@ pub(crate) fn drain_activity_log(wb: &Vauchi, rx: mpsc::Receiver<VauchiEvent>) {
         events.push(event);
     }
     if !events.is_empty() {
-        let now = std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .unwrap_or_default()
-            .as_secs();
+        // Persisted activity-log timestamp — routes through the injectable
+        // CLI clock so E2E clock-skew scenarios control `created_at`.
+        let now = crate::clock::unix_seconds();
         let _ =
             vauchi_app::activity_log_writer::ActivityLogWriter::write(wb.storage(), &events, now);
     }
@@ -159,10 +158,7 @@ mod tests {
             ohttp_relay_url: None,
             raw: false,
         };
-        let identity = Identity::create(
-            "Test User",
-            vauchi_core::clock::SystemClock::shared().unix_seconds(),
-        );
+        let identity = Identity::create("Test User", crate::clock::shared().unix_seconds());
         config.save_local_identity(&identity).unwrap();
         (temp_dir, config)
     }
@@ -208,10 +204,7 @@ mod tests {
             raw: false,
         };
 
-        let identity = Identity::create(
-            "Test User",
-            vauchi_core::clock::SystemClock::shared().unix_seconds(),
-        );
+        let identity = Identity::create("Test User", crate::clock::shared().unix_seconds());
         config
             .save_local_identity(&identity)
             .expect("save identity");
@@ -232,10 +225,7 @@ mod tests {
             raw: false,
         };
 
-        let identity = Identity::create(
-            "Storage Path Test",
-            vauchi_core::clock::SystemClock::shared().unix_seconds(),
-        );
+        let identity = Identity::create("Storage Path Test", crate::clock::shared().unix_seconds());
         config
             .save_local_identity(&identity)
             .expect("save identity");
