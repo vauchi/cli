@@ -168,6 +168,7 @@ mod tests {
     use tempfile::tempdir;
     use vauchi_core::Identity;
 
+    // @internal
     #[test]
     fn pinned_clock_threads_into_core_storage_clock() {
         let _guard = crate::clock::env_lock();
@@ -186,6 +187,7 @@ mod tests {
         );
     }
 
+    // @internal
     #[test]
     fn unpinned_clock_keeps_system_storage_clock() {
         let _guard = crate::clock::env_lock();
