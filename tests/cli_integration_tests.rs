@@ -1900,6 +1900,7 @@ mod contact_tags {
     }
 
     /// Tests that tags create requires initialization.
+    // @internal
     #[test]
     fn test_tags_create_requires_init() {
         let ctx = CliTestContext::new();
@@ -1912,6 +1913,7 @@ mod contact_tags {
     }
 
     /// Tests that listing tags on a fresh identity reports none.
+    // @internal
     #[test]
     fn test_tags_list_empty() {
         let ctx = CliTestContext::new();
@@ -1925,6 +1927,7 @@ mod contact_tags {
     }
 
     /// Tests create-then-list roundtrip.
+    // @internal
     #[test]
     fn test_tags_create_and_list() {
         let ctx = CliTestContext::new();
@@ -1945,6 +1948,7 @@ mod contact_tags {
     }
 
     /// Tests tagging a contact updates the membership listing.
+    // @internal
     #[test]
     fn test_tags_add_and_remove_contact() {
         let (alice, _bob) = exchanged_pair();
@@ -1977,6 +1981,7 @@ mod contact_tags {
     }
 
     /// Tests that adding a tag to an unknown contact fails.
+    // @internal
     #[test]
     fn test_tags_add_contact_unknown_contact_fails() {
         let ctx = CliTestContext::new();
@@ -1990,6 +1995,7 @@ mod contact_tags {
     }
 
     /// Tests delete removes the tag from the listing.
+    // @internal
     #[test]
     fn test_tags_delete() {
         let ctx = CliTestContext::new();
@@ -2010,6 +2016,7 @@ mod contact_tags {
     }
 
     /// Tests that deleting an unknown tag fails.
+    // @internal
     #[test]
     fn test_tags_delete_unknown_fails() {
         let ctx = CliTestContext::new();
