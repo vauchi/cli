@@ -1857,3 +1857,168 @@ mod contact_merge_duplicates_limit {
         );
     }
 }
+
+// ===========================================================================
+// Contact Tags Tests
+// Tags are owner-private vocabulary: they sync to linked devices but are
+// never shared with contacts (ADR-051, RG-10 certification leg).
+// ===========================================================================
+
+mod contact_tags {
+    use super::*;
+
+    fn exchange_data(output: &str) -> String {
+        output
+            .lines()
+            .map(str::trim)
+            .find(|line| {
+                line.len() >= 20
+                    && line
+                        .chars()
+                        .all(|c| c.is_alphanumeric() || matches!(c, '+' | '/' | '='))
+            })
+            .expect("exchange output contains QR data")
+            .to_string()
+    }
+
+    /// Two initialized contexts that have completed an exchange, so Alice
+    /// has Bob as a contact to tag.
+    fn exchanged_pair() -> (CliTestContext, CliTestContext) {
+        let alice = CliTestContext::new();
+        alice.init("Alice Smith");
+        alice.run_success(&["card", "add", "email", "Work", "alice@work.com"]);
+        let alice_data = exchange_data(&alice.run_success(&["exchange", "start"]));
+
+        let bob = CliTestContext::new();
+        bob.init("Bob Jones");
+        bob.run_success(&["card", "add", "phone", "Mobile", "+1-555-262-1234"]);
+        let bob_data = exchange_data(&bob.run_success(&["exchange", "start"]));
+
+        bob.run_success(&["exchange", "complete", &alice_data]);
+        alice.run_success(&["exchange", "complete", &bob_data]);
+        (alice, bob)
+    }
+
+    /// Tests that tags create requires initialization.
+    #[test]
+    fn test_tags_create_requires_init() {
+        let ctx = CliTestContext::new();
+        let stderr = ctx.run_failure(&["tags", "create", "work"]);
+        assert!(
+            stderr.contains("not initialized"),
+            "Expected 'not initialized' message, got: {}",
+            stderr
+        );
+    }
+
+    /// Tests that listing tags on a fresh identity reports none.
+    #[test]
+    fn test_tags_list_empty() {
+        let ctx = CliTestContext::new();
+        ctx.init("Alice");
+        let output = ctx.run_success(&["tags", "list"]);
+        assert!(
+            output.contains("No tags defined"),
+            "Expected empty-tags hint, got: {}",
+            output
+        );
+    }
+
+    /// Tests create-then-list roundtrip.
+    #[test]
+    fn test_tags_create_and_list() {
+        let ctx = CliTestContext::new();
+        ctx.init("Alice");
+        let output = ctx.run_success(&["tags", "create", "work"]);
+        assert!(
+            output.contains("Created tag 'work'"),
+            "Expected creation confirmation, got: {}",
+            output
+        );
+        let list = ctx.run_success(&["tags", "list"]);
+        assert!(list.contains("work"), "Expected tag in list, got: {}", list);
+        assert!(
+            list.contains("Contacts: 0"),
+            "Expected empty membership, got: {}",
+            list
+        );
+    }
+
+    /// Tests tagging a contact updates the membership listing.
+    #[test]
+    fn test_tags_add_and_remove_contact() {
+        let (alice, _bob) = exchanged_pair();
+
+        let output = alice.run_success(&["tags", "add-contact", "climbing", "Bob Jones"]);
+        assert!(
+            output.contains("Added tag 'climbing' to Bob Jones"),
+            "Expected add confirmation, got: {}",
+            output
+        );
+        let list = alice.run_success(&["tags", "list"]);
+        assert!(
+            list.contains("Contacts: 1"),
+            "Expected one member, got: {}",
+            list
+        );
+
+        let output = alice.run_success(&["tags", "remove-contact", "climbing", "Bob Jones"]);
+        assert!(
+            output.contains("Removed tag 'climbing' from Bob Jones"),
+            "Expected removal confirmation, got: {}",
+            output
+        );
+        let list = alice.run_success(&["tags", "list"]);
+        assert!(
+            list.contains("Contacts: 0"),
+            "Expected empty membership after removal, got: {}",
+            list
+        );
+    }
+
+    /// Tests that adding a tag to an unknown contact fails.
+    #[test]
+    fn test_tags_add_contact_unknown_contact_fails() {
+        let ctx = CliTestContext::new();
+        ctx.init("Alice");
+        let stderr = ctx.run_failure(&["tags", "add-contact", "work", "nonexistent"]);
+        assert!(
+            stderr.contains("not found"),
+            "Expected 'not found' message, got: {}",
+            stderr
+        );
+    }
+
+    /// Tests delete removes the tag from the listing.
+    #[test]
+    fn test_tags_delete() {
+        let ctx = CliTestContext::new();
+        ctx.init("Alice");
+        ctx.run_success(&["tags", "create", "temp"]);
+        let output = ctx.run_success(&["tags", "delete", "temp"]);
+        assert!(
+            output.contains("Deleted tag 'temp'"),
+            "Expected deletion confirmation, got: {}",
+            output
+        );
+        let list = ctx.run_success(&["tags", "list"]);
+        assert!(
+            list.contains("No tags defined"),
+            "Expected no tags after deletion, got: {}",
+            list
+        );
+    }
+
+    /// Tests that deleting an unknown tag fails.
+    #[test]
+    fn test_tags_delete_unknown_fails() {
+        let ctx = CliTestContext::new();
+        ctx.init("Alice");
+        let stderr = ctx.run_failure(&["tags", "delete", "nope"]);
+        assert!(
+            stderr.contains("Tag not found"),
+            "Expected 'Tag not found' message, got: {}",
+            stderr
+        );
+    }
+}
