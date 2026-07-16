@@ -11,14 +11,12 @@ use std::path::Path;
 
 use anyhow::{Result, bail};
 use dialoguer::Input;
+use vauchi_core::Vauchi;
 use vauchi_core::api::{
     ConsentManager, ConsentType, DeletionManager, ShredManager, ShredReport, ShredToken,
     ShredVerification, export_all_data, export_encrypted,
 };
-use vauchi_core::network::{
-    HttpTransport, HttpTransportAdapter, HttpTransportConfig, ProxyConfig, RelayClient,
-    RelayClientConfig, TransportConfig,
-};
+use vauchi_core::network::{HttpTransportAdapter, RelayClient, RelayClientConfig, TransportConfig};
 use vauchi_core::storage::DeletionState;
 use vauchi_core::storage::secure::SecureStorage;
 
@@ -214,19 +212,19 @@ fn create_secure_storage(config: &CliConfig) -> Result<Box<dyn SecureStorage>> {
     }
 }
 
-/// Creates a connected RelayClient for shred operations using HTTP transport.
-fn create_relay_client(
+/// Creates a connected RelayClient for shred operations, routing every
+/// relay-bound action through the OHTTP path that core already wired
+/// for this Vauchi instance (gateway key from memory, the validated
+/// storage cache, or the bundled config). Without an OHTTP route the
+/// transport stays fail-closed: purge and revocation deliveries error
+/// instead of leaking onto a direct connection (RG-8).
+fn create_shred_relay_client(
+    wb: &Vauchi,
     relay_url: &str,
     identity_id: &str,
 ) -> Result<RelayClient<HttpTransportAdapter>> {
     let http_url = ws_to_http(relay_url);
-    let transport = HttpTransport::new(HttpTransportConfig {
-        relay_url: http_url.clone(),
-        timeout_ms: 10_000,
-        proxy: ProxyConfig::None,
-        allow_direct: false,
-        pinned_certs: vauchi_core::api::RelayConfig::default_pins(),
-    });
+    let transport = wb.build_relay_transport(&http_url, 10_000);
     let adapter = HttpTransportAdapter::new(transport);
     let transport_config = TransportConfig {
         server_url: http_url,
@@ -310,8 +308,8 @@ pub async fn execute_deletion(config: &CliConfig) -> Result<()> {
     );
 
     // Create two separate relay clients (borrow rules: PurgeSender + RevocationSender)
-    let mut purge_client = create_relay_client(&config.relay_url, &identity_id)?;
-    let mut revocation_client = create_relay_client(&config.relay_url, &identity_id)?;
+    let mut purge_client = create_shred_relay_client(&wb, &config.relay_url, &identity_id)?;
+    let mut revocation_client = create_shred_relay_client(&wb, &config.relay_url, &identity_id)?;
 
     display::info("Destroying identity...");
 
@@ -351,8 +349,9 @@ pub async fn panic_shred(config: &CliConfig) -> Result<()> {
     );
 
     // Best-effort relay connections — failure doesn't block shred
-    let mut purge_client = create_relay_client(&config.relay_url, &identity_id).ok();
-    let mut revocation_client = create_relay_client(&config.relay_url, &identity_id).ok();
+    let mut purge_client = create_shred_relay_client(&wb, &config.relay_url, &identity_id).ok();
+    let mut revocation_client =
+        create_shred_relay_client(&wb, &config.relay_url, &identity_id).ok();
 
     if purge_client.is_none() || revocation_client.is_none() {
         display::warning("Could not connect to relay. Revocations will be best-effort.");
