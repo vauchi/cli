@@ -8,7 +8,7 @@ use anyhow::{Result, bail};
 use std::sync::mpsc;
 use vauchi_core::{AuthMode, Vauchi, VauchiConfig, VauchiEvent};
 
-use crate::config::CliConfig;
+use crate::{config::CliConfig, display};
 
 /// Opens Vauchi from the config and loads the identity.
 ///
@@ -50,12 +50,12 @@ pub(crate) fn open_vauchi(config: &CliConfig) -> Result<Vauchi> {
         let bytes = hex::decode(hex.trim()).map_err(|e| {
             anyhow::anyhow!("VAUCHI_OVERRIDE_BUNDLED_OHTTP_KEY_HEX is not valid hex: {e}")
         })?;
-        eprintln!(
-            "WARN: OHTTP bundled key overridden via \
+        display::warning(&format!(
+            "OHTTP bundled key overridden via \
              VAUCHI_OVERRIDE_BUNDLED_OHTTP_KEY_HEX ({} bytes) — \
              must NOT be set in production",
             bytes.len()
-        );
+        ));
         wb_config.ohttp.bundled_gateway_key = Some(bytes);
     }
 
@@ -70,12 +70,9 @@ pub(crate) fn open_vauchi(config: &CliConfig) -> Result<Vauchi> {
     Ok(wb)
 }
 
-/// Builds the Vauchi instance for `wb_config`. When the test clock is
-/// pinned (`VAUCHI_TEST_CLOCK_EPOCH`), the same `EnvClock` is threaded
-/// into core as the storage clock, so persisted timestamps and
-/// time-gated state machines (e.g. the GDPR deletion grace period)
-/// become deterministic under the test harness's control. Production
-/// behavior is unchanged while the variable is unset.
+/// Builds the Vauchi instance for `wb_config`. Only the dedicated
+/// `e2e-test-clock` binary can pin `VAUCHI_TEST_CLOCK_EPOCH` and thread
+/// its clock into core. Shipping binaries always retain the system clock.
 fn build_vauchi(wb_config: VauchiConfig) -> Result<Vauchi> {
     if crate::clock::is_pinned() {
         Ok(Vauchi::new_with(
@@ -169,6 +166,7 @@ mod tests {
     use vauchi_core::Identity;
 
     // @internal
+    #[cfg(feature = "e2e-test-clock")]
     #[test]
     fn pinned_clock_threads_into_core_storage_clock() {
         let _guard = crate::clock::env_lock();

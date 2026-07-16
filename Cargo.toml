@@ -70,6 +70,10 @@ open = "5"
 # silently fails in macOS subprocess/terminal contexts.
 default = []
 secure-storage = ["vauchi-core/secure-storage"]
+# Compiles the process-environment clock seam into the dedicated E2E binary.
+# Never enable this feature for a distributable CLI: the deletion grace period
+# must use the system clock in every production build.
+e2e-test-clock = []
 
 [dev-dependencies]
 tempfile = "3"
@@ -93,4 +97,3 @@ split-debuginfo = "unpacked"
 [profile.test]
 debug = "line-tables-only"
 split-debuginfo = "off"
-

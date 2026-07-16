@@ -2,25 +2,28 @@
 //
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-//! Test-clock seam for the CLI.
+//! Test-clock seam for the dedicated CLI E2E binary.
 //!
 //! The E2E harness runs each CLI command as a separate process and needs
 //! deterministic control over wall-clock timestamps (clock-skew and
 //! longitudinal scenarios). It sets [`ENV_VAR`] per invocation; this module
-//! routes every CLI timestamp read through that override.
-//!
-//! Production behavior is unchanged when the variable is unset.
+//! routes every CLI timestamp read through that override when compiled with
+//! the `e2e-test-clock` feature. Shipping builds always use the system clock.
 
 use std::sync::Arc;
-use std::time::{Duration, SystemTime};
+use std::time::SystemTime;
+
+#[cfg(feature = "e2e-test-clock")]
+use std::time::Duration;
 
 use vauchi_core::clock::Clock;
 
-/// Environment variable holding a Unix epoch (seconds, u64) that overrides
-/// the wall clock. Test-only hook — production deployments must not set it.
+/// Environment variable holding a Unix epoch (seconds, u64) for the dedicated
+/// E2E binary. Default builds deliberately ignore it.
+#[cfg(any(test, feature = "e2e-test-clock"))]
 pub const ENV_VAR: &str = "VAUCHI_TEST_CLOCK_EPOCH";
 
-/// Clock that re-reads [`ENV_VAR`] on every `now()` call.
+/// Clock that re-reads [`ENV_VAR`] only in the E2E-feature build.
 #[derive(Debug, Default)]
 pub struct EnvClock;
 
@@ -35,13 +38,14 @@ pub fn shared() -> Arc<dyn Clock> {
     Arc::new(EnvClock)
 }
 
-/// Current wall-clock time, honoring the [`ENV_VAR`] override.
-///
-/// Reads the variable on every call: unset falls back to `SystemTime::now()`
-/// (production behavior), a valid u64 yields `UNIX_EPOCH + secs`, and a
-/// malformed value panics — a bad override is a test-harness bug and must
-/// never silently fall back to the real clock.
+/// Current wall-clock time. The E2E-feature build honors [`ENV_VAR`]; default
+/// builds always use `SystemTime::now()` so an environment variable cannot
+/// bypass a destructive-operation grace period.
 pub fn now() -> SystemTime {
+    #[cfg(not(feature = "e2e-test-clock"))]
+    return SystemTime::now();
+
+    #[cfg(feature = "e2e-test-clock")]
     match std::env::var(ENV_VAR) {
         Err(std::env::VarError::NotPresent) => SystemTime::now(),
         Err(std::env::VarError::NotUnicode(_)) => {
@@ -54,6 +58,7 @@ pub fn now() -> SystemTime {
 /// Parses an [`ENV_VAR`] value into Unix epoch seconds. Panics on
 /// malformed input: a bad override is a test-harness bug and must never
 /// silently fall back to the real clock.
+#[cfg(feature = "e2e-test-clock")]
 fn parse_epoch(raw: &str) -> u64 {
     raw.parse().unwrap_or_else(|_| {
         panic!("{ENV_VAR} is set but malformed: expected u64 Unix epoch seconds, got {raw:?}")
@@ -68,12 +73,13 @@ pub fn unix_seconds() -> u64 {
         .unwrap_or(0)
 }
 
-/// Whether [`ENV_VAR`] is currently set (valid or not). Callers use this
-/// to decide whether to thread the [`EnvClock`] into components whose
-/// own clocks should follow the pin; a malformed value still counts as
-/// pinned so the fail-fast panic surfaces at first use.
+/// Whether this E2E-feature build has enabled the test clock.
 pub fn is_pinned() -> bool {
-    std::env::var_os(ENV_VAR).is_some()
+    #[cfg(feature = "e2e-test-clock")]
+    return std::env::var_os(ENV_VAR).is_some();
+
+    #[cfg(not(feature = "e2e-test-clock"))]
+    false
 }
 
 /// Test-only serialization for process-global [`ENV_VAR`] access.
@@ -129,7 +135,29 @@ mod tests {
         );
     }
 
+    /// A shipping CLI must never let a caller bypass a destructive-operation
+    /// grace period through its process environment.
     // @internal
+    #[cfg(not(feature = "e2e-test-clock"))]
+    #[test]
+    fn production_build_ignores_clock_override() {
+        let _guard = env_lock();
+        let _reset = EnvReset;
+        set_epoch("1700000000");
+
+        let before = SystemTime::now();
+        let got = now();
+        let after = SystemTime::now();
+
+        assert!(
+            before <= got && got <= after,
+            "default build must ignore {ENV_VAR}: got {got:?} outside [{before:?}, {after:?}]"
+        );
+        assert!(!is_pinned(), "default build must not enable the test clock");
+    }
+
+    // @internal
+    #[cfg(feature = "e2e-test-clock")]
     #[test]
     fn set_valid_epoch_returns_injected_time() {
         let _guard = env_lock();
@@ -149,6 +177,7 @@ mod tests {
     /// this binary (they read the clock concurrently and would panic
     /// too), so the panic case stays out of the process-global env.
     // @internal
+    #[cfg(feature = "e2e-test-clock")]
     #[test]
     #[should_panic(expected = "VAUCHI_TEST_CLOCK_EPOCH")]
     fn malformed_epoch_panics() {

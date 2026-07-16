@@ -5,6 +5,8 @@
 //! Integration tests for the `VAUCHI_TEST_CLOCK_EPOCH` seam: persisted
 //! CLI state must follow the injected clock.
 
+#![cfg(feature = "e2e-test-clock")]
+
 use std::process::{Command, Output};
 use tempfile::TempDir;
 
