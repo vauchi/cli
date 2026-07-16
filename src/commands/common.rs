@@ -8,7 +8,7 @@ use anyhow::{Result, bail};
 use std::sync::mpsc;
 use vauchi_core::{AuthMode, Vauchi, VauchiConfig, VauchiEvent};
 
-use crate::{config::CliConfig, display};
+use crate::config::CliConfig;
 
 /// Opens Vauchi from the config and loads the identity.
 ///
@@ -50,12 +50,14 @@ pub(crate) fn open_vauchi(config: &CliConfig) -> Result<Vauchi> {
         let bytes = hex::decode(hex.trim()).map_err(|e| {
             anyhow::anyhow!("VAUCHI_OVERRIDE_BUNDLED_OHTTP_KEY_HEX is not valid hex: {e}")
         })?;
-        display::warning(&format!(
+        // This diagnostic must remain on stderr: contact-list output is
+        // machine-parsed by E2E and other callers.
+        eprintln!(
             "OHTTP bundled key overridden via \
              VAUCHI_OVERRIDE_BUNDLED_OHTTP_KEY_HEX ({} bytes) — \
              must NOT be set in production",
             bytes.len()
-        ));
+        );
         wb_config.ohttp.bundled_gateway_key = Some(bytes);
     }
 
