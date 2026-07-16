@@ -371,7 +371,7 @@ pub fn finish(config: &CliConfig, response_data: &str) -> Result<()> {
 }
 
 /// Revokes a device from the registry.
-pub fn revoke(config: &CliConfig, device_id_prefix: &str) -> Result<()> {
+pub fn revoke(config: &CliConfig, device_id_prefix: &str, auto_confirm: bool) -> Result<()> {
     let wb = open_vauchi(config)?;
 
     let identity = wb
@@ -398,16 +398,20 @@ pub fn revoke(config: &CliConfig, device_id_prefix: &str) -> Result<()> {
         bail!("Cannot revoke the current device. Use another device to revoke this one.");
     }
 
-    let confirm: String = Input::new()
-        .with_prompt(format!(
-            "Revoke device '{}'? Type 'yes' to confirm",
-            device.device_name
-        ))
-        .interact_text()?;
+    if auto_confirm {
+        display::info("Auto-confirming revocation (--yes)");
+    } else {
+        let confirm: String = Input::new()
+            .with_prompt(format!(
+                "Revoke device '{}'? Type 'yes' to confirm",
+                device.device_name
+            ))
+            .interact_text()?;
 
-    if confirm.to_lowercase() != "yes" {
-        display::info("Revocation cancelled.");
-        return Ok(());
+        if confirm.to_lowercase() != "yes" {
+            display::info("Revocation cancelled.");
+            return Ok(());
+        }
     }
 
     let device_index = registry

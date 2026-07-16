@@ -219,7 +219,9 @@ pub(crate) async fn run(
             } => commands::device::complete(config, &request, yes, replace)?,
             DeviceCommands::Decommission { yes } => commands::device::decommission(config, yes)?,
             DeviceCommands::Finish { response } => commands::device::finish(config, &response)?,
-            DeviceCommands::Revoke { device_id } => commands::device::revoke(config, &device_id)?,
+            DeviceCommands::Revoke { device_id, yes } => {
+                commands::device::revoke(config, &device_id, yes)?
+            }
             DeviceCommands::Replace(cmd) => match cmd {
                 DeviceReplaceCommands::Setup => {
                     commands::device_replacement::run_setup()?;

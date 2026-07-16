@@ -612,6 +612,75 @@ mod device_management {
             output
         );
     }
+
+    /// Trace: device_management.feature - "Lost device revocation"
+    // @scenario: device_management:Lost device revocation
+    /// Scripted revocation (E2E harness, release-gate device-lifecycle
+    /// matrix) needs a non-interactive confirmation like the other
+    /// destructive device commands (`complete --yes`, `decommission
+    /// --yes`); without it `device revoke` fails with "not a terminal".
+    #[test]
+    fn test_device_revoke_yes_skips_confirmation() {
+        /// Extract the base64 payload line from QR-ish command output
+        /// (mirrors the e2e harness's `extract_qr_data`).
+        fn payload_of(output: &str) -> &str {
+            output
+                .lines()
+                .map(str::trim)
+                .find(|line| {
+                    line.len() >= 20
+                        && !line.contains('█')
+                        && !line.contains('▀')
+                        && !line.contains('▄')
+                        && line
+                            .chars()
+                            .all(|c| c.is_alphanumeric() || c == '+' || c == '/' || c == '=')
+                })
+                .expect("output should contain a base64 payload line")
+        }
+
+        let old = CliTestContext::new();
+        old.init("Alice Smith");
+        let new = CliTestContext::new();
+
+        let link_qr = payload_of(&old.run_success(&["device", "link"])).to_string();
+        let request = payload_of(&new.run_success(&[
+            "device",
+            "join",
+            &link_qr,
+            "--device-name",
+            "Second",
+            "--yes",
+        ]))
+        .to_string();
+        let response =
+            payload_of(&old.run_success(&["device", "complete", "--yes", &request])).to_string();
+        new.run_success(&["device", "finish", &response]);
+
+        let list = old.run_success(&["device", "list"]);
+        let id_line = list
+            .lines()
+            .map(str::trim)
+            .skip_while(|line| !line.starts_with("2. "))
+            .find(|line| line.starts_with("ID: "))
+            .expect("second device should have an ID line");
+        let prefix = id_line
+            .trim_start_matches("ID: ")
+            .trim_end_matches('.')
+            .to_string();
+
+        let revoked = old.run_success(&["device", "revoke", &prefix, "--yes"]);
+        assert!(
+            revoked.contains("revoked") || revoked.contains("Revoked"),
+            "Expected revocation confirmation, got: {revoked}"
+        );
+
+        let after = old.run_success(&["device", "list"]);
+        assert!(
+            after.contains("[revoked]"),
+            "Revoked device must show revoked status, got: {after}"
+        );
+    }
 }
 
 // ===========================================================================

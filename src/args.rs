@@ -664,6 +664,10 @@ pub(crate) enum DeviceCommands {
     Revoke {
         /// Device ID prefix
         device_id: String,
+
+        /// Skip confirmation prompt (for scripted/E2E use)
+        #[arg(long, short = 'y')]
+        yes: bool,
     },
 
     /// Device replacement wizard
