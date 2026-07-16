@@ -47,7 +47,7 @@ use vauchi_core::Vauchi;
 use vauchi_core::contact_card::ContactAction;
 
 /// Helper to find contact by ID or name
-fn find_contact(wb: &Vauchi, id_or_name: &str) -> Result<vauchi_core::Contact> {
+pub(crate) fn find_contact(wb: &Vauchi, id_or_name: &str) -> Result<vauchi_core::Contact> {
     if let Some(contact) = wb.get_contact(id_or_name)? {
         return Ok(contact);
     }

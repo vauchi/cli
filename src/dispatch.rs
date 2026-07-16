@@ -253,6 +253,17 @@ pub(crate) async fn run(
                 commands::labels::hide_field(config, &label, &field)?
             }
         },
+        Commands::Tags(cmd) => match cmd {
+            TagCommands::List => commands::tags::list(config)?,
+            TagCommands::Create { name } => commands::tags::create(config, &name)?,
+            TagCommands::Delete { name } => commands::tags::delete(config, &name)?,
+            TagCommands::AddContact { tag, contact } => {
+                commands::tags::add_contact(config, &tag, &contact)?
+            }
+            TagCommands::RemoveContact { tag, contact } => {
+                commands::tags::remove_contact(config, &tag, &contact)?
+            }
+        },
         Commands::Recovery(cmd) => match cmd {
             RecoveryCommands::Claim { old_pk } => commands::recovery::claim(config, &old_pk)?,
             RecoveryCommands::Vouch { claim, yes } => {

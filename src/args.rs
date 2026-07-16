@@ -84,6 +84,10 @@ pub(crate) enum Commands {
     #[command(subcommand)]
     Labels(LabelCommands),
 
+    /// Manage contact tags (owner-private vocabulary)
+    #[command(subcommand)]
+    Tags(TagCommands),
+
     /// Contact recovery via social vouching
     #[command(subcommand)]
     Recovery(RecoveryCommands),
@@ -740,6 +744,40 @@ pub(crate) enum LabelCommands {
         label: String,
         /// Field label
         field: String,
+    },
+}
+
+#[derive(Subcommand)]
+pub(crate) enum TagCommands {
+    /// List all tags with their member contacts
+    List,
+
+    /// Create a new tag
+    Create {
+        /// Tag name
+        name: String,
+    },
+
+    /// Delete a tag
+    Delete {
+        /// Tag name
+        name: String,
+    },
+
+    /// Add a tag to a contact (creates the tag if missing)
+    AddContact {
+        /// Tag name
+        tag: String,
+        /// Contact ID or name
+        contact: String,
+    },
+
+    /// Remove a tag from a contact
+    RemoveContact {
+        /// Tag name
+        tag: String,
+        /// Contact ID or name
+        contact: String,
     },
 }
 
