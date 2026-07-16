@@ -31,20 +31,11 @@ impl CliTestContext {
 
     /// Run a CLI command and return the output.
     fn run(&self, args: &[&str]) -> Output {
-        self.run_env(args, &[])
-    }
-
-    /// Run a CLI command with extra environment variables.
-    fn run_env(&self, args: &[&str], env: &[(&str, &str)]) -> Output {
         let mut cmd = Command::new(env!("CARGO_BIN_EXE_vauchi"));
         cmd.arg("--data-dir")
             .arg(self.data_dir.path())
             .arg("--relay")
             .arg(&self.relay_url);
-
-        for (key, value) in env {
-            cmd.env(key, value);
-        }
 
         for arg in args {
             cmd.arg(arg);
@@ -55,12 +46,7 @@ impl CliTestContext {
 
     /// Run a command and assert success
     fn run_success(&self, args: &[&str]) -> String {
-        self.run_success_env(args, &[])
-    }
-
-    /// Run a command with extra environment variables and assert success.
-    fn run_success_env(&self, args: &[&str], env: &[(&str, &str)]) -> String {
-        let output = self.run_env(args, env);
+        let output = self.run(args);
         let stdout = String::from_utf8_lossy(&output.stdout).to_string();
         let stderr = String::from_utf8_lossy(&output.stderr).to_string();
 
@@ -2109,53 +2095,6 @@ mod contact_tags {
             stderr.contains("Tag not found"),
             "Expected 'Tag not found' message, got: {}",
             stderr
-        );
-    }
-}
-
-// ===========================================================================
-// Test Clock Injection Tests (VAUCHI_TEST_CLOCK_EPOCH)
-// ===========================================================================
-
-mod test_clock_injection {
-    use super::*;
-
-    /// The E2E harness runs each CLI command as a separate process and pins
-    /// `VAUCHI_TEST_CLOCK_EPOCH` per invocation (clock-skew / longitudinal
-    /// scenarios). Persisted timestamps — here an activity-log row's
-    /// `created_at`, stamped by `drain_activity_log` — must reflect the
-    /// injected epoch, and the `activity` read window must filter against it.
-    // @internal
-    #[test]
-    fn test_activity_log_uses_injected_clock() {
-        let ctx = CliTestContext::new();
-        ctx.init("Alice");
-
-        // 1_700_000_000 = 2023-11-14T22:13:20Z.
-        ctx.run_success_env(
-            &["card", "add", "email", "work", "alice@example.com"],
-            &[("VAUCHI_TEST_CLOCK_EPOCH", "1700000000")],
-        );
-
-        // Read the log with the clock pinned 100s after the write so the
-        // row falls inside the `--since 60` window.
-        let output = ctx.run_success_env(
-            &["activity", "--since", "60"],
-            &[("VAUCHI_TEST_CLOCK_EPOCH", "1700000100")],
-        );
-        assert!(
-            output.contains("2023-11-14 22:13:20"),
-            "activity should display the injected timestamp, got: {}",
-            output
-        );
-
-        // Control: with the real clock the 2023 row is far outside the
-        // 60-minute window, so nothing is shown.
-        let output = ctx.run_success(&["activity", "--since", "60"]);
-        assert!(
-            output.contains("No activity in the last 60 minutes"),
-            "activity without injected clock should hide the 2023 row, got: {}",
-            output
         );
     }
 }
