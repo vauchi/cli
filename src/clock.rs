@@ -101,6 +101,7 @@ mod tests {
         }
     }
 
+    // @internal
     #[test]
     fn unset_var_falls_back_to_system_time() {
         let _guard = env_lock();
@@ -116,6 +117,7 @@ mod tests {
         );
     }
 
+    // @internal
     #[test]
     fn set_valid_epoch_returns_injected_time() {
         let _guard = env_lock();
@@ -134,6 +136,7 @@ mod tests {
     /// env: a malformed override must never be visible to other tests in
     /// this binary (they read the clock concurrently and would panic
     /// too), so the panic case stays out of the process-global env.
+    // @internal
     #[test]
     #[should_panic(expected = "VAUCHI_TEST_CLOCK_EPOCH")]
     fn malformed_epoch_panics() {

@@ -2125,6 +2125,7 @@ mod test_clock_injection {
     /// scenarios). Persisted timestamps — here an activity-log row's
     /// `created_at`, stamped by `drain_activity_log` — must reflect the
     /// injected epoch, and the `activity` read window must filter against it.
+    // @internal
     #[test]
     fn test_activity_log_uses_injected_clock() {
         let ctx = CliTestContext::new();
