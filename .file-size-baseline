@@ -12,4 +12,4 @@
 # src/main.rs — reduced from 1144 to 42 lines
 
 # EXEMPT — 22 internal mod blocks, structurally well-organized
-tests/cli_integration_tests.rs 2041
+tests/cli_integration_tests.rs exempt

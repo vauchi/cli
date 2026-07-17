@@ -145,11 +145,6 @@ pub fn complete(config: &CliConfig, data: &str, _locale: &str) -> Result<()> {
 
     let their_public_id = hex::encode(qr.public_key());
 
-    if wb.get_contact(&their_public_id)?.is_some() {
-        display::warning("You already have this contact.");
-        return Ok(());
-    }
-
     let identity = wb
         .identity()
         .ok_or_else(|| anyhow::anyhow!("No identity found"))?;

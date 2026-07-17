@@ -19,8 +19,7 @@ pub fn hide_field(config: &CliConfig, contact_id_or_name: &str, field_label: &st
 
     let field_id = find_field_id(&wb, field_label)?;
 
-    wb.set_contact_visibility_override(&contact_id, &field_id, false)?;
-    wb.mark_own_card_repropagate()?;
+    wb.set_contact_visibility_override_and_repropagate(&contact_id, &field_id, false)?;
 
     display::success(&format!(
         "Hidden '{}' field from {}",
@@ -41,8 +40,7 @@ pub fn unhide_field(config: &CliConfig, contact_id_or_name: &str, field_label: &
 
     let field_id = find_field_id(&wb, field_label)?;
 
-    wb.set_contact_visibility_override(&contact_id, &field_id, true)?;
-    wb.mark_own_card_repropagate()?;
+    wb.set_contact_visibility_override_and_repropagate(&contact_id, &field_id, true)?;
 
     display::success(&format!(
         "'{}' field is now visible to {}",

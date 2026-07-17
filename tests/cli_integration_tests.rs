@@ -406,6 +406,61 @@ mod contact_exchange {
         );
     }
 
+    /// A second in-person exchange refreshes the pair's channel instead of
+    /// leaving the newly-created QR exchange pending.
+    // @scenario: contact_exchange:Repeat in-person exchange of the same pair
+    #[test]
+    fn test_exchange_complete_rekeys_existing_contact() {
+        let alice = CliTestContext::new();
+        alice.init("Alice Smith");
+        let bob = CliTestContext::new();
+        bob.init("Bob Jones");
+
+        let alice_data = exchange_data(&alice.run_success(&["exchange", "start"]));
+        let bob_data = exchange_data(&bob.run_success(&["exchange", "start"]));
+        bob.run_success(&["exchange", "complete", &alice_data]);
+        alice.run_success(&["exchange", "complete", &bob_data]);
+
+        let alice_repeat = exchange_data(&alice.run_success(&["exchange", "start"]));
+        let bob_repeat = exchange_data(&bob.run_success(&["exchange", "start"]));
+        let bob_output = bob.run_success(&["exchange", "complete", &alice_repeat]);
+        let alice_output = alice.run_success(&["exchange", "complete", &bob_repeat]);
+
+        assert!(
+            !bob_output.contains("already have this contact")
+                && !alice_output.contains("already have this contact"),
+            "repeat exchange must rekey rather than exit early: bob={bob_output:?}, alice={alice_output:?}"
+        );
+        assert!(
+            !alice.data_dir.path().join(".pending_qr_exchange").exists()
+                && !bob.data_dir.path().join(".pending_qr_exchange").exists(),
+            "a completed repeat exchange must clear both pending QR sessions"
+        );
+    }
+
+    /// Raw contact lists are a machine-readable CLI contract, so they must not
+    /// include the human-facing list header.
+    // @scenario: contact_exchange:Raw contact lists are valid JSON
+    #[test]
+    fn test_contacts_list_raw_is_json_only() {
+        let alice = CliTestContext::new();
+        alice.init("Alice Smith");
+        let alice_data = exchange_data(&alice.run_success(&["exchange", "start"]));
+
+        let bob = CliTestContext::new();
+        bob.init("Bob Jones");
+        let bob_data = exchange_data(&bob.run_success(&["exchange", "start"]));
+
+        bob.run_success(&["exchange", "complete", &alice_data]);
+        alice.run_success(&["exchange", "complete", &bob_data]);
+
+        let raw = alice.run_success(&["--raw", "contacts", "list"]);
+        let contacts: serde_json::Value =
+            serde_json::from_str(&raw).expect("raw contacts list must be valid JSON");
+        assert!(contacts.is_array());
+        assert_eq!(contacts.as_array().expect("contacts is an array").len(), 1);
+    }
+
     /// Trace: contact_exchange.feature - "Handle malformed QR code"
     // @scenario: contact_exchange:Handle malformed QR code
     #[test]

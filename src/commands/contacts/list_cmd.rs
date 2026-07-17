@@ -20,6 +20,9 @@ pub fn list(
     let total = wb.contact_count().unwrap_or(0);
 
     if total == 0 {
+        if config.raw {
+            return crate::raw::print_json(&Vec::<crate::raw::ContactJson>::new());
+        }
         display::info(&display::t("cli.contacts.list.no_contacts", locale));
         println!(
             "  {}",
@@ -35,6 +38,11 @@ pub fn list(
     } else {
         wb.list_contacts()?
     };
+
+    if config.raw {
+        let json: Vec<_> = contacts.iter().map(crate::raw::ContactJson::from).collect();
+        return crate::raw::print_json(&json);
+    }
 
     println!();
     if paginated {
@@ -61,11 +69,6 @@ pub fn list(
         );
     }
     println!();
-
-    if config.raw {
-        let json: Vec<_> = contacts.iter().map(crate::raw::ContactJson::from).collect();
-        return crate::raw::print_json(&json);
-    }
 
     display::display_contacts_table(&contacts);
 
