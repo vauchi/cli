@@ -28,6 +28,9 @@ tokio = { version = "1", features = ["rt-multi-thread", "macros"] }
 # Interactive prompts
 dialoguer = "0.11"
 
+# stderr backend for vauchi-app/vauchi-core's log::warn!/error! call sites
+env_logger = "0.11"
+
 # Terminal styling
 console = "0.15"
 
@@ -97,3 +100,4 @@ split-debuginfo = "unpacked"
 [profile.test]
 debug = "line-tables-only"
 split-debuginfo = "off"
+

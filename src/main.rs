@@ -67,6 +67,7 @@ fn try_init_i18n() {
 
 #[tokio::main]
 async fn main() -> Result<()> {
+    env_logger::init();
     try_init_i18n();
 
     let cli = Cli::parse();
