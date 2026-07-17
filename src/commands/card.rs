@@ -187,14 +187,12 @@ pub fn edit(config: &CliConfig, label: &str, value: &str) -> Result<()> {
 
     match field {
         Some(f) => {
-            wb.remove_own_field(label)?;
-            let new_field =
-                ContactField::new(f.field_type(), label, value, wb.clock().unix_seconds());
-            wb.add_own_field(new_field)?;
+            let mut new_card = old_card.clone();
+            new_card.update_field_value(f.id(), value, wb.clock().unix_seconds())?;
+            wb.update_own_card(&new_card)?;
 
             display::success(&format!("Updated field '{}'", label));
 
-            let new_card = wb.own_card()?.unwrap();
             let queued = wb.propagate_card_update(&old_card, &new_card)?;
             if queued > 0 {
                 display::info(&format!("Update queued to {} contact(s)", queued));
@@ -239,6 +237,48 @@ pub fn edit_name(config: &CliConfig, name: &str) -> Result<()> {
 mod tests {
     use super::*;
     use proptest::prelude::*;
+
+    fn test_config(data_dir: std::path::PathBuf) -> CliConfig {
+        CliConfig {
+            data_dir,
+            relay_url: "http://127.0.0.1:9".to_string(),
+            ohttp_relay_url: None,
+            raw: false,
+        }
+    }
+
+    /// Trace: contact_card_management.feature - "Edit an existing field value"
+    // @scenario: contact_card_management:Edit an existing field preserves its identity
+    #[test]
+    fn test_edit_preserves_existing_field_identity() {
+        let data_dir = tempfile::TempDir::new().unwrap();
+        let config = test_config(data_dir.path().to_path_buf());
+        crate::commands::init::run("Alice", false, &config, "en").unwrap();
+
+        add(&config, "phone", "mobile", "+12025550100").unwrap();
+        let field_id = open_vauchi(&config)
+            .unwrap()
+            .own_card()
+            .unwrap()
+            .unwrap()
+            .fields()
+            .iter()
+            .find(|field| field.label() == "mobile")
+            .unwrap()
+            .id()
+            .to_string();
+
+        edit(&config, "mobile", "+12025550101").unwrap();
+
+        let card = open_vauchi(&config).unwrap().own_card().unwrap().unwrap();
+        let field = card
+            .fields()
+            .iter()
+            .find(|field| field.label() == "mobile")
+            .unwrap();
+        assert_eq!(field.id(), field_id);
+        assert_eq!(field.value(), "+12025550101");
+    }
 
     #[test]
     fn test_parse_field_type_email_aliases() {
