@@ -280,7 +280,7 @@ version = "0.17.0"
 criteria = "safe-to-deploy"
 
 [[exemptions.fastrand]]
-version = "2.4.1"
+version = "2.5.0"
 criteria = "safe-to-deploy"
 
 [[exemptions.find-msvc-tools]]
