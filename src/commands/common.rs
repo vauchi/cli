@@ -76,15 +76,22 @@ pub(crate) fn open_vauchi(config: &CliConfig) -> Result<Vauchi> {
 /// `e2e-test-clock` binary can pin `VAUCHI_TEST_CLOCK_EPOCH` and thread
 /// its clock into core. Shipping binaries always retain the system clock.
 fn build_vauchi(wb_config: VauchiConfig) -> Result<Vauchi> {
-    if crate::clock::is_pinned() {
-        Ok(Vauchi::new_with(
+    let clock = crate::clock::is_pinned().then(crate::clock::shared);
+    build_vauchi_with_clock(wb_config, clock)
+}
+
+fn build_vauchi_with_clock(
+    wb_config: VauchiConfig,
+    clock: Option<std::sync::Arc<dyn vauchi_core::clock::Clock>>,
+) -> Result<Vauchi> {
+    match clock {
+        Some(clock) => Ok(Vauchi::new_with(
             wb_config,
-            crate::clock::shared(),
+            clock,
             vauchi_core::rng::OsSecureRng::shared(),
             None,
-        )?)
-    } else {
-        Ok(Vauchi::new(wb_config)?)
+        )?),
+        None => Ok(Vauchi::new(wb_config)?),
     }
 }
 
@@ -164,21 +171,33 @@ pub(crate) fn drain_activity_log(wb: &Vauchi, rx: mpsc::Receiver<VauchiEvent>) {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[cfg(feature = "e2e-test-clock")]
+    use std::time::SystemTime;
     use tempfile::tempdir;
     use vauchi_core::Identity;
+    #[cfg(feature = "e2e-test-clock")]
+    use vauchi_core::clock::Clock;
+
+    #[cfg(feature = "e2e-test-clock")]
+    struct FixedClock(SystemTime);
+
+    #[cfg(feature = "e2e-test-clock")]
+    impl Clock for FixedClock {
+        fn now(&self) -> SystemTime {
+            self.0
+        }
+    }
 
     // @internal
     #[cfg(feature = "e2e-test-clock")]
     #[test]
     fn pinned_clock_threads_into_core_storage_clock() {
-        let _guard = crate::clock::env_lock();
-        let _reset = crate::clock::EnvReset;
-        crate::clock::set_epoch("1700000000");
-
         let temp_dir = tempdir().unwrap();
         let wb_config = VauchiConfig::with_storage_path(temp_dir.path().join("clock-pinned.db"))
             .with_storage_key(vauchi_core::crypto::SymmetricKey::generate());
-        let wb = build_vauchi(wb_config).expect("vauchi should open with pinned clock");
+        let pinned = SystemTime::UNIX_EPOCH + std::time::Duration::from_secs(1_700_000_000);
+        let wb = build_vauchi_with_clock(wb_config, Some(std::sync::Arc::new(FixedClock(pinned))))
+            .expect("vauchi should open with pinned clock");
 
         assert_eq!(
             wb.storage().clock().unix_seconds(),
@@ -190,15 +209,13 @@ mod tests {
     // @internal
     #[test]
     fn unpinned_clock_keeps_system_storage_clock() {
-        let _guard = crate::clock::env_lock();
-        let _reset = crate::clock::EnvReset;
-
         let temp_dir = tempdir().unwrap();
         let wb_config = VauchiConfig::with_storage_path(temp_dir.path().join("clock-system.db"))
             .with_storage_key(vauchi_core::crypto::SymmetricKey::generate());
 
         let before = std::time::SystemTime::now();
-        let wb = build_vauchi(wb_config).expect("vauchi should open with system clock");
+        let wb =
+            build_vauchi_with_clock(wb_config, None).expect("vauchi should open with system clock");
         let after = std::time::SystemTime::now();
         let got = wb
             .storage()

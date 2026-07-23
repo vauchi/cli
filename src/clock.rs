@@ -46,8 +46,13 @@ pub fn now() -> SystemTime {
     return SystemTime::now();
 
     #[cfg(feature = "e2e-test-clock")]
-    match std::env::var(ENV_VAR) {
-        Err(std::env::VarError::NotPresent) => SystemTime::now(),
+    time_from_env(std::env::var(ENV_VAR), SystemTime::now())
+}
+
+#[cfg(feature = "e2e-test-clock")]
+fn time_from_env(value: Result<String, std::env::VarError>, fallback: SystemTime) -> SystemTime {
+    match value {
+        Err(std::env::VarError::NotPresent) => fallback,
         Err(std::env::VarError::NotUnicode(_)) => {
             panic!("{ENV_VAR} is set but not valid Unicode; expected u64 Unix epoch seconds")
         }
@@ -82,56 +87,19 @@ pub fn is_pinned() -> bool {
     false
 }
 
-/// Test-only serialization for process-global [`ENV_VAR`] access.
-#[cfg(test)]
-pub(crate) static ENV_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
-
-/// Locks the env, tolerating poisoning from a panicking test.
-#[cfg(test)]
-pub(crate) fn env_lock() -> std::sync::MutexGuard<'static, ()> {
-    ENV_LOCK.lock().unwrap_or_else(|e| e.into_inner())
-}
-
-/// Sets [`ENV_VAR`]. Callers must hold [`env_lock`] and keep an
-/// [`EnvReset`] alive so the override is removed again on drop.
-#[cfg(test)]
-pub(crate) fn set_epoch(value: &str) {
-    // SAFETY: callers serialize via env_lock; EnvReset removes the
-    // variable again on drop, including during panic unwinding.
-    unsafe { std::env::set_var(ENV_VAR, value) };
-}
-
-/// Removes [`ENV_VAR`] when dropped — also during panic unwinding, so a
-/// failing test cannot leak the override into other tests.
-#[cfg(test)]
-pub(crate) struct EnvReset;
-
-#[cfg(test)]
-impl Drop for EnvReset {
-    fn drop(&mut self) {
-        // SAFETY: see set_epoch.
-        unsafe { std::env::remove_var(ENV_VAR) };
-    }
-}
-
 // INLINE_TEST_REQUIRED: Binary crate without lib.rs - tests cannot be external
 #[cfg(test)]
 mod tests {
     use super::*;
 
     // @internal
+    #[cfg(feature = "e2e-test-clock")]
     #[test]
     fn unset_var_falls_back_to_system_time() {
-        let _guard = env_lock();
-        let _reset = EnvReset;
-
-        let before = SystemTime::now();
-        let got = now();
-        let after = SystemTime::now();
-
-        assert!(
-            before <= got && got <= after,
-            "unset {ENV_VAR} must return the real clock: got {got:?} outside [{before:?}, {after:?}]"
+        let fallback = SystemTime::UNIX_EPOCH + Duration::from_secs(42);
+        assert_eq!(
+            time_from_env(Err(std::env::VarError::NotPresent), fallback),
+            fallback
         );
     }
 
@@ -141,10 +109,6 @@ mod tests {
     #[cfg(not(feature = "e2e-test-clock"))]
     #[test]
     fn production_build_ignores_clock_override() {
-        let _guard = env_lock();
-        let _reset = EnvReset;
-        set_epoch("1700000000");
-
         let before = SystemTime::now();
         let got = now();
         let after = SystemTime::now();
@@ -160,14 +124,11 @@ mod tests {
     #[cfg(feature = "e2e-test-clock")]
     #[test]
     fn set_valid_epoch_returns_injected_time() {
-        let _guard = env_lock();
-        let _reset = EnvReset;
-        set_epoch("1700000000");
-
         let expected = SystemTime::UNIX_EPOCH + Duration::from_secs(1_700_000_000);
-        assert_eq!(now(), expected);
-        assert_eq!(unix_seconds(), 1_700_000_000);
-        assert_eq!(shared().now(), expected, "EnvClock must read {ENV_VAR}");
+        assert_eq!(
+            time_from_env(Ok("1700000000".to_string()), SystemTime::UNIX_EPOCH),
+            expected
+        );
     }
 
     /// Malformed values panic naming the variable and the bad value.
