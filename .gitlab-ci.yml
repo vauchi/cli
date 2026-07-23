@@ -21,7 +21,7 @@
 # Include shared templates
 include:
   - project: 'vauchi/scripts'
-    ref: ci-templates-v2026.07.10
+    ref: ci-templates-v2026.07.11
     file:
       - '/ci-templates/rust-base.yml'
       - '/ci-templates/allow-direct-guard.yml'
@@ -45,7 +45,7 @@ include:
       - '/ci-templates/cross-cutting-lint.yml'
 
 variables:
-  VAUCHI_SCRIPTS_REF: "ci-templates-v2026.07.10"
+  VAUCHI_SCRIPTS_REF: "ci-templates-v2026.07.11"
 
 stages:
   - auto-tag
@@ -77,7 +77,7 @@ lint:format:
   needs: []
 
 lint:clippy:
-  extends: [.rust-runner-readonly, .lint-clippy, .validation-rust, .timeout-standard]
+  extends: [.rust-runner-readonly, .lint-clippy, .validation-rust, .timeout-cold-rebuild]
   needs: []
 
 lint:humble:
@@ -111,7 +111,7 @@ lint:machete:
 
 # MR: fast nextest (no coverage overhead)
 test:unit:
-  extends: [.rust-runner, .validation-rust, .timeout-quick]
+  extends: [.rust-runner, .validation-rust, .timeout-cold-rebuild]
   stage: test
   needs:
     - job: lint:format
@@ -126,7 +126,7 @@ test:unit:
 
 # Main: full coverage with llvm-cov
 coverage:workspace:
-  extends: [.coverage-job, .rust-runner, .timeout-long]
+  extends: [.coverage-job, .rust-runner, .timeout-cold-rebuild]
   before_script:
     - !reference [.self-hosted, before_script]
     - !reference [.git-credentials, before_script]
@@ -137,7 +137,7 @@ coverage:workspace:
 
 # Binary size tracking (main merges + release tags)
 perf:binary-size:
-  extends: [.binary-size-tracking-job, .rust-runner, .timeout-long]
+  extends: [.binary-size-tracking-job, .rust-runner, .timeout-cold-rebuild]
   before_script:
     - !reference [.self-hosted, before_script]
     - !reference [.git-credentials, before_script]
