@@ -14,9 +14,10 @@ name = "vauchi"
 path = "src/main.rs"
 
 [dependencies]
-# Core library - use git dependency for CI, patched to local path via .cargo/config.toml
-vauchi-core = { git = "https://gitlab.com/vauchi/core.git", tag = "v0.55.4-dev.5" }
-vauchi-app = { git = "https://gitlab.com/vauchi/core.git", tag = "v0.55.4-dev.5", features = ["network-native-tls"] }
+# Core library - use git dependencies for CI; local overrides are injected into
+# this manifest by `just setup-path-overrides`.
+vauchi-core = { git = "https://gitlab.com/vauchi/core.git", tag = "v0.56.0-dev.3" }
+vauchi-app = { git = "https://gitlab.com/vauchi/core.git", tag = "v0.56.0-dev.3", features = ["network-native-tls"] }
 
 # CLI framework
 clap = { version = "4", features = ["derive", "env"] }
@@ -100,4 +101,3 @@ split-debuginfo = "unpacked"
 [profile.test]
 debug = "line-tables-only"
 split-debuginfo = "off"
-
