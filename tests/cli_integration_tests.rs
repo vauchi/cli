@@ -1224,6 +1224,85 @@ mod emergency {
         );
     }
 
+    /// Non-interactive configure: the e2e certification harness drives the
+    /// CLI as a subprocess with no tty, so the flags must bypass every
+    /// dialoguer prompt (record:
+    /// 2026-07-24-duress-alert-e2e-coverage-gap).
+    /// Trace: emergency_broadcast.feature - "Configure emergency broadcast"
+    // @scenario: emergency_broadcast:Configure emergency broadcast
+    #[test]
+    fn test_emergency_configure_noninteractive_flags() {
+        let ctx = CliTestContext::new();
+        ctx.init("Alice Smith");
+
+        let output = ctx.run_success(&[
+            "emergency",
+            "configure",
+            "--contacts",
+            "contact-under-test",
+            "--message",
+            "check on me",
+        ]);
+        assert!(
+            output.contains("configured"),
+            "non-interactive configure must succeed, got: {}",
+            output
+        );
+
+        let status = ctx.run_success(&["emergency", "status"]);
+        assert!(
+            status.contains("check on me"),
+            "status must show the configured message, got: {}",
+            status
+        );
+        assert!(
+            !status.contains("NOT CONFIGURED"),
+            "status must be configured, got: {}",
+            status
+        );
+    }
+
+    /// Trace: emergency_broadcast.feature - "Send emergency broadcast"
+    // @scenario: emergency_broadcast:Send emergency broadcast
+    #[test]
+    fn test_emergency_send_yes_skips_confirmation() {
+        let ctx = CliTestContext::new();
+        ctx.init("Alice Smith");
+        ctx.run_success(&[
+            "emergency",
+            "configure",
+            "--contacts",
+            "no-such-contact",
+            "--message",
+            "check on me",
+        ]);
+
+        // The configured id resolves to no contact, so nothing can be
+        // queued — but the send itself must complete without a prompt and
+        // report the exact 0-of-1 outcome.
+        let output = ctx.run_success(&["emergency", "send", "--yes"]);
+        assert!(
+            output.contains("0/1"),
+            "unattended send must report 0/1 for an unresolvable contact, got: {}",
+            output
+        );
+    }
+
+    /// Trace: emergency_broadcast.feature - "View received alerts"
+    // @scenario: duress_mode:Duress unlock sends silent alert to trusted contacts
+    #[test]
+    fn test_alerts_empty_when_none_received() {
+        let ctx = CliTestContext::new();
+        ctx.init("Alice Smith");
+
+        let output = ctx.run_success(&["alerts"]);
+        assert!(
+            output.contains("No pending alerts"),
+            "alerts with none received must say so, got: {}",
+            output
+        );
+    }
+
     /// Trace: emergency_broadcast.feature - "Disable when not configured"
     // @scenario: emergency_broadcast:Disable emergency broadcast
     #[test]
