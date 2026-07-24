@@ -381,11 +381,16 @@ pub(crate) async fn run(
             }
         },
         Commands::Emergency(cmd) => match cmd {
-            EmergencyCommands::Configure => commands::emergency::configure(config)?,
-            EmergencyCommands::Send => commands::emergency::send(config)?,
+            EmergencyCommands::Configure {
+                contacts,
+                message,
+                include_location,
+            } => commands::emergency::configure(config, contacts, message, include_location)?,
+            EmergencyCommands::Send { yes } => commands::emergency::send(config, yes)?,
             EmergencyCommands::Status => commands::emergency::status(config)?,
             EmergencyCommands::Disable => commands::emergency::disable(config)?,
         },
+        Commands::Alerts => commands::emergency::alerts(config)?,
         Commands::Faq(cmd) => match cmd {
             FaqCommands::List { query } => {
                 display::display_faqs(query.as_deref(), locale);

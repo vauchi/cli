@@ -1251,13 +1251,13 @@ mod emergency {
 
         let status = ctx.run_success(&["emergency", "status"]);
         assert!(
-            status.contains("check on me"),
-            "status must show the configured message, got: {}",
+            status.contains("CONFIGURED") && !status.contains("NOT CONFIGURED"),
+            "status must be configured, got: {}",
             status
         );
         assert!(
-            !status.contains("NOT CONFIGURED"),
-            "status must be configured, got: {}",
+            status.contains("1 contact(s)"),
+            "status must count the configured contact, got: {}",
             status
         );
     }

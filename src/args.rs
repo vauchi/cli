@@ -143,6 +143,9 @@ pub(crate) enum Commands {
     #[command(subcommand)]
     Emergency(EmergencyCommands),
 
+    /// List received safety alerts (emergency and duress)
+    Alerts,
+
     /// Display FAQ and help information
     #[command(subcommand)]
     Faq(FaqCommands),
@@ -201,10 +204,24 @@ pub(crate) enum DuressCommands {
 #[derive(Subcommand)]
 pub(crate) enum EmergencyCommands {
     /// Configure trusted contacts and alert message
-    Configure,
+    Configure {
+        /// Comma-separated trusted contact IDs (prompts when omitted)
+        #[arg(long)]
+        contacts: Option<String>,
+        /// Alert message (default message when omitted)
+        #[arg(long)]
+        message: Option<String>,
+        /// Include location in the alert
+        #[arg(long)]
+        include_location: bool,
+    },
 
     /// Send emergency broadcast to all trusted contacts
-    Send,
+    Send {
+        /// Skip the confirmation prompt (unattended/scripted use)
+        #[arg(long)]
+        yes: bool,
+    },
 
     /// Show emergency broadcast configuration
     Status,
