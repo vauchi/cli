@@ -430,6 +430,11 @@ publish:package:cli:
   rules:
     - if: $CI_PIPELINE_SOURCE == "schedule"
       when: never
+    # An upstream-triggered rerun rebuilds the same SHA with newer core
+    # main — same package version, different content; the registry
+    # rejects the duplicate with 400. Only the push pipeline publishes.
+    - if: $CI_PIPELINE_SOURCE == "pipeline" || $CI_PIPELINE_SOURCE == "trigger"
+      when: never
     - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
     - if: $CI_COMMIT_TAG =~ /^v\d+\.\d+\.\d+$/
 
@@ -476,6 +481,8 @@ github-mirror:
   extends: .github-mirror
   rules:
     - if: $CI_PIPELINE_SOURCE == "schedule"
+      when: never
+    - if: $CI_PIPELINE_SOURCE == "pipeline" || $CI_PIPELINE_SOURCE == "trigger"
       when: never
     - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
     - if: $CI_COMMIT_TAG =~ /^v\d+\.\d+\.\d+/
