@@ -35,32 +35,34 @@ job_block() {
     ' "$ci_config"
 }
 
-require_schedule_guard() {
+require_source_guard() {
     job=$1
+    source_pattern=$2
+    source_label=$3
     block=$(job_block "$job")
-    schedule_line=$(printf '%s\n' "$block" |
-        grep -n 'CI_PIPELINE_SOURCE == "schedule"' |
+    guard_line=$(printf '%s\n' "$block" |
+        grep -n "CI_PIPELINE_SOURCE == \"$source_pattern\"" |
         head -1 | cut -d: -f1 || true)
     default_line=$(printf '%s\n' "$block" |
         grep -n 'CI_COMMIT_BRANCH == \$CI_DEFAULT_BRANCH' |
         head -1 | cut -d: -f1 || true)
 
-    if [ -n "$schedule_line" ] &&
+    if [ -n "$guard_line" ] &&
         [ -n "$default_line" ] &&
-        [ "$schedule_line" -lt "$default_line" ] &&
+        [ "$guard_line" -lt "$default_line" ] &&
         printf '%s\n' "$block" |
-        sed -n "${schedule_line},$((schedule_line + 1))p" |
+        sed -n "${guard_line},$((guard_line + 1))p" |
         grep -q 'when: never'; then
-        echo "PASS: $job excludes schedules before the default branch"
+        echo "PASS: $job excludes $source_label before the default branch"
     else
-        echo "FAIL: $job must exclude schedules before the default branch" >&2
+        echo "FAIL: $job must exclude $source_label before the default branch" >&2
         failures=$((failures + 1))
     fi
 }
 
 for job in auto-tag:version publish:package:cli pages github-mirror
 do
-    require_schedule_guard "$job"
+    require_source_guard "$job" schedule schedules
 done
 
 if [ "$failures" -ne 0 ]; then
