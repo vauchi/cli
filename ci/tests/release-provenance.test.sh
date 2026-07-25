@@ -63,6 +63,7 @@ require_source_guard() {
 for job in auto-tag:version publish:package:cli pages github-mirror
 do
     require_source_guard "$job" schedule schedules
+    require_source_guard "$job" pipeline "triggered pipelines"
 done
 
 if [ "$failures" -ne 0 ]; then
