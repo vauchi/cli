@@ -21,7 +21,7 @@
 # Include shared templates
 include:
   - project: 'vauchi/scripts'
-    ref: ci-templates-v2026.07.11
+    ref: feature/contextual-command-surface
     file:
       - '/ci-templates/rust-base.yml'
       - '/ci-templates/allow-direct-guard.yml'
@@ -219,23 +219,25 @@ check:core-freshness:
 check:branch-refs:
   extends: .check-git-branch-refs
 
-# Design drift: verify all design-spec components are handled in renderer
+# Presentation drift: verify every canonical presentation node is rendered.
 check:design-drift:
   extends: .design-drift-job
   variables:
     DESIGN_DRIFT_MATCH_MODE: "grep"
-    DESIGN_DRIFT_GREP_FILE: "src/ui/screen_renderer.rs"
+    DESIGN_DRIFT_GREP_FILE: "src/ui/presentation"
+    DESIGN_DRIFT_PROTOCOL: "presentation"
+    CORE_REF: "feature/contextual-command-surface"
   rules:
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
       changes:
         compare_to: refs/heads/$CI_DEFAULT_BRANCH
         paths:
-          - "src/ui/screen_renderer.rs"
+          - "src/ui/presentation/**"
           - ".gitlab-ci.yml"
     - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
       changes:
         paths:
-          - "src/ui/screen_renderer.rs"
+          - "src/ui/presentation/**"
           - ".gitlab-ci.yml"
 
 # Vendored fixtures drift: cli/tests/fixtures/golden/ must match
