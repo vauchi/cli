@@ -21,7 +21,7 @@
 # Include shared templates
 include:
   - project: 'vauchi/scripts'
-    ref: feature/contextual-command-surface
+    ref: 4e2c91d387aed482b80bd24e1b8d94477152aeef
     file:
       - '/ci-templates/rust-base.yml'
       - '/ci-templates/allow-direct-guard.yml'
@@ -45,7 +45,7 @@ include:
       - '/ci-templates/cross-cutting-lint.yml'
 
 variables:
-  VAUCHI_SCRIPTS_REF: "ci-templates-v2026.07.11"
+  VAUCHI_SCRIPTS_REF: "4e2c91d387aed482b80bd24e1b8d94477152aeef"
 
 stages:
   - auto-tag
@@ -226,7 +226,7 @@ check:design-drift:
     DESIGN_DRIFT_MATCH_MODE: "grep"
     DESIGN_DRIFT_GREP_FILE: "src/ui/presentation"
     DESIGN_DRIFT_PROTOCOL: "presentation"
-    CORE_REF: "feature/contextual-command-surface"
+    CORE_REF: "v0.59.0"
   rules:
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
       changes:
