@@ -2,10 +2,6 @@
 //
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-//! CLI text renderer for core-driven UI.
-//!
-//! Maps core UI types (ScreenModel, Component) to formatted terminal output
-//! and reads user input back as UserAction.
+//! Generic terminal adapter for the Core command/event protocol.
 
-pub mod action_handler;
-pub mod screen_renderer;
+pub mod presentation;
