@@ -2,11 +2,42 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 use super::*;
+use serde::Deserialize;
 use vauchi_core::{
-    AccessibilitySpec, ActionSpec, ActionTone, BindingId, Command, ContextBar, FilePickPurpose,
-    InputValue, InteractionId, PresentationInputKind, PresentationNode, PresentationTextStyle,
-    PresentationTokens, StandardShortcut, SurfaceId, SurfaceLayout, SurfaceSpec,
+    AccessibilitySpec, ActionSpec, ActionTone, BindingId, Command, ContextBar, Event,
+    FilePickPurpose, InputValue, InteractionId, PresentationInputKind, PresentationNode,
+    PresentationTextStyle, PresentationTokens, StandardShortcut, SurfaceId, SurfaceLayout,
+    SurfaceSpec,
 };
+
+// Fixture versions are exact contracts: additive fields require an explicit
+// consumer review rather than being ignored silently.
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct PresentationContractFixture {
+    schema_version: u64,
+    initial_commands: Vec<Command>,
+    steps: Vec<PresentationContractStep>,
+    expected_state: ExpectedPresentationState,
+}
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct PresentationContractStep {
+    // The CLI replays Core's commands, but decoding the event still verifies
+    // that this consumer agrees with the shell-to-Core wire shape.
+    #[serde(rename = "event")]
+    _event: Event,
+    commands: Vec<Command>,
+}
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct ExpectedPresentationState {
+    active_surface_id: SurfaceId,
+    surface: SurfaceSpec,
+    context_bar: ContextBar,
+}
 
 fn action(id: &str, label: &str) -> ActionSpec {
     ActionSpec {
@@ -145,6 +176,50 @@ fn renderer_and_activation_use_only_generic_protocol_values() {
             surface_id: SurfaceId::new("welcome").unwrap(),
             interaction_id: InteractionId::new("opaque-token").unwrap(),
         })
+    );
+}
+
+// @scenario: generic_presentation_protocol.feature :: Every shell renders the same prepared presentation
+#[test]
+fn cli_consumes_the_core_owned_presentation_contract_fixture() {
+    let fixture: PresentationContractFixture =
+        serde_json::from_str(vauchi_app::ui::presentation_contract_fixture_json())
+            .expect("failed to deserialize Core-owned presentation contract fixture");
+    let mut state = PresentationState::default();
+
+    assert_eq!(
+        fixture.schema_version, 1,
+        "fixture schema changed; re-verify the CLI reducer contract"
+    );
+    assert!(!fixture.initial_commands.is_empty());
+    assert!(!fixture.steps.is_empty());
+    assert_eq!(
+        fixture.expected_state.surface.surface_id,
+        fixture.expected_state.active_surface_id
+    );
+
+    let effects = state.apply(&fixture.initial_commands);
+    assert!(
+        effects.is_empty(),
+        "initial fixture batch emitted shell effects: {effects:?}"
+    );
+    for (index, step) in fixture.steps.into_iter().enumerate() {
+        assert!(!step.commands.is_empty(), "fixture step {index} is empty");
+        let effects = state.apply(&step.commands);
+        assert!(
+            effects.is_empty(),
+            "fixture step {index} emitted shell effects: {effects:?}"
+        );
+    }
+
+    assert_eq!(
+        state.surface().map(|surface| surface.surface_id.as_str()),
+        Some(fixture.expected_state.active_surface_id.as_str())
+    );
+    assert_eq!(state.surface(), Some(&fixture.expected_state.surface));
+    assert_eq!(
+        state.context_bar(),
+        Some(&fixture.expected_state.context_bar)
     );
 }
 
