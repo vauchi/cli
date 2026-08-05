@@ -113,6 +113,10 @@ pub(crate) enum Commands {
         /// Export full backup (identity + contacts + own card + labels)
         #[arg(long)]
         full: bool,
+        /// Backup password (skips interactive prompt; use env var
+        /// VAUCHI_BACKUP_PASSWORD for scripted/test use)
+        #[arg(long, env = "VAUCHI_BACKUP_PASSWORD", hide = true)]
+        password: Option<String>,
     },
 
     /// Import from backup
@@ -122,6 +126,10 @@ pub(crate) enum Commands {
         /// Import full backup (identity + contacts + own card + labels)
         #[arg(long)]
         full: bool,
+        /// Backup password (skips interactive prompt; use env var
+        /// VAUCHI_BACKUP_PASSWORD for scripted/test use)
+        #[arg(long, env = "VAUCHI_BACKUP_PASSWORD", hide = true)]
+        password: Option<String>,
     },
 
     /// Generate shell completions
@@ -890,6 +898,34 @@ mod tests {
         // Unset: core derives the OHTTP endpoint from the relay URL.
         let cli = Cli::parse_from(["vauchi", "sync"]);
         assert_eq!(cli.ohttp_relay, None);
+    }
+
+    // @internal
+    #[test]
+    fn backup_password_flag_parses_for_export_and_import() {
+        let export = Cli::parse_from(["vauchi", "export", "out.vauchi", "--password", "hunter2"]);
+        let Commands::Export { password, .. } = export.command else {
+            panic!("expected export");
+        };
+        assert_eq!(password.as_deref(), Some("hunter2"));
+
+        let import = Cli::parse_from(["vauchi", "import", "in.vauchi", "--password", "hunter2"]);
+        let Commands::Import { password, .. } = import.command else {
+            panic!("expected import");
+        };
+        assert_eq!(password.as_deref(), Some("hunter2"));
+    }
+
+    // @internal
+    #[test]
+    fn backup_password_defaults_to_none_so_the_prompt_still_runs() {
+        // Unset must stay None — a default would silently skip the interactive
+        // confirmation and encrypt a backup under a password nobody chose.
+        let cli = Cli::parse_from(["vauchi", "export", "out.vauchi"]);
+        let Commands::Export { password, .. } = cli.command else {
+            panic!("expected export");
+        };
+        assert_eq!(password, None);
     }
 
     // @internal

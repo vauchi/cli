@@ -10,7 +10,7 @@ use std::fs;
 use std::path::Path;
 
 use anyhow::Result;
-use dialoguer::{Input, Password};
+use dialoguer::Input;
 use vauchi_core::{Identity, IdentityBackup, Vauchi, VauchiConfig};
 
 use crate::commands::common::open_vauchi;
@@ -18,19 +18,14 @@ use crate::config::CliConfig;
 use crate::display;
 
 /// Exports an identity backup.
-pub fn export(config: &CliConfig, output: &Path) -> Result<()> {
+pub fn export(config: &CliConfig, output: &Path, password: &str) -> Result<()> {
     let wb = open_vauchi(config)?;
 
     let identity = wb
         .identity()
         .ok_or_else(|| anyhow::anyhow!("No identity found"))?;
 
-    let password: String = Password::new()
-        .with_prompt("Enter backup password")
-        .with_confirmation("Confirm password", "Passwords don't match")
-        .interact()?;
-
-    let backup = identity.export_backup(&password)?;
+    let backup = identity.export_backup(password)?;
 
     fs::write(output, backup.as_bytes())?;
 
@@ -41,7 +36,7 @@ pub fn export(config: &CliConfig, output: &Path) -> Result<()> {
 }
 
 /// Imports an identity from backup.
-pub fn import(config: &CliConfig, input: &Path) -> Result<()> {
+pub fn import(config: &CliConfig, input: &Path, password: &str) -> Result<()> {
     if config.is_initialized() {
         display::warning("Vauchi is already initialized.");
 
@@ -58,12 +53,8 @@ pub fn import(config: &CliConfig, input: &Path) -> Result<()> {
     let backup_data = fs::read(input)?;
     let backup = IdentityBackup::new(backup_data);
 
-    let password: String = Password::new()
-        .with_prompt("Enter backup password")
-        .interact()?;
-
     let identity =
-        Identity::import_backup(&backup, &password, crate::clock::shared().unix_seconds())?;
+        Identity::import_backup(&backup, password, crate::clock::shared().unix_seconds())?;
 
     let name = identity.display_name().to_string();
 
@@ -78,22 +69,23 @@ pub fn import(config: &CliConfig, input: &Path) -> Result<()> {
     let mut wb = Vauchi::new(wb_config)?;
     wb.set_identity(identity)?;
 
+    let public_id = wb.public_id()?;
+
     display::success(&format!("Identity restored: {}", name));
+    println!();
+    println!("  Public ID: {}", public_id);
+    println!("  Data dir:  {:?}", config.data_dir);
+    println!();
     display::info("Your contacts and card will need to sync from the relay.");
 
     Ok(())
 }
 
 /// Exports a full backup (identity + contacts + own card + labels).
-pub fn export_full(config: &CliConfig, output: &Path) -> Result<()> {
+pub fn export_full(config: &CliConfig, output: &Path, password: &str) -> Result<()> {
     let wb = open_vauchi(config)?;
 
-    let password: String = Password::new()
-        .with_prompt("Enter backup password")
-        .with_confirmation("Confirm password", "Passwords don't match")
-        .interact()?;
-
-    let backup_hex = wb.export_full_backup(&password)?;
+    let backup_hex = wb.export_full_backup(password)?;
     fs::write(output, backup_hex.as_bytes())?;
 
     display::success(&format!("Full backup saved to {:?}", output));
@@ -105,7 +97,7 @@ pub fn export_full(config: &CliConfig, output: &Path) -> Result<()> {
 }
 
 /// Imports a full backup (identity + contacts + own card + labels).
-pub fn import_full(config: &CliConfig, input: &Path) -> Result<()> {
+pub fn import_full(config: &CliConfig, input: &Path, password: &str) -> Result<()> {
     if config.is_initialized() {
         display::warning("Vauchi is already initialized.");
 
@@ -121,10 +113,6 @@ pub fn import_full(config: &CliConfig, input: &Path) -> Result<()> {
 
     let backup_hex = fs::read_to_string(input)?;
 
-    let password: String = Password::new()
-        .with_prompt("Enter backup password")
-        .interact()?;
-
     fs::create_dir_all(&config.data_dir)?;
 
     let wb_config = VauchiConfig::with_storage_path(config.storage_path())
@@ -132,14 +120,26 @@ pub fn import_full(config: &CliConfig, input: &Path) -> Result<()> {
         .with_storage_key(config.storage_key()?);
 
     let mut wb = Vauchi::new(wb_config)?;
-    wb.import_full_backup(&backup_hex, &password)?;
+    wb.import_full_backup(&backup_hex, password)?;
 
-    let name = wb
-        .identity()
+    let identity_ref = wb.identity();
+    let name = identity_ref
         .map(|id| id.display_name().to_string())
         .unwrap_or_default();
 
+    if let Some(identity) = identity_ref {
+        config.save_local_identity(identity)?;
+    }
+
+    let public_id = wb.public_id().ok();
+
     display::success(&format!("Full backup restored: {}", name));
+    if let Some(public_id) = public_id {
+        println!();
+        println!("  Public ID: {}", public_id);
+        println!("  Data dir:  {:?}", config.data_dir);
+        println!();
+    }
     display::info("Identity, contacts, own card, and labels have been restored.");
 
     Ok(())

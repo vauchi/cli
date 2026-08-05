@@ -302,18 +302,39 @@ pub(crate) async fn run(
         Commands::Activity { since } => {
             commands::activity::run(config, since.unwrap_or(60))?;
         }
-        Commands::Export { output, full } => {
+        Commands::Export {
+            output,
+            full,
+            password,
+        } => {
+            let password = match password {
+                Some(pw) => pw,
+                None => dialoguer::Password::new()
+                    .with_prompt("Enter backup password")
+                    .with_confirmation("Confirm password", "Passwords don't match")
+                    .interact()?,
+            };
             if full {
-                commands::backup::export_full(config, &output)?;
+                commands::backup::export_full(config, &output, &password)?;
             } else {
-                commands::backup::export(config, &output)?;
+                commands::backup::export(config, &output, &password)?;
             }
         }
-        Commands::Import { input, full } => {
+        Commands::Import {
+            input,
+            full,
+            password,
+        } => {
+            let password = match password {
+                Some(pw) => pw,
+                None => dialoguer::Password::new()
+                    .with_prompt("Enter backup password")
+                    .interact()?,
+            };
             if full {
-                commands::backup::import_full(config, &input)?;
+                commands::backup::import_full(config, &input, &password)?;
             } else {
-                commands::backup::import(config, &input)?;
+                commands::backup::import(config, &input, &password)?;
             }
         }
         Commands::Completions { shell } => {
