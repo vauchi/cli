@@ -187,6 +187,11 @@ impl CliConfig {
     }
 
     /// Saves the identity to the local persistence file.
+    ///
+    /// Test-only: production no longer writes identity.json — core persists
+    /// identities into its own storage. Kept for tests that stage the legacy
+    /// file to exercise the `open_vauchi` migration fallback.
+    #[cfg(test)]
     pub fn save_local_identity(&self, identity: &Identity) -> Result<()> {
         let password = self.backup_password()?;
         let backup = identity

@@ -18,7 +18,7 @@ use vauchi_core::exchange::{
 use vauchi_core::sync::DeviceLinkIntent;
 use vauchi_core::{Vauchi, VauchiConfig};
 
-use crate::commands::common::open_vauchi;
+use crate::commands::common::{identity_exists, open_vauchi};
 use crate::commands::device_link_persistence::persist_updated_registry;
 use crate::config::CliConfig;
 use crate::display;
@@ -139,7 +139,7 @@ pub fn join(
     device_name_arg: Option<&str>,
     yes: bool,
 ) -> Result<()> {
-    if config.is_initialized() {
+    if identity_exists(config) {
         display::warning("Vauchi is already initialized on this device.");
 
         if !yes {
@@ -340,15 +340,9 @@ pub fn finish(config: &CliConfig, response_data: &str) -> Result<()> {
         .with_relay_url(&config.relay_url)
         .with_storage_key(config.storage_key()?);
     let mut wb = Vauchi::new(wb_config)?;
+    // Core adopts the linked identity into its encrypted storage; no
+    // frontend-side identity copy is needed.
     wb.adopt_device_link_response(&response, device_name)?;
-
-    // Keep the CLI's portable recovery copy in sync with the identity core
-    // adopted into encrypted storage. Device-link interpretation and sync
-    // application remain wholly inside core.
-    let identity = wb
-        .identity()
-        .ok_or_else(|| anyhow::anyhow!("Core did not retain the linked identity"))?;
-    config.save_local_identity(identity)?;
 
     display::success(&format!("Joined identity: {}", response.display_name()));
     display::info(&format!("Device index: {}", response.device_index()));

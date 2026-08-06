@@ -478,8 +478,7 @@ pub fn settings_show(config: &CliConfig) -> Result<()> {
         settings.verification_threshold()
     );
 
-    if config.is_initialized()
-        && let Ok(wb) = open_vauchi(config)
+    if let Ok(wb) = open_vauchi(config)
         && let Ok(readiness) = wb.get_recovery_readiness()
     {
         println!();

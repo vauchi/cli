@@ -253,7 +253,9 @@ fn ws_to_http(url: &str) -> String {
 /// Executes a scheduled identity deletion after the grace period.
 pub async fn execute_deletion(config: &CliConfig) -> Result<()> {
     let wb = open_vauchi(config)?;
-    let identity = config.import_local_identity()?;
+    let identity = wb
+        .identity()
+        .ok_or_else(|| anyhow::anyhow!("No identity found"))?;
 
     let manager = DeletionManager::new(wb.storage());
     let state = manager.deletion_state()?;
@@ -300,7 +302,7 @@ pub async fn execute_deletion(config: &CliConfig) -> Result<()> {
     let shred_manager = ShredManager::new(
         wb.storage(),
         secure_storage.as_ref(),
-        &identity,
+        identity,
         &config.data_dir,
     );
 
@@ -325,7 +327,9 @@ pub async fn execute_deletion(config: &CliConfig) -> Result<()> {
 /// Emergency immediate deletion — no grace period.
 pub async fn panic_shred(config: &CliConfig) -> Result<()> {
     let wb = open_vauchi(config)?;
-    let identity = config.import_local_identity()?;
+    let identity = wb
+        .identity()
+        .ok_or_else(|| anyhow::anyhow!("No identity found"))?;
 
     let confirm: String = Input::new()
         .with_prompt("EMERGENCY: This will immediately destroy ALL data. Type 'PANIC' to confirm")
@@ -341,7 +345,7 @@ pub async fn panic_shred(config: &CliConfig) -> Result<()> {
     let shred_manager = ShredManager::new(
         wb.storage(),
         secure_storage.as_ref(),
-        &identity,
+        identity,
         &config.data_dir,
     );
 

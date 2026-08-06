@@ -11,12 +11,13 @@ use std::fs;
 use anyhow::{Result, bail};
 use vauchi_core::{Vauchi, VauchiConfig};
 
+use crate::commands::common::identity_exists;
 use crate::config::CliConfig;
 use crate::display;
 
 /// Creates a new identity.
 pub fn run(name: &str, force: bool, config: &CliConfig, locale: &str) -> Result<()> {
-    if config.is_initialized() && !force {
+    if identity_exists(config) && !force {
         bail!(
             "Vauchi is already initialized in {:?}. Use --force to overwrite or --data-dir for a different location.",
             config.data_dir
@@ -38,6 +39,7 @@ pub fn run(name: &str, force: bool, config: &CliConfig, locale: &str) -> Result<
         .with_storage_key(config.storage_key()?);
 
     let mut wb = Vauchi::new(wb_config)?;
+    // Core persists the new identity into its encrypted storage.
     wb.create_identity(name)?;
 
     if let Err(e) = wb.initialize_demo_contact() {
@@ -51,11 +53,6 @@ pub fn run(name: &str, force: bool, config: &CliConfig, locale: &str) -> Result<
             )
         );
     }
-
-    let identity = wb
-        .identity()
-        .ok_or_else(|| anyhow::anyhow!("Identity not found after creation"))?;
-    config.save_local_identity(identity)?;
 
     let public_id = wb.public_id()?;
 

@@ -12,14 +12,12 @@ use crate::config::CliConfig;
 
 /// Opens Vauchi from the config and loads the identity.
 ///
-/// Checks that Vauchi has been initialized (identity file exists),
-/// builds a [`VauchiConfig`] from the CLI config, creates a [`Vauchi`]
-/// instance, and loads the local identity into it.
+/// Initialization state is owned by core: a [`Vauchi`] instance auto-loads
+/// the identity from its encrypted storage. The legacy `identity.json` file
+/// is only a migration source for installs that predate core storage; when
+/// core storage is empty and no legacy file exists, Vauchi is not
+/// initialized.
 pub(crate) fn open_vauchi(config: &CliConfig) -> Result<Vauchi> {
-    if !config.is_initialized() {
-        bail!("Vauchi not initialized. Run 'vauchi init <name>' first.");
-    }
-
     // `mut` is only needed on debug builds where the direct-HTTP escape
     // hatch below may flip `ohttp.allow_direct`.
     let mut wb_config = VauchiConfig::with_storage_path(config.storage_path())
@@ -63,13 +61,24 @@ pub(crate) fn open_vauchi(config: &CliConfig) -> Result<Vauchi> {
 
     let mut wb = build_vauchi(wb_config)?;
 
-    // Core now auto-loads identity from storage; only set from file if not already loaded
+    // Core auto-loads identity from its storage. The legacy identity file
+    // is only a fallback for pre-core-storage installs (migration source).
     if wb.identity().is_none() {
+        if !config.is_initialized() {
+            bail!("Vauchi not initialized. Run 'vauchi init <name>' first.");
+        }
         let identity = config.import_local_identity()?;
         wb.set_identity(identity)?;
     }
 
     Ok(wb)
+}
+
+/// Returns true when an identity exists in core storage or in the legacy
+/// identity file. Replaces direct `CliConfig::is_initialized` checks so
+/// callers follow core-owned initialization state.
+pub(crate) fn identity_exists(config: &CliConfig) -> bool {
+    open_vauchi(config).is_ok()
 }
 
 /// Builds the Vauchi instance for `wb_config`. Only the dedicated
