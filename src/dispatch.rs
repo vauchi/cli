@@ -324,6 +324,7 @@ pub(crate) async fn run(
             input,
             full,
             password,
+            yes,
         } => {
             let password = match password {
                 Some(pw) => pw,
@@ -332,9 +333,9 @@ pub(crate) async fn run(
                     .interact()?,
             };
             if full {
-                commands::backup::import_full(config, &input, &password)?;
+                commands::backup::import_full(config, &input, &password, yes)?;
             } else {
-                commands::backup::import(config, &input, &password)?;
+                commands::backup::import(config, &input, &password, yes)?;
             }
         }
         Commands::Completions { shell } => {

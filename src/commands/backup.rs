@@ -36,8 +36,12 @@ pub fn export(config: &CliConfig, output: &Path, password: &str) -> Result<()> {
 }
 
 /// Imports an identity from backup.
-pub fn import(config: &CliConfig, input: &Path, password: &str) -> Result<()> {
-    if !confirm_overwrite(config)? {
+///
+/// Identity-only restore overwrites the identity row in place — contacts,
+/// labels, and the own card are preserved, so no local state is reset.
+/// A wrong password fails inside core before anything is written.
+pub fn import(config: &CliConfig, input: &Path, password: &str, yes: bool) -> Result<()> {
+    if !confirm_overwrite(config, yes)? {
         return Ok(());
     }
 
@@ -86,12 +90,24 @@ pub fn export_full(config: &CliConfig, output: &Path, password: &str) -> Result<
 }
 
 /// Imports a full backup (identity + contacts + own card + labels).
-pub fn import_full(config: &CliConfig, input: &Path, password: &str) -> Result<()> {
-    if !confirm_overwrite(config)? {
+pub fn import_full(config: &CliConfig, input: &Path, password: &str, yes: bool) -> Result<()> {
+    if !confirm_overwrite(config, yes)? {
         return Ok(());
     }
 
     let backup_hex = fs::read_to_string(input)?;
+
+    // Validate and decrypt BEFORE touching local state: a typo'd path or
+    // wrong password must leave the existing install fully intact. Core
+    // rejects full restores onto an initialized instance
+    // (`AlreadyInitialized`), so the reset happens only after the backup
+    // is proven readable.
+    let backup_bytes =
+        hex::decode(backup_hex.trim()).map_err(|e| anyhow::anyhow!("Invalid backup file: {e}"))?;
+    vauchi_core::backup::import_full_backup(&backup_bytes, password)
+        .map_err(|e| anyhow::anyhow!("Backup validation failed (wrong password?): {e}"))?;
+
+    crate::commands::common::reset_local_state(config)?;
 
     fs::create_dir_all(&config.data_dir)?;
 
@@ -107,17 +123,15 @@ pub fn import_full(config: &CliConfig, input: &Path, password: &str) -> Result<(
     let name = wb
         .identity()
         .map(|id| id.display_name().to_string())
-        .unwrap_or_default();
+        .ok_or_else(|| anyhow::anyhow!("Identity missing after restore"))?;
 
-    let public_id = wb.public_id().ok();
+    let public_id = wb.public_id()?;
 
     display::success(&format!("Full backup restored: {}", name));
-    if let Some(public_id) = public_id {
-        println!();
-        println!("  Public ID: {}", public_id);
-        println!("  Data dir:  {:?}", config.data_dir);
-        println!();
-    }
+    println!();
+    println!("  Public ID: {}", public_id);
+    println!("  Data dir:  {:?}", config.data_dir);
+    println!();
     display::info("Identity, contacts, own card, and labels have been restored.");
 
     Ok(())
@@ -125,12 +139,17 @@ pub fn import_full(config: &CliConfig, input: &Path, password: &str) -> Result<(
 
 /// Guards a restore onto an initialized workspace.
 ///
-/// Returns false when the user cancels the overwrite prompt. On confirmation
-/// the existing core storage and the legacy identity file are removed so the
-/// restore lands on a fresh instance — core rejects imports onto an instance
-/// that already holds an identity (`AlreadyInitialized`).
-fn confirm_overwrite(config: &CliConfig) -> Result<bool> {
-    if !identity_exists(config) {
+/// Fails closed on probe errors and returns false when the user cancels.
+/// `yes` skips the prompt for scripted/E2E use (the probe still runs).
+/// Never touches local state: callers decide whether a reset is needed
+/// (full restores, after validating the backup) or not (identity-only
+/// restores overwrite the identity row in place).
+fn confirm_overwrite(config: &CliConfig, yes: bool) -> Result<bool> {
+    if !identity_exists(config)? {
+        return Ok(true);
+    }
+
+    if yes {
         return Ok(true);
     }
 
@@ -143,15 +162,6 @@ fn confirm_overwrite(config: &CliConfig) -> Result<bool> {
     if confirm.to_lowercase() != "yes" {
         display::info("Import cancelled.");
         return Ok(false);
-    }
-
-    let storage_path = config.storage_path();
-    if storage_path.exists() {
-        fs::remove_file(&storage_path)?;
-    }
-    let identity_path = config.identity_path();
-    if identity_path.exists() {
-        fs::remove_file(&identity_path)?;
     }
 
     Ok(true)

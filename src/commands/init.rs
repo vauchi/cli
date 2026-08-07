@@ -11,13 +11,13 @@ use std::fs;
 use anyhow::{Result, bail};
 use vauchi_core::{Vauchi, VauchiConfig};
 
-use crate::commands::common::identity_exists;
+use crate::commands::common::{identity_exists, reset_local_state};
 use crate::config::CliConfig;
 use crate::display;
 
 /// Creates a new identity.
 pub fn run(name: &str, force: bool, config: &CliConfig, locale: &str) -> Result<()> {
-    if identity_exists(config) && !force {
+    if identity_exists(config)? && !force {
         bail!(
             "Vauchi is already initialized in {:?}. Use --force to overwrite or --data-dir for a different location.",
             config.data_dir
@@ -26,12 +26,11 @@ pub fn run(name: &str, force: bool, config: &CliConfig, locale: &str) -> Result<
 
     fs::create_dir_all(&config.data_dir)?;
 
-    // When forcing, remove old storage so Vauchi::new() starts fresh
+    // When forcing, remove ALL old state (core DB + WAL sidecars + the
+    // legacy identity file) so Vauchi::new() starts fresh and no stale
+    // identity can be resurrected via the open_vauchi fallback.
     if force {
-        let storage_path = config.storage_path();
-        if storage_path.exists() {
-            fs::remove_file(&storage_path)?;
-        }
+        reset_local_state(config)?;
     }
 
     let wb_config = VauchiConfig::with_storage_path(config.storage_path())

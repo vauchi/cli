@@ -130,6 +130,9 @@ pub(crate) enum Commands {
         /// VAUCHI_BACKUP_PASSWORD for scripted/test use)
         #[arg(long, env = "VAUCHI_BACKUP_PASSWORD", hide = true)]
         password: Option<String>,
+        /// Skip the overwrite confirmation prompt (for scripted/E2E use)
+        #[arg(long, short = 'y')]
+        yes: bool,
     },
 
     /// Generate shell completions
@@ -914,6 +917,22 @@ mod tests {
             panic!("expected import");
         };
         assert_eq!(password.as_deref(), Some("hunter2"));
+    }
+
+    // @internal
+    #[test]
+    fn import_yes_flag_parses_and_defaults_to_false() {
+        let bare = Cli::parse_from(["vauchi", "import", "in.vauchi"]);
+        let Commands::Import { yes, .. } = bare.command else {
+            panic!("expected import");
+        };
+        assert!(!yes, "unset must keep the interactive confirmation");
+
+        let flagged = Cli::parse_from(["vauchi", "import", "in.vauchi", "--yes"]);
+        let Commands::Import { yes, .. } = flagged.command else {
+            panic!("expected import");
+        };
+        assert!(yes);
     }
 
     // @internal

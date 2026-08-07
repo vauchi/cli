@@ -173,15 +173,18 @@ mod identity_management {
 
     /// Trace: identity_management.feature - "Create encrypted identity backup"
     // @scenario: identity_management:Create encrypted identity backup
-    /// Note: Skipped - export requires interactive password input via dialoguer
     #[test]
-    #[ignore = "requires interactive terminal for password input"]
     fn test_export_creates_backup() {
         let ctx = CliTestContext::new();
         ctx.init("Alice Smith");
 
         let backup_path = ctx.data_dir.path().join("backup.json");
-        let output = ctx.run_success(&["export", backup_path.to_str().unwrap()]);
+        let output = ctx.run_success(&[
+            "export",
+            backup_path.to_str().unwrap(),
+            "--password",
+            "correct horse battery staple 42",
+        ]);
 
         assert!(output.contains("exported") || output.contains("Backup"));
         assert!(backup_path.exists());
@@ -189,18 +192,26 @@ mod identity_management {
 
     /// Trace: identity_management.feature - "Restore identity from backup"
     // @scenario: identity_management:Restore identity from backup
-    /// Note: Skipped - import requires interactive password input via dialoguer
     #[test]
-    #[ignore = "requires interactive terminal for password input"]
     fn test_import_restores_identity() {
         let ctx1 = CliTestContext::new();
         ctx1.init("Alice Smith");
 
         let backup_path = ctx1.data_dir.path().join("backup.json");
-        ctx1.run_success(&["export", backup_path.to_str().unwrap()]);
+        ctx1.run_success(&[
+            "export",
+            backup_path.to_str().unwrap(),
+            "--password",
+            "correct horse battery staple 42",
+        ]);
 
         let ctx2 = CliTestContext::new();
-        let output = ctx2.run_success(&["import", backup_path.to_str().unwrap()]);
+        let output = ctx2.run_success(&[
+            "import",
+            backup_path.to_str().unwrap(),
+            "--password",
+            "correct horse battery staple 42",
+        ]);
 
         assert!(
             output.contains("imported")
@@ -209,6 +220,135 @@ mod identity_management {
         );
 
         let card_output = ctx2.run_success(&["card", "show"]);
+        assert!(card_output.contains("Alice Smith"));
+    }
+
+    /// A failed overwrite restore (wrong password) must leave the existing
+    /// install fully intact — validation happens before any local state is
+    /// touched.
+    // @internal
+    #[test]
+    fn test_import_wrong_password_preserves_existing_install() {
+        let ctx = CliTestContext::new();
+        ctx.init("Alice Smith");
+
+        let backup_path = ctx.data_dir.path().join("backup.json");
+        ctx.run_success(&[
+            "export",
+            backup_path.to_str().unwrap(),
+            "--password",
+            "correct horse battery staple 42",
+        ]);
+
+        let output = ctx.run(&[
+            "import",
+            backup_path.to_str().unwrap(),
+            "--password",
+            "definitely the wrong password",
+            "--yes",
+        ]);
+        assert!(
+            !output.status.success(),
+            "import with wrong password should fail.\nStdout: {}",
+            String::from_utf8_lossy(&output.stdout)
+        );
+
+        let card_output = ctx.run_success(&["card", "show"]);
+        assert!(
+            card_output.contains("Alice Smith"),
+            "existing identity must survive a failed restore, got: {card_output}"
+        );
+    }
+
+    /// Same guarantee for full backups: wrong password must not destroy
+    /// contacts/labels/card along with the identity.
+    // @internal
+    #[test]
+    fn test_import_full_wrong_password_preserves_existing_install() {
+        let ctx = CliTestContext::new();
+        ctx.init("Alice Smith");
+
+        let backup_path = ctx.data_dir.path().join("backup-full.json");
+        ctx.run_success(&[
+            "export",
+            backup_path.to_str().unwrap(),
+            "--full",
+            "--password",
+            "correct horse battery staple 42",
+        ]);
+
+        let output = ctx.run(&[
+            "import",
+            backup_path.to_str().unwrap(),
+            "--full",
+            "--password",
+            "definitely the wrong password",
+            "--yes",
+        ]);
+        assert!(
+            !output.status.success(),
+            "import --full with wrong password should fail.\nStdout: {}",
+            String::from_utf8_lossy(&output.stdout)
+        );
+
+        let card_output = ctx.run_success(&["card", "show"]);
+        assert!(
+            card_output.contains("Alice Smith"),
+            "existing identity must survive a failed full restore, got: {card_output}"
+        );
+    }
+
+    /// A confirmed overwrite restore actually replaces the identity (core
+    /// rejects imports onto an initialized full-backup instance, so the CLI
+    /// must reset local state — after validating the backup).
+    // @internal
+    #[test]
+    fn test_import_full_confirmed_overwrite_replaces_identity() {
+        let ctx1 = CliTestContext::new();
+        ctx1.init("Alice Smith");
+        let backup_path = ctx1.data_dir.path().join("backup-full.json");
+        ctx1.run_success(&[
+            "export",
+            backup_path.to_str().unwrap(),
+            "--full",
+            "--password",
+            "correct horse battery staple 42",
+        ]);
+
+        let ctx2 = CliTestContext::new();
+        ctx2.init("Bob Jones");
+        let output = ctx2.run(&[
+            "import",
+            backup_path.to_str().unwrap(),
+            "--full",
+            "--password",
+            "correct horse battery staple 42",
+            "--yes",
+        ]);
+        assert!(
+            output.status.success(),
+            "confirmed overwrite restore should succeed.\nStdout: {}\nStderr: {}",
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr)
+        );
+
+        let card_output = ctx2.run_success(&["card", "show"]);
+        assert!(card_output.contains("Alice Smith"));
+    }
+
+    /// Identity state lives in core storage: no identity.json is written,
+    /// and commands keep working without it.
+    // @internal
+    #[test]
+    fn test_init_persists_identity_in_core_storage_only() {
+        let ctx = CliTestContext::new();
+        ctx.init("Alice Smith");
+
+        assert!(
+            !ctx.data_dir.path().join("identity.json").exists(),
+            "identity.json must not be written — core storage owns identity"
+        );
+        let card_output = ctx.run_success(&["card", "show"]);
         assert!(card_output.contains("Alice Smith"));
     }
 

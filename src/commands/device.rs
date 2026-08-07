@@ -139,7 +139,7 @@ pub fn join(
     device_name_arg: Option<&str>,
     yes: bool,
 ) -> Result<()> {
-    if identity_exists(config) {
+    if identity_exists(config)? {
         display::warning("Vauchi is already initialized on this device.");
 
         if !yes {
@@ -335,6 +335,14 @@ pub fn finish(config: &CliConfig, response_data: &str) -> Result<()> {
     let encrypted_response = BASE64.decode(response_data)?;
 
     let response = DeviceLinkResponse::decrypt(&encrypted_response, qr.link_key())?;
+
+    // The user confirmed the replacement at `join` time. Core rejects
+    // adopting onto an initialized instance (`AlreadyInitialized`), so
+    // reset local state — only after the response has been decrypted
+    // successfully, never before.
+    if identity_exists(config)? {
+        crate::commands::common::reset_local_state(config)?;
+    }
 
     let wb_config = VauchiConfig::with_storage_path(config.storage_path())
         .with_relay_url(&config.relay_url)

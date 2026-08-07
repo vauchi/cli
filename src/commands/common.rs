@@ -10,6 +10,14 @@ use vauchi_core::{AuthMode, Vauchi, VauchiConfig, VauchiEvent};
 
 use crate::config::CliConfig;
 
+/// Builds a VauchiConfig from the CLI config (storage path, relay, key).
+/// Transport overrides (OHTTP) are layered on by callers that need them.
+fn base_wb_config(config: &CliConfig) -> Result<VauchiConfig> {
+    Ok(VauchiConfig::with_storage_path(config.storage_path())
+        .with_relay_url(&config.relay_url)
+        .with_storage_key(config.storage_key()?))
+}
+
 /// Opens Vauchi from the config and loads the identity.
 ///
 /// Initialization state is owned by core: a [`Vauchi`] instance auto-loads
@@ -20,9 +28,7 @@ use crate::config::CliConfig;
 pub(crate) fn open_vauchi(config: &CliConfig) -> Result<Vauchi> {
     // `mut` is only needed on debug builds where the direct-HTTP escape
     // hatch below may flip `ohttp.allow_direct`.
-    let mut wb_config = VauchiConfig::with_storage_path(config.storage_path())
-        .with_relay_url(&config.relay_url)
-        .with_storage_key(config.storage_key()?);
+    let mut wb_config = base_wb_config(config)?;
 
     // Explicit OHTTP-relay override (`--ohttp-relay`). When unset, core derives
     // the OHTTP endpoint from the relay URL (production → ohttp.vauchi.app;
@@ -62,12 +68,19 @@ pub(crate) fn open_vauchi(config: &CliConfig) -> Result<Vauchi> {
     let mut wb = build_vauchi(wb_config)?;
 
     // Core auto-loads identity from its storage. The legacy identity file
-    // is only a fallback for pre-core-storage installs (migration source).
+    // is only a fallback for pre-core-storage installs — and a *migration*,
+    // not a permanent home: set_identity is in-memory only, and
+    // construction-time migrations (e.g. field-centric visibility) only run
+    // when the identity loads from storage, so persist it there once.
     if wb.identity().is_none() {
         if !config.is_initialized() {
             bail!("Vauchi not initialized. Run 'vauchi init <name>' first.");
         }
         let identity = config.import_local_identity()?;
+        wb.storage()
+            .identity()
+            .save_identity(&identity.to_storage_bytes(), identity.display_name())
+            .map_err(|e| anyhow::anyhow!("Failed to migrate identity into core storage: {e}"))?;
         wb.set_identity(identity)?;
     }
 
@@ -77,8 +90,39 @@ pub(crate) fn open_vauchi(config: &CliConfig) -> Result<Vauchi> {
 /// Returns true when an identity exists in core storage or in the legacy
 /// identity file. Replaces direct `CliConfig::is_initialized` checks so
 /// callers follow core-owned initialization state.
-pub(crate) fn identity_exists(config: &CliConfig) -> bool {
-    open_vauchi(config).is_ok()
+///
+/// Fails CLOSED: probe errors (keychain failure, undecryptable storage)
+/// propagate, so a destructive caller aborts instead of skipping its
+/// confirmation prompt. The probe uses the base config only — the
+/// OHTTP-override warning belongs to real opens, not predicates.
+pub(crate) fn identity_exists(config: &CliConfig) -> Result<bool> {
+    let wb = build_vauchi(base_wb_config(config)?)?;
+    if wb.identity().is_some() {
+        return Ok(true);
+    }
+    Ok(config.is_initialized())
+}
+
+/// Removes all local identity state: the core database (including WAL
+/// sidecars — an orphan `vauchi.db-wal` can replay pre-reset rows into a
+/// freshly created DB) and the legacy identity file. Callers must validate
+/// whatever replaces this state BEFORE resetting.
+pub(crate) fn reset_local_state(config: &CliConfig) -> Result<()> {
+    let storage_path = config.storage_path();
+    let paths = [
+        storage_path.clone(),
+        storage_path.with_extension("db-wal"),
+        storage_path.with_extension("db-shm"),
+        config.identity_path(),
+    ];
+    for path in paths {
+        match std::fs::remove_file(&path) {
+            Ok(()) => {}
+            Err(e) if e.kind() == std::io::ErrorKind::NotFound => {}
+            Err(e) => return Err(e.into()),
+        }
+    }
+    Ok(())
 }
 
 /// Builds the Vauchi instance for `wb_config`. Only the dedicated
@@ -311,6 +355,39 @@ mod tests {
 
         let loaded_identity = wb.identity().expect("identity should be loaded");
         assert_eq!(loaded_identity.display_name(), "Test User");
+    }
+
+    /// The legacy identity.json fallback is a *migration*: after one open,
+    /// the identity lives in core storage and the file can go away.
+    // @internal
+    #[test]
+    fn test_open_vauchi_migrates_legacy_identity_file_into_core_storage() {
+        let temp_dir = tempdir().unwrap();
+        let config = CliConfig {
+            data_dir: temp_dir.path().to_path_buf(),
+            relay_url: "ws://localhost:8080".to_string(),
+            ohttp_relay_url: None,
+            raw: false,
+        };
+
+        let identity = Identity::create("Test User", crate::clock::shared().unix_seconds());
+        config
+            .save_local_identity(&identity)
+            .expect("save identity");
+
+        let wb = open_vauchi(&config).expect("first open loads the legacy file");
+        drop(wb);
+
+        std::fs::remove_file(config.identity_path()).expect("remove legacy file");
+
+        let wb2 = open_vauchi(&config)
+            .expect("second open must succeed from core storage without identity.json");
+        assert_eq!(
+            wb2.identity()
+                .expect("identity from core storage")
+                .display_name(),
+            "Test User"
+        );
     }
 
     #[test]
