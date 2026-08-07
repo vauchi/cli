@@ -1350,6 +1350,31 @@ mod duress {
         );
     }
 
+    /// Trace: aha_moments.feature - "Milestones already seen are not replayed"
+    // @scenario: aha_moments:Aha moment shows only once
+    #[test]
+    fn test_legacy_aha_tracker_is_adopted_not_replayed() {
+        let ctx = CliTestContext::new();
+        ctx.init("Alice Smith");
+
+        // A pre-ADR-069 install recorded FirstContactAdded in its own file.
+        let legacy = ctx.data_dir.path().join("aha_tracker.json");
+        std::fs::write(&legacy, r#"{"seen":["FirstContactAdded"]}"#).expect("write legacy tracker");
+
+        ctx.run_success(&["duress", "status"]);
+
+        assert!(
+            !legacy.exists(),
+            "the legacy tracker must be consumed, or it is re-adopted on every command"
+        );
+        let output = ctx.run_success(&["contacts", "list"]);
+        assert!(
+            !output.contains('★'),
+            "a milestone the user already saw must not replay after the migration, got: {}",
+            output
+        );
+    }
+
     /// Trace: duress_mode.feature - "Enable duress password (requires app password)"
     // @scenario: duress_pin:Enable duress mode
     #[test]
