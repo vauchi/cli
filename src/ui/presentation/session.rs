@@ -7,7 +7,7 @@ use std::io::{self, BufRead, Write};
 use vauchi_app::ui::AppEngine;
 use vauchi_core::{Command, Event};
 
-use super::{PresentationState, prompt_event, render_to_string};
+use super::{OfferedInputs, PresentationState, prompt_event, render_to_string};
 
 pub trait CommandReducer {
     type Error: Display;
@@ -40,6 +40,7 @@ pub fn run_with_io(
     output: &mut impl Write,
 ) -> io::Result<()> {
     let mut state = PresentationState::default();
+    let mut offered = OfferedInputs::default();
     let mut commands = reducer.initial_commands().map_err(reducer_error)?;
     loop {
         let effects = state.apply(&commands);
@@ -52,7 +53,7 @@ pub fn run_with_io(
         }
         write!(output, "{}", render_to_string(&state))?;
         output.flush()?;
-        let event = prompt_event(&state, input, output)?;
+        let event = prompt_event(&state, &mut offered, input, output)?;
         commands = reducer.dispatch(event).map_err(reducer_error)?;
     }
 }

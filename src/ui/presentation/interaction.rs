@@ -12,6 +12,7 @@ use super::PresentationState;
 
 pub fn prompt_event(
     state: &PresentationState,
+    offered: &mut OfferedInputs,
     input: &mut impl BufRead,
     output: &mut impl Write,
 ) -> io::Result<Event> {
@@ -33,7 +34,9 @@ pub fn prompt_event(
         },
     }));
 
-    if let Some(target) = first_empty_input(&surface.nodes) {
+    offered.enter_surface(&surface_id);
+    if let Some(target) = first_empty_input(&surface.nodes, offered) {
+        offered.mark(&target);
         return read_target(target, surface_id, input, output);
     }
     if targets.is_empty() {
@@ -120,11 +123,50 @@ fn read_target(
 
 fn read_line(input: &mut impl BufRead) -> io::Result<String> {
     let mut value = String::new();
-    input.read_line(&mut value)?;
+    // EOF must not read as a blank line: an optional input that stays empty is
+    // re-offered every render, so coercing exhausted stdin to "" spins the
+    // reducer loop forever instead of ending the scripted run.
+    if input.read_line(&mut value)? == 0 {
+        return Err(io::Error::new(
+            io::ErrorKind::UnexpectedEof,
+            "input ended before the flow completed",
+        ));
+    }
     Ok(value.trim().to_string())
 }
 
-fn first_empty_input(nodes: &[PresentationNode]) -> Option<Target> {
+/// Inputs already offered on the surface currently being shown.
+///
+/// An optional field the user leaves blank stays empty, so offering "the
+/// first empty input" every render re-asks the same question forever. Each
+/// empty input is instead offered once per surface; the numbered target list
+/// still exposes it for a deliberate edit.
+#[derive(Default)]
+pub struct OfferedInputs {
+    surface: Option<SurfaceId>,
+    seen: Vec<BindingId>,
+}
+
+impl OfferedInputs {
+    fn enter_surface(&mut self, surface_id: &SurfaceId) {
+        if self.surface.as_ref() != Some(surface_id) {
+            self.surface = Some(surface_id.clone());
+            self.seen.clear();
+        }
+    }
+
+    fn mark(&mut self, target: &Target) {
+        if let Target::Text { binding_id, .. } = target {
+            self.seen.push(binding_id.clone());
+        }
+    }
+
+    fn already_offered(&self, binding_id: &BindingId) -> bool {
+        self.seen.contains(binding_id)
+    }
+}
+
+fn first_empty_input(nodes: &[PresentationNode], offered: &OfferedInputs) -> Option<Target> {
     for node in nodes {
         match node {
             PresentationNode::Input {
@@ -133,7 +175,7 @@ fn first_empty_input(nodes: &[PresentationNode]) -> Option<Target> {
                 value,
                 enabled: true,
                 ..
-            } if value.is_empty() => {
+            } if value.is_empty() && !offered.already_offered(binding_id) => {
                 return Some(Target::Text {
                     label: label.clone(),
                     binding_id: binding_id.clone(),
@@ -151,13 +193,13 @@ fn first_empty_input(nodes: &[PresentationNode]) -> Option<Target> {
                 });
             }
             PresentationNode::Group { children, .. } => {
-                if let Some(target) = first_empty_input(children) {
+                if let Some(target) = first_empty_input(children, offered) {
                     return Some(target);
                 }
             }
             PresentationNode::List { rows, .. } => {
                 for row in rows {
-                    if let Some(target) = first_empty_input(&row.controls) {
+                    if let Some(target) = first_empty_input(&row.controls, offered) {
                         return Some(target);
                     }
                 }

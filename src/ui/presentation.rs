@@ -13,7 +13,7 @@ use vauchi_core::{
 mod interaction;
 mod render;
 mod session;
-pub use interaction::prompt_event;
+pub use interaction::{OfferedInputs, prompt_event};
 pub use render::render_to_string;
 pub use session::run_engine;
 #[cfg(test)]

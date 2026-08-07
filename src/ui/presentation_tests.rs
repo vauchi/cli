@@ -245,7 +245,8 @@ fn prompt_returns_raw_value_for_core_minted_binding() {
     let mut input = std::io::Cursor::new(b"Alice\n");
     let mut output = Vec::new();
 
-    let event = prompt_event(&state, &mut input, &mut output).expect("prompt event");
+    let event = prompt_event(&state, &mut Default::default(), &mut input, &mut output)
+        .expect("prompt event");
 
     assert_eq!(
         event,
