@@ -60,6 +60,46 @@ impl CliTestContext {
         stdout
     }
 
+    /// Run a command with scripted stdin and assert success.
+    ///
+    /// Core-reducer commands read their input as plain lines, so a scripted
+    /// run is the headless equivalent of an interactive session — an empty
+    /// line activates the surface's primary action.
+    fn run_success_with_stdin(&self, args: &[&str], stdin: &str) -> String {
+        let mut cmd = Command::new(env!("CARGO_BIN_EXE_vauchi"));
+        cmd.arg("--data-dir")
+            .arg(self.data_dir.path())
+            .arg("--relay")
+            .arg(&self.relay_url);
+        for arg in args {
+            cmd.arg(arg);
+        }
+        cmd.stdin(std::process::Stdio::piped())
+            .stdout(std::process::Stdio::piped())
+            .stderr(std::process::Stdio::piped());
+
+        let mut child = cmd.spawn().expect("Failed to spawn command");
+        use std::io::Write as _;
+        child
+            .stdin
+            .take()
+            .expect("stdin piped")
+            .write_all(stdin.as_bytes())
+            .expect("write stdin");
+        let output = child.wait_with_output().expect("Failed to await command");
+
+        let stdout = String::from_utf8_lossy(&output.stdout).to_string();
+        let stderr = String::from_utf8_lossy(&output.stderr).to_string();
+        assert!(
+            output.status.success(),
+            "Command {:?} failed.\nStdout: {}\nStderr: {}",
+            args,
+            stdout,
+            stderr
+        );
+        stdout
+    }
+
     /// Run a command and assert failure
     fn run_failure(&self, args: &[&str]) -> String {
         let output = self.run(args);
@@ -1306,6 +1346,34 @@ mod duress {
         assert!(
             output.contains("NOT SET"),
             "Duress should not be set by default, got: {}",
+            output
+        );
+    }
+
+    /// Trace: duress_mode.feature - "Enable duress password (requires app password)"
+    // @scenario: duress_pin:Enable duress mode
+    #[test]
+    fn test_duress_setup_enables_duress_headlessly() {
+        let ctx = CliTestContext::new();
+        ctx.init("Alice Smith");
+
+        // Core drives the step order; a blank line takes the primary action.
+        // password, confirm, submit, configure, PIN, continue, confirm PIN,
+        // continue, (blank alert message), save.
+        ctx.run_success_with_stdin(
+            &["duress", "setup"],
+            "app-password-123\napp-password-123\n\n\n135790\n\n135790\n\n\n\n",
+        );
+
+        let output = ctx.run_success(&["duress", "status"]);
+        assert!(
+            output.contains("Duress PIN:    ENABLED"),
+            "duress setup must persist through the Core reducer, got: {}",
+            output
+        );
+        assert!(
+            output.contains("App Password:  ENABLED"),
+            "the app-password precondition must have been satisfied first, got: {}",
             output
         );
     }
