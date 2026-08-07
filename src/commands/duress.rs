@@ -7,36 +7,21 @@
 //! Set up and manage duress PIN for plausible deniability.
 
 use anyhow::{Result, bail};
-use dialoguer::Password;
+use vauchi_app::ui::AppEngine;
 
 use crate::commands::common::{auth_mode_label, open_vauchi};
 use crate::config::CliConfig;
 use crate::display;
+use crate::ui::presentation;
 
 /// Set up duress PIN.
+///
+/// Core owns the flow: it decides whether the app-password precondition
+/// needs satisfying first and terminates the reducer when setup completes
+/// (ADR-069 — no direct domain mutation from a Rust-native shell).
 pub fn setup(config: &CliConfig) -> Result<()> {
-    let mut wb = open_vauchi(config)?;
-
-    if !wb.is_password_enabled()? {
-        display::info("App password not set. Setting it up first...");
-        let password = Password::new()
-            .with_prompt("Enter new app password")
-            .with_confirmation("Confirm app password", "Passwords do not match")
-            .interact()?;
-        wb.setup_app_password(&password)?;
-        display::success("App password set");
-    }
-
-    let duress = Password::new()
-        .with_prompt("Enter duress PIN")
-        .with_confirmation("Confirm duress PIN", "PINs do not match")
-        .interact()?;
-
-    wb.setup_duress_password(&duress)?;
-    display::success("Duress PIN configured");
-    display::info("When entered, contacts will be replaced with decoy data");
-
-    Ok(())
+    let mut engine = AppEngine::for_duress_setup(open_vauchi(config)?);
+    presentation::run_engine(&mut engine)
 }
 
 /// Show duress status.
