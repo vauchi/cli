@@ -2371,4 +2371,31 @@ mod contact_tags {
             stderr
         );
     }
+
+    /// `--locale` must reach FAQ *content*, not only the surrounding chrome.
+    ///
+    /// Asserts the English source string is absent rather than pinning the
+    /// German copy, so re-wording a translation cannot fail this test.
+    // @internal
+    #[test]
+    fn test_faq_list_content_honours_locale() {
+        let ctx = CliTestContext::new();
+        ctx.init("Alice");
+
+        let english_question = "What happens if I lose my phone?";
+        let en = ctx.run_success(&["--locale", "en", "faq", "list"]);
+        assert!(
+            en.contains(english_question),
+            "English run should show the English question, got: {}",
+            en
+        );
+
+        let de = ctx.run_success(&["--locale", "de", "faq", "list"]);
+        assert!(
+            !de.contains(english_question),
+            "German run still renders the English question, so --locale never \
+             reached the FAQ content: {}",
+            de
+        );
+    }
 }

@@ -271,7 +271,10 @@ pub fn display_contacts_table(contacts: &[Contact]) {
     println!("{}", table);
 }
 
-use vauchi_app::help::{HelpCategory, get_faqs, get_faqs_by_category, search_faqs};
+use vauchi_app::help::{
+    HelpCategory, get_faqs_by_category, get_faqs_by_category_localized, get_faqs_localized,
+    search_faqs_localized,
+};
 use vauchi_app::i18n::{Locale, get_string, get_string_with_args};
 
 /// Parse locale code to Locale enum
@@ -292,9 +295,9 @@ pub(crate) fn tf(key: &str, locale: &str, args: &[(&str, &str)]) -> String {
 /// Displays FAQ items, optionally filtered by search query.
 pub fn display_faqs(query: Option<&str>, locale: &str) {
     let faqs = if let Some(q) = query {
-        search_faqs(q)
+        search_faqs_localized(q, parse_locale(locale))
     } else {
-        get_faqs()
+        get_faqs_localized(parse_locale(locale))
     };
 
     if faqs.is_empty() {
@@ -378,7 +381,7 @@ pub fn display_faqs_by_category(category_name: &str, locale: &str) {
         return;
     };
 
-    let faqs = get_faqs_by_category(cat);
+    let faqs = get_faqs_by_category_localized(cat, parse_locale(locale));
 
     if faqs.is_empty() {
         println!(
@@ -412,9 +415,9 @@ pub fn display_faqs_by_category(category_name: &str, locale: &str) {
 
 /// Displays a specific FAQ by ID.
 pub fn display_faq_by_id(id: &str, locale: &str) {
-    use vauchi_app::help::get_faq_by_id;
+    use vauchi_app::help::get_faq_by_id_localized;
 
-    match get_faq_by_id(id) {
+    match get_faq_by_id_localized(id, parse_locale(locale)) {
         Some(faq) => {
             println!();
             println!(
