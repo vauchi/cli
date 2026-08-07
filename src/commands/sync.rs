@@ -6,13 +6,11 @@
 //!
 //! Synchronize with the relay server using the core OHTTP HTTP sync API.
 
-use std::fs;
 use std::time::Duration;
 
 use anyhow::Result;
 use indicatif::{ProgressBar, ProgressStyle};
 use vauchi_core::api::VauchiSyncOutcome;
-use vauchi_core::types::{AhaMomentTracker, AhaMomentType};
 
 use crate::commands::common::{drain_activity_log, open_vauchi, register_activity_log_handler};
 use crate::config::CliConfig;
@@ -98,19 +96,6 @@ pub fn run(config: &CliConfig) -> Result<()> {
                 display::warning(&format!("Sync error: {err}"));
             }
 
-            let mut tracker = load_aha_tracker(config);
-            if received > 0
-                && let Some(moment) = tracker.try_trigger(AhaMomentType::FirstUpdateReceived)
-            {
-                display::display_aha_moment(&moment);
-            }
-            if sent > 0
-                && let Some(moment) = tracker.try_trigger(AhaMomentType::FirstOutboundDelivered)
-            {
-                display::display_aha_moment(&moment);
-            }
-            save_aha_tracker(config, &tracker);
-
             // Real clock on purpose: pairs with `start_time` above to
             // measure the sync's wall-clock window; the injected test
             // clock must not distort elapsed-time measurement.
@@ -141,21 +126,4 @@ pub fn run(config: &CliConfig) -> Result<()> {
     wb.disconnect();
 
     Ok(())
-}
-
-/// Load the aha moment tracker from the data directory.
-fn load_aha_tracker(config: &CliConfig) -> AhaMomentTracker {
-    let path = config.data_dir.join("aha_tracker.json");
-    fs::read_to_string(&path)
-        .ok()
-        .and_then(|json| AhaMomentTracker::from_json(&json).ok())
-        .unwrap_or_default()
-}
-
-/// Save the aha moment tracker to the data directory.
-fn save_aha_tracker(config: &CliConfig, tracker: &AhaMomentTracker) {
-    let path = config.data_dir.join("aha_tracker.json");
-    if let Ok(json) = tracker.to_json() {
-        let _ = crate::config::write_restricted(&path, json);
-    }
 }

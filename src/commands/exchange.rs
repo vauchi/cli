@@ -17,7 +17,6 @@ use vauchi_core::exchange::{
     ExchangeEvent, ExchangeQR, ExchangeSession, ExchangeState, ManualConfirmationVerifier,
     ProximityConfidence, UsbRole,
 };
-use vauchi_core::types::{AhaMomentTracker, AhaMomentType};
 use vauchi_core::{Command, Event};
 use zeroize::Zeroizing;
 
@@ -213,15 +212,6 @@ pub fn complete(config: &CliConfig, data: &str, _locale: &str) -> Result<()> {
     wb.save_exchanged_contact(&contact, &ratchet, is_initiator)?;
     fs::remove_file(config.data_dir.join(PENDING_QR_FILE))
         .context("Failed to remove completed QR exchange state")?;
-
-    // Aha moment: first contact added
-    let mut tracker = load_aha_tracker(config);
-    if let Some(moment) =
-        tracker.try_trigger_with_context(AhaMomentType::FirstContactAdded, their_name.to_string())
-    {
-        display::display_aha_moment(&moment);
-    }
-    save_aha_tracker(config, &tracker);
 
     // Queue our card for delivery and sync immediately.
     // The initial card establishes the responder's receive chain so
@@ -500,19 +490,4 @@ pub fn usb_listen(config: &CliConfig, port: u16) -> Result<()> {
     display::success(&format!("Contact '{}' added via USB exchange!", their_name));
     drain_activity_log(&wb, event_rx);
     Ok(())
-}
-
-fn load_aha_tracker(config: &CliConfig) -> AhaMomentTracker {
-    let path = config.data_dir.join("aha_tracker.json");
-    fs::read_to_string(&path)
-        .ok()
-        .and_then(|json| AhaMomentTracker::from_json(&json).ok())
-        .unwrap_or_default()
-}
-
-fn save_aha_tracker(config: &CliConfig, tracker: &AhaMomentTracker) {
-    let path = config.data_dir.join("aha_tracker.json");
-    if let Ok(json) = tracker.to_json() {
-        let _ = crate::config::write_restricted(&path, json);
-    }
 }

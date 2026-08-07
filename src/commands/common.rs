@@ -84,7 +84,35 @@ pub(crate) fn open_vauchi(config: &CliConfig) -> Result<Vauchi> {
         wb.set_identity(identity)?;
     }
 
+    adopt_legacy_aha_tracker(config, &wb);
+
     Ok(wb)
+}
+
+/// Folds a pre-ADR-069 `aha_tracker.json` into core's encrypted ledger.
+///
+/// The CLI used to keep its own tracker beside core's. Without this, every
+/// milestone an existing user already saw would fire again the first time
+/// they run a build where core owns the decision. Union, never overwrite:
+/// each side may hold moments the other never saw.
+fn adopt_legacy_aha_tracker(config: &CliConfig, wb: &Vauchi) {
+    let path = config.data_dir.join("aha_tracker.json");
+    let Ok(json) = std::fs::read_to_string(&path) else {
+        return;
+    };
+    let Ok(legacy) = vauchi_core::AhaMomentTracker::from_json(&json) else {
+        // Leave an unreadable file in place rather than silently dropping the
+        // only record of what the user has already seen.
+        return;
+    };
+    let seen: Vec<_> = vauchi_core::AhaMomentType::all()
+        .iter()
+        .filter(|moment| legacy.has_seen(**moment))
+        .copied()
+        .collect();
+    if wb.mark_aha_moments_seen(&seen).is_ok() {
+        let _ = std::fs::remove_file(&path);
+    }
 }
 
 /// Returns true when an identity exists in core storage or in the legacy
@@ -210,6 +238,13 @@ pub(crate) fn drain_activity_log(wb: &Vauchi, rx: mpsc::Receiver<VauchiEvent>) {
     let mut events = Vec::new();
     while let Ok(event) = rx.try_recv() {
         events.push(event);
+    }
+    // Core decides when a milestone fires and hands over the resolved moment;
+    // rendering it is all that is left to a shell (ADR-069).
+    for event in &events {
+        if let VauchiEvent::AhaMomentTriggered { moment } = event {
+            crate::display::display_aha_moment(moment);
+        }
     }
     if !events.is_empty() {
         // Persisted activity-log timestamp — routes through the injectable
