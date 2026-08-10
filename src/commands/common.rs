@@ -487,7 +487,7 @@ mod tests {
     #[test]
     fn test_authenticated_normal_pin_returns_normal_mode() {
         let (_dir, config) = setup_initialized_config();
-        setup_passwords(&config, "correct-password", Some("duress-pin"));
+        setup_passwords(&config, "correct-password", Some("112233"));
 
         let wb = open_vauchi_authenticated(&config, Some("correct-password"))
             .expect("normal PIN should authenticate");
@@ -499,9 +499,9 @@ mod tests {
     #[test]
     fn test_authenticated_duress_pin_returns_duress_mode() {
         let (_dir, config) = setup_initialized_config();
-        setup_passwords(&config, "correct-password", Some("duress-pin"));
+        setup_passwords(&config, "correct-password", Some("112233"));
 
-        let wb = open_vauchi_authenticated(&config, Some("duress-pin"))
+        let wb = open_vauchi_authenticated(&config, Some("112233"))
             .expect("duress PIN should authenticate");
         assert_eq!(wb.auth_mode(), AuthMode::Duress);
     }
