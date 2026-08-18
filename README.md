@@ -3,8 +3,8 @@
 
 > **Mirror:** This repo is a read-only mirror of [gitlab.com/vauchi/cli](https://gitlab.com/vauchi/cli). Please open issues and merge requests there.
 
-[![Pipeline](https://img.shields.io/endpoint?url=https://vauchi.gitlab.io/cli/badges/pipeline.json&label=pipeline)](https://gitlab.com/vauchi/cli/-/pipelines)
-[![Coverage](https://img.shields.io/endpoint?url=https://vauchi.gitlab.io/cli/badges/coverage.json&label=coverage)](https://gitlab.com/vauchi/cli/-/pipelines)
+[![Pipeline](https://img.shields.io/endpoint?url=https://vauchi.gitlab.io/cli/badges/pipeline.json&label=pipeline)](https://gitlab.com/vauchi/cli)
+[![Coverage](https://img.shields.io/endpoint?url=https://vauchi.gitlab.io/cli/badges/coverage.json&label=coverage)](https://gitlab.com/vauchi/cli)
 [![REUSE](https://api.reuse.software/badge/gitlab.com/vauchi/cli)](https://api.reuse.software/info/gitlab.com/vauchi/cli)
 
 > [!NOTE]
