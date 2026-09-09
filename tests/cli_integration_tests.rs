@@ -806,6 +806,141 @@ mod visibility_labels {
         let output = ctx.run_success(&["labels", "show", "Family"]);
         assert!(output.contains("Family"));
     }
+
+    /// Trace: visibility_labels.feature - "Per-group display name override"
+    // @scenario: visibility_control:Per-group display name override
+    #[test]
+    fn test_labels_show_reports_unset_presentation_overrides_as_dash() {
+        let ctx = CliTestContext::new();
+        ctx.init("Alice Smith");
+        ctx.run_success(&["labels", "create", "Business"]);
+
+        let output = ctx.run_success(&["labels", "show", "Business"]);
+
+        assert!(output.contains("Presentation overrides:"), "got: {output}");
+        assert!(output.contains("  Name: -\n"), "got: {output}");
+        assert!(output.contains("  Bio: -\n"), "got: {output}");
+        assert!(output.contains("  Avatar: -\n"), "got: {output}");
+    }
+
+    /// Trace: visibility_labels.feature - "Per-group display name override"
+    // @scenario: visibility_control:Per-group display name override
+    #[test]
+    fn test_labels_set_name_then_clear_is_reflected_by_show() {
+        let ctx = CliTestContext::new();
+        ctx.init("Alice Smith");
+        ctx.run_success(&["labels", "create", "Business"]);
+
+        ctx.run_success(&["labels", "set-name", "Business", "Dr. Egloff"]);
+        let set = ctx.run_success(&["labels", "show", "Business"]);
+        assert!(set.contains("  Name: Dr. Egloff\n"), "got: {set}");
+
+        ctx.run_success(&["labels", "set-name", "Business", "--clear"]);
+        let cleared = ctx.run_success(&["labels", "show", "Business"]);
+        assert!(cleared.contains("  Name: -\n"), "got: {cleared}");
+    }
+
+    /// Trace: visibility_labels.feature - "Per-group display name override"
+    // @scenario: visibility_control:Per-group display name override
+    #[test]
+    fn test_labels_set_name_rejects_blank_override() {
+        let ctx = CliTestContext::new();
+        ctx.init("Alice Smith");
+        ctx.run_success(&["labels", "create", "Business"]);
+
+        let stderr = ctx.run_failure(&["labels", "set-name", "Business", "   "]);
+        assert!(stderr.contains("empty"), "got: {stderr}");
+    }
+
+    /// Trace: visibility_labels.feature - "Per-group display name override"
+    // @scenario: visibility_control:Per-group display name override
+    #[test]
+    fn test_labels_set_bio_then_clear_is_reflected_by_show() {
+        let ctx = CliTestContext::new();
+        ctx.init("Alice Smith");
+        ctx.run_success(&["labels", "create", "Business"]);
+
+        ctx.run_success(&["labels", "set-bio", "Business", "Consultant"]);
+        let set = ctx.run_success(&["labels", "show", "Business"]);
+        assert!(set.contains("  Bio: Consultant\n"), "got: {set}");
+
+        ctx.run_success(&["labels", "set-bio", "Business", "--clear"]);
+        let cleared = ctx.run_success(&["labels", "show", "Business"]);
+        assert!(cleared.contains("  Bio: -\n"), "got: {cleared}");
+    }
+
+    /// Trace: visibility_labels.feature - "Per-group display name override"
+    // @scenario: visibility_control:Per-group display name override
+    #[test]
+    fn test_labels_set_avatar_from_file_then_clear_is_reflected_by_show() {
+        let ctx = CliTestContext::new();
+        ctx.init("Alice Smith");
+        ctx.run_success(&["labels", "create", "Business"]);
+        let png_path = ctx.data_dir.path().join("avatar.png");
+        std::fs::write(&png_path, ONE_PIXEL_PNG).expect("write avatar fixture");
+
+        ctx.run_success(&[
+            "labels",
+            "set-avatar",
+            "Business",
+            png_path.to_str().unwrap(),
+        ]);
+        let set = ctx.run_success(&["labels", "show", "Business"]);
+        let avatar_line = set
+            .lines()
+            .find(|l| l.starts_with("  Avatar: "))
+            .unwrap_or_else(|| panic!("no avatar line, got: {set}"));
+        let bytes: usize = avatar_line
+            .trim_start_matches("  Avatar: ")
+            .trim_end_matches(" bytes")
+            .parse()
+            .unwrap_or_else(|_| panic!("unparsable avatar line: {avatar_line}"));
+        assert!(
+            bytes > 0 && bytes <= 32_768,
+            "normalized WebP must be 1..=32 KB, got {bytes}"
+        );
+
+        ctx.run_success(&["labels", "set-avatar", "Business", "--clear"]);
+        let cleared = ctx.run_success(&["labels", "show", "Business"]);
+        assert!(cleared.contains("  Avatar: -\n"), "got: {cleared}");
+    }
+
+    /// Trace: visibility_labels.feature - "Per-group display name override"
+    // @scenario: visibility_control:Per-group display name override
+    #[rstest]
+    #[case::missing("missing.png", None)]
+    #[case::empty("empty.png", Some(&[][..]))]
+    #[case::not_an_image("text.png", Some(&b"not an image"[..]))]
+    fn test_labels_set_avatar_rejects_unusable_file(
+        #[case] file_name: &str,
+        #[case] contents: Option<&[u8]>,
+    ) {
+        let ctx = CliTestContext::new();
+        ctx.init("Alice Smith");
+        ctx.run_success(&["labels", "create", "Business"]);
+        let path = ctx.data_dir.path().join(file_name);
+        if let Some(bytes) = contents {
+            std::fs::write(&path, bytes).expect("write fixture");
+        }
+
+        let stderr = ctx.run_failure(&["labels", "set-avatar", "Business", path.to_str().unwrap()]);
+
+        assert!(stderr.contains("avatar"), "got: {stderr}");
+        let shown = ctx.run_success(&["labels", "show", "Business"]);
+        assert!(
+            shown.contains("  Avatar: -\n"),
+            "override must stay unset, got: {shown}"
+        );
+    }
+
+    /// A valid 1x1 RGB PNG; core normalizes it to WebP (ADR-042).
+    const ONE_PIXEL_PNG: &[u8] = &[
+        0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x00, 0x00, 0x00, 0x0d, 0x49, 0x48, 0x44,
+        0x52, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01, 0x08, 0x02, 0x00, 0x00, 0x00, 0x90,
+        0x77, 0x53, 0xde, 0x00, 0x00, 0x00, 0x0c, 0x49, 0x44, 0x41, 0x54, 0x78, 0x9c, 0x63, 0xd0,
+        0x6a, 0x38, 0x01, 0x00, 0x02, 0x4a, 0x01, 0x73, 0x83, 0xc8, 0xd9, 0x65, 0x00, 0x00, 0x00,
+        0x00, 0x49, 0x45, 0x4e, 0x44, 0xae, 0x42, 0x60, 0x82,
+    ];
 }
 
 // ===========================================================================
