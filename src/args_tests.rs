@@ -136,6 +136,17 @@ fn labels_set_bio_and_set_avatar_parse_value_or_clear_flag() {
 
 // @internal
 #[test]
+fn contacts_clear_override_parses_contact_and_field() {
+    let cli = Cli::parse_from(["vauchi", "contacts", "clear-override", "Bob Jones", "Work"]);
+    let Commands::Contacts(ContactCommands::ClearOverride { contact, field }) = cli.command else {
+        panic!("expected contacts clear-override");
+    };
+    assert_eq!(contact, "Bob Jones");
+    assert_eq!(field, "Work");
+}
+
+// @internal
+#[test]
 fn cli_command_definition_is_valid() {
     // allow(zero_assertions): debug_assert() validates the clap command
     // graph (it panics on conflicting/misconfigured args); not a

@@ -941,6 +941,105 @@ mod visibility_labels {
         0x6a, 0x38, 0x01, 0x00, 0x02, 0x4a, 0x01, 0x73, 0x83, 0xc8, 0xd9, 0x65, 0x00, 0x00, 0x00,
         0x00, 0x49, 0x45, 0x4e, 0x44, 0xae, 0x42, 0x60, 0x82,
     ];
+
+    fn exchange_data(output: &str) -> String {
+        output
+            .lines()
+            .map(str::trim)
+            .find(|line| {
+                line.len() >= 20
+                    && line
+                        .chars()
+                        .all(|c| c.is_alphanumeric() || matches!(c, '+' | '/' | '='))
+            })
+            .expect("exchange output contains QR data")
+            .to_string()
+    }
+
+    /// Two initialized contexts that have completed an exchange, so each has
+    /// the other as a contact and a "Work" card field to hold visibility
+    /// overrides on.
+    fn exchanged_pair_with_field() -> (CliTestContext, CliTestContext) {
+        let alice = CliTestContext::new();
+        alice.init("Alice Smith");
+        alice.run_success(&["card", "add", "email", "Work", "alice@work.com"]);
+        let alice_data = exchange_data(&alice.run_success(&["exchange", "start"]));
+
+        let bob = CliTestContext::new();
+        bob.init("Bob Jones");
+        bob.run_success(&["card", "add", "email", "Work", "bob@work.com"]);
+        let bob_data = exchange_data(&bob.run_success(&["exchange", "start"]));
+
+        bob.run_success(&["exchange", "complete", &alice_data]);
+        alice.run_success(&["exchange", "complete", &bob_data]);
+        (alice, bob)
+    }
+
+    /// Symmetric in-person exchange assigns the X3DH initiator/responder
+    /// roles deterministically by comparing the two (randomly generated)
+    /// identity keys — "smaller = initiator"
+    /// (`ExchangeSession::build_exchange_ratchet` in vauchi-core). Only the
+    /// initiator can send right away; the responder's sending chain unblocks
+    /// only once it receives the initiator's first message, which never
+    /// happens here since these tests run no relay. Which of Alice/Bob wins
+    /// that tiebreak is therefore unpredictable from the CLI, so this probes
+    /// both sides with a real `hide` call and drives the rest of the test
+    /// through whichever one can actually send.
+    fn hide_work_field<'a>(
+        alice: &'a CliTestContext,
+        bob: &'a CliTestContext,
+    ) -> (&'a CliTestContext, &'static str, String) {
+        let attempt = alice.run(&["contacts", "hide", "Bob Jones", "Work"]);
+        if attempt.status.success() {
+            return (
+                alice,
+                "Bob Jones",
+                String::from_utf8_lossy(&attempt.stdout).to_string(),
+            );
+        }
+        let hidden = bob.run_success(&["contacts", "hide", "Alice Smith", "Work"]);
+        (bob, "Alice Smith", hidden)
+    }
+
+    /// A per-contact hide sets an override; `clear-override` removes it so
+    /// the field falls back to reporting as inherited (RG-10 harness need:
+    /// `remove_contact_visibility_override` must be reachable from the CLI).
+    // @scenario: visibility_control:Clear a per-contact visibility override
+    #[test]
+    fn test_contacts_clear_override_falls_back_to_inherited() {
+        let (alice, bob) = exchanged_pair_with_field();
+        let (actor, peer_name, hidden) = hide_work_field(&alice, &bob);
+
+        assert!(
+            hidden.contains(&format!("Hidden 'Work' field from {}", peer_name)),
+            "Expected hide confirmation, got: {}",
+            hidden
+        );
+
+        let visibility = actor.run_success(&["contacts", "visibility", peer_name]);
+        assert!(
+            visibility.contains("[override]") && visibility.contains("✗ hidden"),
+            "Expected the override to be reported, got: {}",
+            visibility
+        );
+
+        let cleared = actor.run_success(&["contacts", "clear-override", peer_name, "Work"]);
+        assert!(
+            cleared.contains(&format!(
+                "Cleared visibility override for 'Work' on {}",
+                peer_name
+            )),
+            "Expected clear-override confirmation, got: {}",
+            cleared
+        );
+
+        let visibility = actor.run_success(&["contacts", "visibility", peer_name]);
+        assert!(
+            visibility.contains("[inherited]") && !visibility.contains("[override]"),
+            "Expected the field to fall back to inherited visibility, got: {}",
+            visibility
+        );
+    }
 }
 
 // ===========================================================================

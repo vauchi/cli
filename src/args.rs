@@ -437,6 +437,15 @@ pub(crate) enum ContactCommands {
         field: String,
     },
 
+    /// Remove a per-contact field visibility override, falling back to the
+    /// field's group/label visibility
+    ClearOverride {
+        /// Contact ID or name
+        contact: String,
+        /// Field label to clear the override for
+        field: String,
+    },
+
     /// Show visibility rules for a contact
     Visibility {
         /// Contact ID or name
