@@ -40,7 +40,7 @@ pub use remove_cmd::remove;
 pub use show_cmd::{show, show_visibility};
 pub use trust_cmd::{trust, untrust};
 pub use verify_cmd::verify;
-pub use visibility_cmd::{hide_field, unhide_field};
+pub use visibility_cmd::{clear_field_override, hide_field, unhide_field};
 
 use anyhow::{Result, bail};
 use vauchi_core::Vauchi;

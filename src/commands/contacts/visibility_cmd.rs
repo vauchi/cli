@@ -50,3 +50,29 @@ pub fn unhide_field(config: &CliConfig, contact_id_or_name: &str, field_label: &
 
     Ok(())
 }
+
+/// Removes a per-contact visibility override, falling back to the field's
+/// group/label visibility for this contact.
+pub fn clear_field_override(
+    config: &CliConfig,
+    contact_id_or_name: &str,
+    field_label: &str,
+) -> Result<()> {
+    let wb = open_vauchi(config)?;
+
+    let contact = find_contact(&wb, contact_id_or_name)?;
+    let contact_name = contact.display_name().to_string();
+    let contact_id = contact.id().to_string();
+
+    let field_id = find_field_id(&wb, field_label)?;
+
+    wb.remove_contact_visibility_override_and_repropagate(&contact_id, &field_id)?;
+
+    display::success(&format!(
+        "Cleared visibility override for '{}' on {}",
+        field_label, contact_name
+    ));
+    display::info("Changes will take effect on next sync.");
+
+    Ok(())
+}

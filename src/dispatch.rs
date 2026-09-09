@@ -104,6 +104,9 @@ pub(crate) async fn run(
             ContactCommands::Unhide { contact, field } => {
                 commands::contacts::unhide_field(config, &contact, &field)?;
             }
+            ContactCommands::ClearOverride { contact, field } => {
+                commands::contacts::clear_field_override(config, &contact, &field)?;
+            }
             ContactCommands::Visibility { contact } => {
                 commands::contacts::show_visibility(config, &contact, locale)?;
             }

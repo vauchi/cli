@@ -66,28 +66,46 @@ pub fn show_visibility(config: &CliConfig, contact_id_or_name: &str, locale: &st
     let rules = contact
         .visibility_rules()
         .ok_or_else(|| anyhow::anyhow!("Imported contacts have no visibility rules"))?;
+    let overrides = wb.get_contact_visibility_overrides(contact.id())?;
     let mut has_custom_rules = false;
 
     for field in card.fields() {
-        let visibility = rules.get(field.id());
-        let status = match visibility {
-            FieldVisibility::Everyone => "✓ visible",
-            FieldVisibility::Nobody => "✗ hidden",
-            FieldVisibility::Contacts(allowed) => {
-                if allowed.contains(&contact.id().to_string()) {
-                    "✓ visible (restricted)"
-                } else {
-                    "✗ hidden (restricted)"
+        let override_value = overrides.get(field.id());
+        let (status, source) = match override_value {
+            Some(true) => ("✓ visible", "override"),
+            Some(false) => ("✗ hidden", "override"),
+            None => {
+                let visibility = rules.get(field.id());
+                let status = match visibility {
+                    FieldVisibility::Everyone => "✓ visible",
+                    FieldVisibility::Nobody => "✗ hidden",
+                    FieldVisibility::Contacts(allowed) => {
+                        if allowed.contains(&contact.id().to_string()) {
+                            "✓ visible (restricted)"
+                        } else {
+                            "✗ hidden (restricted)"
+                        }
+                    }
+                    _ => "? unknown",
+                };
+                if !matches!(visibility, FieldVisibility::Everyone) {
+                    has_custom_rules = true;
                 }
+                (status, "inherited")
             }
-            _ => "? unknown",
         };
 
-        if !matches!(visibility, FieldVisibility::Everyone) {
+        if override_value.is_some() {
             has_custom_rules = true;
         }
 
-        println!("  {} {}: {}", status, field.label(), field.value());
+        println!(
+            "  {} {} [{}]: {}",
+            status,
+            field.label(),
+            source,
+            field.value()
+        );
     }
 
     if !has_custom_rules {
