@@ -777,6 +777,42 @@ pub(crate) enum LabelCommands {
         /// Field label
         field: String,
     },
+
+    /// Set the display name contacts in a label see (or --clear it)
+    SetName {
+        /// Label name or ID prefix
+        label: String,
+        /// Display name override
+        #[arg(required_unless_present = "clear", conflicts_with = "clear")]
+        name: Option<String>,
+        /// Clear the override so the default name applies
+        #[arg(long)]
+        clear: bool,
+    },
+
+    /// Set the bio contacts in a label see (or --clear it)
+    SetBio {
+        /// Label name or ID prefix
+        label: String,
+        /// Bio override
+        #[arg(required_unless_present = "clear", conflicts_with = "clear")]
+        bio: Option<String>,
+        /// Clear the override so the default bio applies
+        #[arg(long)]
+        clear: bool,
+    },
+
+    /// Set the avatar contacts in a label see from an image file (or --clear it)
+    SetAvatar {
+        /// Label name or ID prefix
+        label: String,
+        /// Image file (PNG, JPEG, BMP, WebP); normalized to WebP by core
+        #[arg(required_unless_present = "clear", conflicts_with = "clear")]
+        path: Option<PathBuf>,
+        /// Clear the override so the default avatar applies
+        #[arg(long)]
+        clear: bool,
+    },
 }
 
 #[derive(Subcommand)]

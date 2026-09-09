@@ -254,6 +254,15 @@ pub(crate) async fn run(
             LabelCommands::HideField { label, field } => {
                 commands::labels::hide_field(config, &label, &field)?
             }
+            LabelCommands::SetName { label, name, .. } => {
+                commands::labels::set_name(config, &label, name.as_deref())?
+            }
+            LabelCommands::SetBio { label, bio, .. } => {
+                commands::labels::set_bio(config, &label, bio.as_deref())?
+            }
+            LabelCommands::SetAvatar { label, path, .. } => {
+                commands::labels::set_avatar(config, &label, path.as_deref())?
+            }
         },
         Commands::Tags(cmd) => match cmd {
             TagCommands::List => commands::tags::list(config)?,

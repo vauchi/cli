@@ -6,6 +6,8 @@
 //!
 //! Manage visibility labels for organizing contacts.
 
+use std::path::Path;
+
 use anyhow::{Result, anyhow};
 use vauchi_core::Vauchi;
 
@@ -134,8 +136,90 @@ pub fn show(config: &CliConfig, label_name: &str, locale: &str) -> Result<()> {
             }
         }
     }
+    println!();
+
+    println!("Presentation overrides:");
+    println!("  Name: {}", label.display_name_override().unwrap_or("-"));
+    println!("  Bio: {}", label.bio_override().unwrap_or("-"));
+    println!(
+        "  Avatar: {}",
+        label
+            .avatar_override()
+            .map_or_else(|| "-".to_string(), |bytes| format!("{} bytes", bytes.len()))
+    );
 
     Ok(())
+}
+
+/// Set or clear (`None`) the display name contacts in a label see.
+pub fn set_name(config: &CliConfig, label_name: &str, name: Option<&str>) -> Result<()> {
+    let wb = open_vauchi(config)?;
+    let label = find_label(&wb, label_name)?;
+
+    wb.set_group_display_name_override(label.id(), name)?;
+    match name {
+        Some(name) => display::success(&format!(
+            "Contacts in '{}' now see the name '{}'",
+            label.name(),
+            name
+        )),
+        None => display::success(&format!("Cleared the name override for '{}'", label.name())),
+    }
+    Ok(())
+}
+
+/// Set or clear (`None`) the bio contacts in a label see.
+pub fn set_bio(config: &CliConfig, label_name: &str, bio: Option<&str>) -> Result<()> {
+    let wb = open_vauchi(config)?;
+    let label = find_label(&wb, label_name)?;
+
+    wb.set_group_bio_override(label.id(), bio)?;
+    match bio {
+        Some(_) => display::success(&format!("Set the bio override for '{}'", label.name())),
+        None => display::success(&format!("Cleared the bio override for '{}'", label.name())),
+    }
+    Ok(())
+}
+
+/// Ceiling on the raw image read from disk before core decodes it (DC-03);
+/// core itself only bounds the normalized WebP output (ADR-042).
+const MAX_AVATAR_INPUT_BYTES: u64 = 8 * 1024 * 1024;
+
+/// Set the avatar contacts in a label see from an image file, or clear it (`None`).
+pub fn set_avatar(config: &CliConfig, label_name: &str, path: Option<&Path>) -> Result<()> {
+    let image = path.map(read_avatar_file).transpose()?;
+
+    let wb = open_vauchi(config)?;
+    let label = find_label(&wb, label_name)?;
+
+    wb.set_group_avatar_override(label.id(), image.as_deref())
+        .map_err(|e| anyhow!("Cannot use file as avatar: {}", e))?;
+    match image {
+        Some(_) => display::success(&format!("Set the avatar override for '{}'", label.name())),
+        None => display::success(&format!(
+            "Cleared the avatar override for '{}'",
+            label.name()
+        )),
+    }
+    Ok(())
+}
+
+fn read_avatar_file(path: &Path) -> Result<Vec<u8>> {
+    let size = std::fs::metadata(path)
+        .map_err(|e| anyhow!("Cannot read avatar file {}: {}", path.display(), e))?
+        .len();
+    if size == 0 {
+        return Err(anyhow!("The avatar file {} is empty", path.display()));
+    }
+    if size > MAX_AVATAR_INPUT_BYTES {
+        return Err(anyhow!(
+            "The avatar file {} is {} bytes; the limit is {} bytes",
+            path.display(),
+            size,
+            MAX_AVATAR_INPUT_BYTES
+        ));
+    }
+    std::fs::read(path).map_err(|e| anyhow!("Cannot read avatar file {}: {}", path.display(), e))
 }
 
 /// Rename a label.
