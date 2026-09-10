@@ -316,6 +316,7 @@ impl CommandReducer for FilePickReducer {
     fn initial_commands(&mut self) -> Result<Vec<Command>, Self::Error> {
         Ok(vec![Command::FilePickFromUser {
             accepted_mime_types: vec!["application/octet-stream".into()],
+            accepted_extensions: vec!["vbk".into()],
             purpose: FilePickPurpose::ImportBackup,
         }])
     }

@@ -112,7 +112,7 @@ pub fn run(config: &CliConfig) -> Result<()> {
                 }
             }
         }
-        VauchiSyncOutcome::TooSoon => {
+        VauchiSyncOutcome::TooSoon { .. } => {
             display::info("Sync skipped: too soon since last sync");
         }
         VauchiSyncOutcome::NotConnected => {
