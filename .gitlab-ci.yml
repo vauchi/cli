@@ -50,12 +50,7 @@ variables:
   # advisory with no fix available to us, not one we chose to skip.
   #   RUSTSEC-2026-0173  proc-macro-error2 unmaintained, reached through
   #                      tabled_derive -> tabled (already at latest).
-  #   RUSTSEC-2026-0253  unsound lru, reached through vauchi-core's
-  #                      rqrr 0.10. Clears when a core tag carrying
-  #                      rqrr 0.11 lands — core!1564 is merged, the tag
-  #                      is not cut. Record:
-  #                      problems/2026-09-07-core-rqrr-patch-does-not-reach-consumers
-  AUDIT_IGNORES: "--ignore RUSTSEC-2026-0173 --ignore RUSTSEC-2026-0253"
+  AUDIT_IGNORES: "--ignore RUSTSEC-2026-0173"
 
 stages:
   - auto-tag
