@@ -8,7 +8,8 @@
 #[cfg(test)]
 use vauchi_core::Event;
 use vauchi_core::{
-    ActionSpec, Command, ContextBar, OverlaySpec, PresentationNode, SurfaceId, SurfaceSpec,
+    ActionSpec, Command, ContextBar, NavigationSpec, OverlaySpec, PresentationNode, SurfaceId,
+    SurfaceSpec,
 };
 mod interaction;
 mod render;
@@ -22,6 +23,7 @@ pub use session::{CommandReducer, run_with_io};
 pub struct PresentationState {
     surface: Option<SurfaceSpec>,
     context_bar: Option<ContextBar>,
+    navigation: Option<NavigationSpec>,
     overlay: Option<OverlaySpec>,
     native_back_requested: bool,
 }
@@ -39,6 +41,13 @@ impl PresentationState {
                 } if self.is_current_revision(surface_id, *revision) => {
                     self.context_bar = Some((**bar).clone());
                 }
+                Command::SetNavigation {
+                    surface_id,
+                    revision,
+                    navigation,
+                } if self.is_current_revision(surface_id, *revision) => {
+                    self.navigation = Some(navigation.clone());
+                }
                 Command::PresentOverlay {
                     surface_id,
                     revision,
@@ -46,7 +55,9 @@ impl PresentationState {
                 } if self.is_current_revision(surface_id, *revision) => {
                     self.overlay = Some(overlay.clone());
                 }
-                Command::SetContextBar { .. } | Command::PresentOverlay { .. } => {}
+                Command::SetContextBar { .. }
+                | Command::SetNavigation { .. }
+                | Command::PresentOverlay { .. } => {}
                 Command::PerformNativeBack => self.native_back_requested = true,
                 Command::SetPresentationProfile { .. } => {}
                 other => effects.push(other.clone()),
@@ -57,6 +68,14 @@ impl PresentationState {
 
     pub fn surface(&self) -> Option<&SurfaceSpec> {
         self.surface.as_ref()
+    }
+
+    /// The persistent navigation Core published for the surface. Consumed
+    /// so the contract fixture stays clean; the CLI keeps offering
+    /// destinations through the navigation overlay, as the command allows.
+    #[cfg(test)]
+    pub fn navigation(&self) -> Option<&NavigationSpec> {
+        self.navigation.as_ref()
     }
 
     #[cfg(test)]
@@ -85,6 +104,7 @@ impl PresentationState {
         if !is_stale {
             self.surface = Some(candidate);
             self.context_bar = None;
+            self.navigation = None;
             self.overlay = None;
         }
     }
