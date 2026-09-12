@@ -5,9 +5,9 @@ use super::*;
 use serde::Deserialize;
 use vauchi_core::{
     AccessibilitySpec, ActionSpec, ActionTone, BindingId, Command, ContextBar, Event,
-    FilePickPurpose, InputValue, InteractionId, PresentationInputKind, PresentationNode,
-    PresentationTextStyle, PresentationTokens, StandardShortcut, SurfaceId, SurfaceLayout,
-    SurfaceSpec,
+    FilePickPurpose, InputValue, InteractionId, NavigationItem, NavigationSpec,
+    PresentationInputKind, PresentationNode, PresentationTextStyle, PresentationTokens,
+    StandardShortcut, SurfaceId, SurfaceLayout, SurfaceSpec,
 };
 
 // Fixture versions are exact contracts: additive fields require an explicit
@@ -354,4 +354,55 @@ fn generic_session_adapts_a_core_file_pick_to_terminal_input() {
             .expect("utf-8 terminal output")
             .contains("File path")
     );
+}
+
+fn nav_item(id: &str, selected: bool) -> NavigationItem {
+    NavigationItem {
+        interaction_id: InteractionId::new(id).unwrap(),
+        label: id.into(),
+        accessibility_label: id.into(),
+        icon_token: None,
+        selected,
+        badge_count: 0,
+    }
+}
+
+// @scenario: generic_presentation_protocol.feature :: Every shell renders the same prepared presentation
+/// Core publishes the persistent navigation beside the context bar; a shell
+/// that does not consume it leaks it as a native effect and fails the
+/// contract fixture (core 0.67.1). Same revision gate and same lifetime as
+/// the context bar.
+#[test]
+fn navigation_is_consumed_for_the_current_revision_and_stale_navigation_is_dropped() {
+    let mut state = PresentationState::default();
+    state.apply(&[Command::ReplaceSurface {
+        surface: surface(4, "Welcome"),
+    }]);
+    let surface_id = SurfaceId::new("welcome").unwrap();
+
+    let effects = state.apply(&[Command::SetNavigation {
+        surface_id: surface_id.clone(),
+        revision: 4,
+        navigation: NavigationSpec {
+            items: vec![nav_item("nav.home", true)],
+        },
+    }]);
+    assert!(
+        effects.is_empty(),
+        "navigation must be consumed, got {effects:?}"
+    );
+    assert_eq!(state.navigation().map(|nav| nav.items.len()), Some(1));
+
+    let effects = state.apply(&[Command::SetNavigation {
+        surface_id,
+        revision: 3,
+        navigation: NavigationSpec::default(),
+    }]);
+    assert!(effects.is_empty(), "stale chrome is dropped, not echoed");
+    assert_eq!(state.navigation().map(|nav| nav.items.len()), Some(1));
+
+    state.apply(&[Command::ReplaceSurface {
+        surface: surface(5, "Newest"),
+    }]);
+    assert!(state.navigation().is_none());
 }
