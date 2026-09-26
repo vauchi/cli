@@ -44,8 +44,8 @@ pub(crate) struct Cli {
     #[arg(long, global = true, env = "VAUCHI_PIN")]
     pub pin: Option<String>,
 
-    /// Output raw JSON instead of formatted text
-    #[arg(long, global = true)]
+    /// Output Core's machine-readable JSON document instead of text
+    #[arg(long, global = true, visible_alias = "json")]
     pub raw: bool,
 }
 

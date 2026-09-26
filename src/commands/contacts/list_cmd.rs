@@ -7,74 +7,37 @@ use anyhow::Result;
 use crate::commands::common::open_vauchi_authenticated;
 use crate::config::CliConfig;
 use crate::display;
+use crate::ui::invocation::present;
+use vauchi_app::i18n::Locale;
+use vauchi_app::ui::invocation::{Invocation, InvocationOutput, invoke};
 
-/// Lists all contacts (respects auth mode — duress PIN shows decoys).
+/// Lists contacts through Core's one-shot invocation (ADR-066 Amendment
+/// 2026-09-26 (b)); the authenticated handle carries the auth mode, so a
+/// duress PIN lists decoys. Returns the process exit code.
 pub fn list(
     config: &CliConfig,
     pin: Option<&str>,
     offset: usize,
     limit: usize,
     locale: &str,
-) -> Result<()> {
+) -> Result<u8> {
     let wb = open_vauchi_authenticated(config, pin)?;
-    let total = wb.contact_count().unwrap_or(0);
-
-    if total == 0 {
-        if config.raw {
-            return crate::raw::print_json(&Vec::<crate::raw::ContactJson>::new());
-        }
-        display::info(&display::t("cli.contacts.list.no_contacts", locale));
-        println!(
-            "  {}",
-            display::t("cli.contacts.list.exchange_command", locale)
-        );
-        return Ok(());
-    }
-
-    // Use core pagination API instead of manual slice
-    let paginated = offset > 0 || limit > 0;
-    let contacts = if paginated {
-        wb.list_contacts_paginated(offset, limit)?
+    let output = if config.raw {
+        InvocationOutput::Document
     } else {
-        wb.list_contacts()?
+        InvocationOutput::Text
     };
-
-    if config.raw {
-        let json: Vec<_> = contacts.iter().map(crate::raw::ContactJson::from).collect();
-        return crate::raw::print_json(&json);
-    }
-
-    println!();
-    if paginated {
-        println!(
-            "{}",
-            display::tf(
-                "cli.contacts.list.paginated_header",
-                locale,
-                &[
-                    ("start", &(offset + 1).to_string()),
-                    ("end", &(offset + contacts.len()).to_string()),
-                    ("total", &total.to_string()),
-                ]
-            )
-        );
-    } else {
-        println!(
-            "{}",
-            display::tf(
-                "cli.contacts.list.header",
-                locale,
-                &[("count", &total.to_string())]
-            )
-        );
-    }
-    println!();
-
-    display::display_contacts_table(&contacts);
-
-    println!();
-
-    Ok(())
+    let commands = invoke(
+        &wb,
+        &Invocation::ContactsList { offset, limit },
+        output,
+        Locale::from_code(locale).unwrap_or_default(),
+    );
+    Ok(present(
+        &commands,
+        &mut std::io::stdout().lock(),
+        &mut std::io::stderr().lock(),
+    ))
 }
 
 /// Searches contacts by query (respects auth mode).

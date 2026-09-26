@@ -16,8 +16,8 @@ mod raw;
 mod ui;
 
 use std::path::{Path, PathBuf};
+use std::process::ExitCode;
 
-use anyhow::Result;
 use clap::Parser;
 use vauchi_app::i18n::init as init_i18n;
 
@@ -66,7 +66,7 @@ fn try_init_i18n() {
 }
 
 #[tokio::main]
-async fn main() -> Result<()> {
+async fn main() -> ExitCode {
     env_logger::init();
     try_init_i18n();
 
@@ -85,5 +85,13 @@ async fn main() -> Result<()> {
         raw: cli.raw,
     };
 
-    dispatch::run(cli.command, &config, cli.pin.as_deref(), &cli.locale).await
+    match dispatch::run(cli.command, &config, cli.pin.as_deref(), &cli.locale).await {
+        Ok(code) => ExitCode::from(code),
+        // Same report the `Result`-returning main printed before exit codes
+        // became Core-owned outcomes.
+        Err(error) => {
+            eprintln!("Error: {error:?}");
+            ExitCode::FAILURE
+        }
+    }
 }

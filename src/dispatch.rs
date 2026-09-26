@@ -21,7 +21,7 @@ pub(crate) async fn run(
     config: &CliConfig,
     pin: Option<&str>,
     locale: &str,
-) -> Result<()> {
+) -> Result<u8> {
     match command {
         Commands::Init { name, force } => {
             commands::init::run(&name, force, config, locale)?;
@@ -89,7 +89,7 @@ pub(crate) async fn run(
                 if archived {
                     commands::contacts::list_archived(config, locale)?;
                 } else {
-                    commands::contacts::list(config, pin, offset, limit, locale)?;
+                    return commands::contacts::list(config, pin, offset, limit, locale);
                 }
             }
             ContactCommands::Show { id } => commands::contacts::show(config, pin, &id)?,
@@ -455,5 +455,5 @@ pub(crate) async fn run(
         }
     }
 
-    Ok(())
+    Ok(0)
 }
