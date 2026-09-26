@@ -721,12 +721,10 @@ mod contacts_management {
         assert_eq!(bob["display_name"], "Bob Jones");
         assert_eq!(bob["fingerprint_verified"], false);
         assert_eq!(bob["recovery_trusted"], false);
-        assert_eq!(
-            bob["card"]["fields"],
-            serde_json::json!([
-                { "field_type": "Phone", "label": "Mobile", "value": "+1-555-262-1234" }
-            ])
-        );
+        assert_eq!(bob["card"]["display_name"], "Bob Jones");
+        // Bob's phone field was never made visible to Alice: new fields
+        // default to hidden (ADR-054), so her copy of his card has none.
+        assert_eq!(bob["card"]["fields"], serde_json::json!([]));
     }
 
     /// Trace: contacts_management.feature - "Search contacts"
