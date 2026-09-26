@@ -44,6 +44,7 @@ fn surface(title: &str) -> Command {
     }
 }
 
+// @internal
 #[test]
 fn outcomes_map_to_the_adr_066_exit_codes() {
     assert_eq!(exit_code(InvocationOutcome::Succeeded), 0);
@@ -53,6 +54,7 @@ fn outcomes_map_to_the_adr_066_exit_codes() {
     assert_eq!(exit_code(InvocationOutcome::Denied), 77);
 }
 
+// @internal
 #[test]
 fn a_document_is_the_only_thing_on_stdout() {
     let (code, out, err) = presented(&[
@@ -69,6 +71,7 @@ fn a_document_is_the_only_thing_on_stdout() {
     assert_eq!((code, out.as_str(), err.as_str()), (0, "[]\n", ""));
 }
 
+// @internal
 #[test]
 fn a_surface_is_rendered_once_to_stdout() {
     let (code, out, err) = presented(&[
@@ -81,6 +84,7 @@ fn a_surface_is_rendered_once_to_stdout() {
     assert_eq!(err, "");
 }
 
+// @internal
 #[test]
 fn alerts_go_to_stderr_and_the_outcome_sets_the_code() {
     let (code, out, err) = presented(&[
@@ -98,6 +102,7 @@ fn alerts_go_to_stderr_and_the_outcome_sets_the_code() {
     assert_eq!(err, "Something went wrong: Unknown error\n");
 }
 
+// @internal
 #[test]
 fn a_run_without_an_outcome_fails_closed() {
     let (code, _, err) = presented(&[surface("Partial")]);
@@ -106,6 +111,7 @@ fn a_run_without_an_outcome_fails_closed() {
     assert!(err.contains("without an outcome"), "got: {err}");
 }
 
+// @internal
 #[test]
 fn a_command_the_terminal_cannot_carry_fails_the_run() {
     let (code, _, err) = presented(&[Command::QrRequestScan, finish(InvocationOutcome::Succeeded)]);
