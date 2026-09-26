@@ -727,6 +727,88 @@ mod contacts_management {
         assert_eq!(bob["card"]["fields"], serde_json::json!([]));
     }
 
+    fn archive_only_contact(ctx: &CliTestContext) -> String {
+        let listed: serde_json::Value =
+            serde_json::from_str(&ctx.run_success(&["--json", "contacts", "list"]))
+                .expect("contact document");
+        let id = listed[0]["id"].as_str().expect("contact id").to_string();
+        ctx.run_success(&["contacts", "archive", &id]);
+        id
+    }
+
+    /// `--archived` is Core's archived invocation: the same v1 document,
+    /// holding only archived contacts.
+    // @scenario: contacts_management:View all contacts
+    #[test]
+    fn test_contacts_list_archived_json_is_the_core_document() {
+        let (alice, _bob) = super::contact_tags::exchanged_pair();
+        let bob_id = archive_only_contact(&alice);
+
+        let archived = alice.run(&["--json", "contacts", "list", "--archived"]);
+        let active = alice.run_success(&["--json", "contacts", "list"]);
+        let document: serde_json::Value =
+            serde_json::from_slice(&archived.stdout).expect("stdout is only the JSON document");
+
+        assert_eq!(archived.status.code(), Some(0));
+        assert_eq!(document.as_array().expect("array").len(), 1);
+        assert_eq!(document[0]["id"], bob_id.as_str());
+        assert_eq!(document[0]["display_name"], "Bob Jones");
+        assert_eq!(
+            active.trim(),
+            "[]",
+            "archived contacts leave the active list"
+        );
+    }
+
+    // @scenario: contacts_management:View all contacts
+    #[test]
+    fn test_contacts_list_archived_text_uses_the_archived_header() {
+        let (alice, _bob) = super::contact_tags::exchanged_pair();
+        archive_only_contact(&alice);
+
+        let output = alice.run(&["contacts", "list", "--archived"]);
+        let stdout = String::from_utf8_lossy(&output.stdout);
+
+        assert_eq!(output.status.code(), Some(0));
+        assert!(stdout.contains("Archived contacts (1):"), "got: {stdout}");
+        assert!(stdout.contains("Bob Jones"), "got: {stdout}");
+    }
+
+    /// #387: with an app password configured, the archived listing is as
+    /// gated as the active one.
+    // @scenario: contacts_management:View all contacts
+    #[test]
+    fn test_contacts_list_archived_requires_the_app_password() {
+        let ctx = CliTestContext::new();
+        ctx.init("Alice Smith");
+        ctx.run_success_with_stdin(
+            &["duress", "setup"],
+            "app-password-123\napp-password-123\n\n\n135790\n\n135790\n\n\n\n",
+        );
+
+        let refused = ctx.run(&["contacts", "list", "--archived"]);
+        let allowed = ctx.run(&[
+            "--pin",
+            "app-password-123",
+            "contacts",
+            "list",
+            "--archived",
+        ]);
+
+        assert_eq!(refused.status.code(), Some(1));
+        assert!(
+            String::from_utf8_lossy(&refused.stderr).contains("App password is configured"),
+            "got: {}",
+            String::from_utf8_lossy(&refused.stderr)
+        );
+        assert_eq!(allowed.status.code(), Some(0));
+        assert!(
+            String::from_utf8_lossy(&allowed.stdout).contains("Archived contacts (0):"),
+            "got: {}",
+            String::from_utf8_lossy(&allowed.stdout)
+        );
+    }
+
     /// Trace: contacts_management.feature - "Search contacts"
     // @scenario: contacts_management:Search contacts by name
     #[test]
