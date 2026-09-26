@@ -675,14 +675,57 @@ mod contacts_management {
         let ctx = CliTestContext::new();
         ctx.init("Alice Smith");
 
-        let output = ctx.run_success(&["contacts", "list"]);
+        let output = ctx.run(&["contacts", "list"]);
+        let stdout = String::from_utf8_lossy(&output.stdout);
+
+        assert_eq!(output.status.code(), Some(0));
         assert!(
-            output.contains("No contacts")
-                || output.contains("empty")
-                || output.is_empty()
-                || output.contains("0"),
-            "Expected no contacts, got: {}",
-            output
+            stdout.contains("No contacts yet. Exchange with someone using:"),
+            "empty list must explain itself, got: {stdout}"
+        );
+        assert!(stdout.contains("vauchi exchange start"), "got: {stdout}");
+    }
+
+    /// The text listing is the Core-prepared surface rendered once:
+    /// localized header, verification status, success exit.
+    // @scenario: contacts_management:View all contacts
+    #[test]
+    fn test_contacts_list_text_is_the_prepared_surface() {
+        let (alice, _bob) = super::contact_tags::exchanged_pair();
+
+        let output = alice.run(&["contacts", "list"]);
+        let stdout = String::from_utf8_lossy(&output.stdout);
+
+        assert_eq!(output.status.code(), Some(0));
+        assert!(stdout.contains("Contacts (1):"), "got: {stdout}");
+        assert!(stdout.contains("Bob Jones"), "got: {stdout}");
+        assert!(stdout.contains("Not verified"), "got: {stdout}");
+    }
+
+    /// `--json` is the Core-prepared vauchi.contacts.v1 document, identical
+    /// to `--raw`, with nothing else on stdout.
+    // @scenario: contact_exchange:Raw contact lists are valid JSON
+    #[test]
+    fn test_contacts_list_json_is_the_core_document() {
+        let (alice, _bob) = super::contact_tags::exchanged_pair();
+
+        let json = alice.run(&["--json", "contacts", "list"]);
+        let raw = alice.run_success(&["--raw", "contacts", "list"]);
+        let stdout = String::from_utf8_lossy(&json.stdout);
+
+        assert_eq!(json.status.code(), Some(0));
+        assert_eq!(stdout, raw);
+        let contacts: serde_json::Value =
+            serde_json::from_str(&stdout).expect("stdout is only the JSON document");
+        let bob = &contacts.as_array().expect("array")[0];
+        assert_eq!(bob["display_name"], "Bob Jones");
+        assert_eq!(bob["fingerprint_verified"], false);
+        assert_eq!(bob["recovery_trusted"], false);
+        assert_eq!(
+            bob["card"]["fields"],
+            serde_json::json!([
+                { "field_type": "Phone", "label": "Mobile", "value": "+1-555-262-1234" }
+            ])
         );
     }
 
@@ -2553,7 +2596,7 @@ mod contact_tags {
 
     /// Two initialized contexts that have completed an exchange, so Alice
     /// has Bob as a contact to tag.
-    fn exchanged_pair() -> (CliTestContext, CliTestContext) {
+    pub(super) fn exchanged_pair() -> (CliTestContext, CliTestContext) {
         let alice = CliTestContext::new();
         alice.init("Alice Smith");
         alice.run_success(&["card", "add", "email", "Work", "alice@work.com"]);
