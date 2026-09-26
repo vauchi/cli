@@ -24,7 +24,7 @@ mod trust_cmd;
 mod verify_cmd;
 mod visibility_cmd;
 
-pub use archive_cmd::{archive, list_archived, unarchive};
+pub use archive_cmd::{archive, unarchive};
 pub use block_cmd::{block, list_blocked, unblock};
 pub use delete_cmd::delete;
 pub use export_cmd::export;
@@ -32,7 +32,7 @@ pub use favorite_cmd::{favorite, unfavorite};
 pub use hide_cmd::{hide_contact, list_hidden, unhide_contact};
 pub use import_cmd::import as import_vcf;
 pub use limit_cmd::limit;
-pub use list_cmd::{list, search};
+pub use list_cmd::{list, list_archived, search};
 pub use merge_cmd::{dismiss_duplicate, duplicates, merge, undismiss_duplicate};
 pub use notes_cmd::{add_note, delete_note, edit_note, show_note};
 pub use open_cmd::{open_field, open_interactive};

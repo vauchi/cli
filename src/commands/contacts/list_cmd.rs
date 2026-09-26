@@ -12,13 +12,33 @@ use vauchi_app::i18n::Locale;
 use vauchi_app::ui::invocation::{Invocation, InvocationOutput, invoke};
 
 /// Lists contacts through Core's one-shot invocation (ADR-066 Amendment
-/// 2026-09-26 (b)); the authenticated handle carries the auth mode, so a
-/// duress PIN lists decoys. Returns the process exit code.
+/// 2026-09-26 (b)). Returns the process exit code.
 pub fn list(
     config: &CliConfig,
     pin: Option<&str>,
     offset: usize,
     limit: usize,
+    locale: &str,
+) -> Result<u8> {
+    run_invocation(
+        config,
+        pin,
+        &Invocation::ContactsList { offset, limit },
+        locale,
+    )
+}
+
+/// Lists archived contacts through Core's one-shot invocation.
+pub fn list_archived(config: &CliConfig, pin: Option<&str>, locale: &str) -> Result<u8> {
+    run_invocation(config, pin, &Invocation::ArchivedContactsList, locale)
+}
+
+/// The authenticated handle carries the auth mode, so a duress PIN lists
+/// decoys, and an app password without `--pin` is refused (#387).
+fn run_invocation(
+    config: &CliConfig,
+    pin: Option<&str>,
+    invocation: &Invocation,
     locale: &str,
 ) -> Result<u8> {
     let wb = open_vauchi_authenticated(config, pin)?;
@@ -29,7 +49,7 @@ pub fn list(
     };
     let commands = invoke(
         &wb,
-        &Invocation::ContactsList { offset, limit },
+        invocation,
         output,
         Locale::from_code(locale).unwrap_or_default(),
     );

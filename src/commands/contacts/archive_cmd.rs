@@ -33,32 +33,3 @@ pub fn unarchive(config: &CliConfig, id: &str) -> Result<()> {
     display::success(&format!("Unarchived contact: {}", name));
     Ok(())
 }
-
-pub fn list_archived(config: &CliConfig, locale: &str) -> Result<()> {
-    let wb = open_vauchi(config)?;
-    let archived = wb.list_archived_contacts()?;
-
-    if archived.is_empty() {
-        display::info("No archived contacts.");
-        return Ok(());
-    }
-
-    println!();
-    println!(
-        "{}",
-        display::tf(
-            "cli.contacts.archived.header",
-            locale,
-            &[("count", &archived.len().to_string())]
-        )
-    );
-    println!();
-
-    display::display_contacts_table(&archived);
-
-    println!();
-    display::info("Use 'vauchi contacts unarchive <id>' to restore.");
-    println!();
-
-    Ok(())
-}

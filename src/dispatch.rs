@@ -86,11 +86,11 @@ pub(crate) async fn run(
                 limit,
                 archived,
             } => {
-                if archived {
-                    commands::contacts::list_archived(config, locale)?;
+                return if archived {
+                    commands::contacts::list_archived(config, pin, locale)
                 } else {
-                    return commands::contacts::list(config, pin, offset, limit, locale);
-                }
+                    commands::contacts::list(config, pin, offset, limit, locale)
+                };
             }
             ContactCommands::Show { id } => commands::contacts::show(config, pin, &id)?,
             ContactCommands::Search { query } => {
