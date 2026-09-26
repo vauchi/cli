@@ -4,4 +4,5 @@
 
 //! Generic terminal adapter for the Core command/event protocol.
 
+pub mod invocation;
 pub mod presentation;
