@@ -97,6 +97,14 @@ lint:humble:
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
     - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
 
+# Exact-zero release gate (ADR-066): a release tag may carry no remaining
+# Humble UI boundary violations, unlike MR ratchets which let existing
+# debt shrink over time. Wired into build:release's needs below so a
+# failing gate blocks publish:package:cli even though needs: makes that
+# job DAG-ordered past the lint stage.
+release:ratchet-zero:
+  extends: .release-ratchet-zero
+
 check:release-provenance:
   stage: lint
   image: ${CI_DEPENDENCY_PROXY_GROUP_IMAGE_PREFIX}/alpine:3.21
@@ -324,6 +332,8 @@ build:release:
     - job: test:unit
       optional: true
     - job: lint:format
+      optional: true
+    - job: release:ratchet-zero
       optional: true
   script:
     - cargo build --release --locked
