@@ -173,7 +173,10 @@ perf:binary-size:
 # CARGO_MANIFEST_DIR/../locales lookup in main.rs finds nothing and the
 # baseline's --locale tests fail. Point the CLI at a real clone instead.
 mutation:nightly:
-  extends: [.mutation-nightly, .rust-runner, .timeout-extended]
+  extends: [.mutation-nightly, .rust-runner]
+  # ~650 mutants at up to ~8 s each overran .timeout-extended's 45 min
+  # (job 16840854985) once the baseline stopped failing early.
+  timeout: 2h
   before_script:
     - !reference [.self-hosted, before_script]
     - !reference [.git-credentials, before_script]
