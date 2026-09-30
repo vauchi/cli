@@ -157,3 +157,9 @@ pub fn animated_qr_encode(file: &PathBuf, fps: u8, chunk_size: usize, locale: &s
 
     Ok(())
 }
+
+// INLINE_TEST_REQUIRED: the probe's report and target helpers are private to
+// this binary crate (no lib target), so `tests/` cannot reach them.
+#[cfg(test)]
+#[path = "diag_tests.rs"]
+mod tests;
