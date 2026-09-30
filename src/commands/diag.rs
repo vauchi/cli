@@ -8,8 +8,12 @@ use std::path::PathBuf;
 
 use anyhow::Result;
 use clap::Subcommand;
+use vauchi_core::api::RelayConfig;
 use vauchi_core::exchange::transport::animated_qr::{AnimatedQrConfig, AnimatedQrSession};
+use vauchi_core::network::PinnedCertificate;
+use vauchi_core::network::ohttp_probe::{OhttpProbeFailure, probe_ohttp_forward_hop};
 
+use crate::config::CliConfig;
 use crate::display;
 
 /// Diagnostic subcommands.
@@ -20,6 +24,10 @@ pub enum DiagCommands {
         /// Path to the JSON trace file
         file: PathBuf,
     },
+
+    /// Send one encapsulated request through the OHTTP relay and gateway to
+    /// check the forward hop (exit 0 on success, 1 on failure)
+    OhttpProbe,
 
     /// Animated QR utilities
     #[command(subcommand)]
@@ -156,6 +164,56 @@ pub fn animated_qr_encode(file: &PathBuf, fps: u8, chunk_size: usize, locale: &s
     }
 
     Ok(())
+}
+
+/// The OHTTP endpoint and certificate pins the probe targets, resolved the
+/// way sync resolves them from `--relay` and `--ohttp-relay`.
+pub(crate) fn probe_target(
+    relay_url: &str,
+    ohttp_relay_url: Option<&str>,
+) -> (String, Vec<PinnedCertificate>) {
+    let relay = RelayConfig {
+        server_url: relay_url.to_string(),
+        ohttp_relay_url: ohttp_relay_url.map(str::to_string),
+        ..RelayConfig::default()
+    };
+    (relay.ohttp_endpoint(), relay.ohttp_endpoint_pins())
+}
+
+/// The probe's one-line verdict and exit code.
+pub(crate) fn probe_report(
+    url: &str,
+    result: &Result<(), OhttpProbeFailure>,
+    locale: &str,
+) -> (String, u8) {
+    match result {
+        Ok(()) => (
+            display::tf("cli.cmd.diag.ohttp_probe.ok", locale, &[("url", url)]),
+            0,
+        ),
+        Err(failure) => (
+            display::tf(
+                "cli.cmd.diag.ohttp_probe.failed",
+                locale,
+                &[
+                    ("step", &failure.step.to_string()),
+                    ("url", url),
+                    ("detail", &failure.detail),
+                ],
+            ),
+            1,
+        ),
+    }
+}
+
+/// Run `vauchi diag ohttp-probe`: one encapsulated round trip, no identity
+/// needed and no state changed.
+pub fn ohttp_probe(config: &CliConfig, locale: &str) -> u8 {
+    let (url, pins) = probe_target(&config.relay_url, config.ohttp_relay_url.as_deref());
+    let result = probe_ohttp_forward_hop(&url, pins, RelayConfig::default().io_timeout_ms);
+    let (line, code) = probe_report(&url, &result, locale);
+    println!("{line}");
+    code
 }
 
 // INLINE_TEST_REQUIRED: the probe's report and target helpers are private to

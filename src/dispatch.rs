@@ -442,6 +442,9 @@ pub(crate) async fn run(
         Commands::SupportUs => commands::support::run(locale),
         Commands::Diag(cmd) => match cmd {
             commands::diag::DiagCommands::Trace { file } => commands::diag::trace(&file, locale)?,
+            commands::diag::DiagCommands::OhttpProbe => {
+                return Ok(commands::diag::ohttp_probe(config, locale));
+            }
             commands::diag::DiagCommands::AnimatedQr(qr_cmd) => match qr_cmd {
                 commands::diag::AnimatedQrCommands::Encode {
                     file,
