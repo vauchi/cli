@@ -34,6 +34,7 @@ include:
       - '/ci-templates/test-quality.yml'
       - '/ci-templates/file-size.yml'
       - '/ci-templates/mutation.yml'
+      - '/ci-templates/content-fetch.yml'
       - '/ci-templates/freshness.yml'
       - '/ci-templates/perf.yml'
       - '/ci-templates/design-drift.yml'
@@ -168,10 +169,18 @@ perf:binary-size:
 # Mutation Stage (uses shared template from vauchi/scripts)
 # ============================================================
 
+# cargo-mutants tests a copy of the tree in a temp dir, where the
+# CARGO_MANIFEST_DIR/../locales lookup in main.rs finds nothing and the
+# baseline's --locale tests fail. Point the CLI at a real clone instead.
 mutation:nightly:
   extends: [.mutation-nightly, .rust-runner, .timeout-extended]
+  before_script:
+    - !reference [.self-hosted, before_script]
+    - !reference [.git-credentials, before_script]
+    - !reference [.clone-locales, before_script]
   variables:
     MUTATION_EXTRA_FLAGS: "--no-default-features"
+    VAUCHI_LOCALES_DIR: "$CI_PROJECT_DIR/../locales"
 
 # ============================================================
 # Security Stage (runs on dependency changes, gated by lint, parallel with test)
