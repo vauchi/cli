@@ -16,9 +16,9 @@ use vauchi_core::exchange::{
     DeviceLinkQR, DeviceLinkResponder, DeviceLinkResponse, ProximityProof, compute_confirmation_mac,
 };
 use vauchi_core::sync::DeviceLinkIntent;
-use vauchi_core::{Vauchi, VauchiConfig};
+use vauchi_core::{AuthMode, Vauchi, VauchiConfig};
 
-use crate::commands::common::{identity_exists, open_vauchi};
+use crate::commands::common::{identity_exists, open_vauchi, open_vauchi_authenticated};
 use crate::commands::device_link_persistence::persist_updated_registry;
 use crate::config::CliConfig;
 use crate::display;
@@ -90,9 +90,26 @@ pub fn list(config: &CliConfig, locale: &str) -> Result<()> {
     Ok(())
 }
 
+/// What a duress session is told when it tries to link a device: the same
+/// sentence any failed link gets, so the refusal reveals nothing.
+const LINK_FAILED: &str = "Device linking failed. Please try again.";
+
+/// Opens the store for a command that changes the real identity's devices.
+/// Linking hands the new device the identity, so these need the app PIN
+/// like any protected command, and the duress PIN never reaches the real
+/// identity (#469).
+fn open_for_device_change(config: &CliConfig, pin: Option<&str>) -> Result<(Vauchi, bool)> {
+    let wb = open_vauchi_authenticated(config, pin)?;
+    let duress = wb.auth_mode() == AuthMode::Duress;
+    Ok((wb, duress))
+}
+
 /// Generates a QR code for linking a new device.
-pub fn link(config: &CliConfig) -> Result<()> {
-    let wb = open_vauchi(config)?;
+pub fn link(config: &CliConfig, pin: Option<&str>) -> Result<()> {
+    let (wb, duress) = open_for_device_change(config, pin)?;
+    if duress {
+        bail!(LINK_FAILED);
+    }
 
     let identity = wb
         .identity()
@@ -213,8 +230,12 @@ pub fn complete(
     request_data: &str,
     auto_confirm: bool,
     replace: bool,
+    pin: Option<&str>,
 ) -> Result<()> {
-    let wb = open_vauchi(config)?;
+    let (wb, duress) = open_for_device_change(config, pin)?;
+    if duress {
+        bail!(LINK_FAILED);
+    }
 
     let identity = wb
         .identity()
@@ -368,8 +389,17 @@ pub fn finish(config: &CliConfig, response_data: &str) -> Result<()> {
 }
 
 /// Revokes a device from the registry.
-pub fn revoke(config: &CliConfig, device_id_prefix: &str, auto_confirm: bool) -> Result<()> {
-    let wb = open_vauchi(config)?;
+pub fn revoke(
+    config: &CliConfig,
+    device_id_prefix: &str,
+    auto_confirm: bool,
+    pin: Option<&str>,
+) -> Result<()> {
+    let (wb, duress) = open_for_device_change(config, pin)?;
+    // Duress mode reads as a single-device install: no other device exists.
+    if duress {
+        bail!("Device not found: {}", device_id_prefix);
+    }
 
     let identity = wb
         .identity()
@@ -428,8 +458,13 @@ pub fn revoke(config: &CliConfig, device_id_prefix: &str, auto_confirm: bool) ->
 }
 
 /// Decommissions this device after a replacement handover.
-pub fn decommission(config: &CliConfig, auto_confirm: bool) -> Result<()> {
-    let wb = open_vauchi(config)?;
+pub fn decommission(config: &CliConfig, auto_confirm: bool, pin: Option<&str>) -> Result<()> {
+    let (wb, duress) = open_for_device_change(config, pin)?;
+    // Decommissioning wipes the real ratchet sessions; a duress session has
+    // no handover to finish, so it ends like a failed link.
+    if duress {
+        bail!(LINK_FAILED);
+    }
 
     if wb.identity().is_none() {
         bail!("No identity found");

@@ -209,7 +209,7 @@ pub(crate) async fn run(
         Commands::Device(cmd) => match cmd {
             DeviceCommands::List => commands::device::list(config, locale)?,
             DeviceCommands::Info => commands::device::info(config)?,
-            DeviceCommands::Link => commands::device::link(config)?,
+            DeviceCommands::Link => commands::device::link(config, pin)?,
             DeviceCommands::Join {
                 qr_data,
                 device_name,
@@ -219,11 +219,13 @@ pub(crate) async fn run(
                 request,
                 yes,
                 replace,
-            } => commands::device::complete(config, &request, yes, replace)?,
-            DeviceCommands::Decommission { yes } => commands::device::decommission(config, yes)?,
+            } => commands::device::complete(config, &request, yes, replace, pin)?,
+            DeviceCommands::Decommission { yes } => {
+                commands::device::decommission(config, yes, pin)?
+            }
             DeviceCommands::Finish { response } => commands::device::finish(config, &response)?,
             DeviceCommands::Revoke { device_id, yes } => {
-                commands::device::revoke(config, &device_id, yes)?
+                commands::device::revoke(config, &device_id, yes, pin)?
             }
             DeviceCommands::Replace(cmd) => match cmd {
                 DeviceReplaceCommands::Setup => {
