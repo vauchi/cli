@@ -1188,6 +1188,75 @@ mod device_management {
         );
     }
 
+    /// #469: linking hands the new device the identity, so `device link`
+    /// needs the app PIN like any protected command.
+    // @scenario: duress_pin:Enable duress mode
+    #[test]
+    fn test_device_link_requires_the_app_password() {
+        let ctx = CliTestContext::new();
+        ctx.init("Alice Smith");
+        ctx.run_success_with_stdin(
+            &["duress", "setup"],
+            "app-password-123\napp-password-123\n\n\n135790\n\n135790\n\n\n\n",
+        );
+
+        let refused = ctx.run(&["device", "link"]);
+        let allowed = ctx.run(&["--pin", "app-password-123", "device", "link"]);
+
+        assert_eq!(refused.status.code(), Some(1));
+        assert!(
+            String::from_utf8_lossy(&refused.stderr).contains("App password is configured"),
+            "got: {}",
+            String::from_utf8_lossy(&refused.stderr)
+        );
+        assert_eq!(allowed.status.code(), Some(0));
+        assert!(
+            String::from_utf8_lossy(&allowed.stdout).contains("Device link data"),
+            "got: {}",
+            String::from_utf8_lossy(&allowed.stdout)
+        );
+    }
+
+    /// #469: with the duress PIN, linking fails like any failed link and no
+    /// link data is printed or saved, so the identity never leaves.
+    // @scenario: duress_pin:Enable duress mode
+    #[test]
+    fn test_device_link_with_the_duress_pin_fails_like_any_failed_link() {
+        let ctx = CliTestContext::new();
+        ctx.init("Alice Smith");
+        ctx.run_success_with_stdin(
+            &["duress", "setup"],
+            "app-password-123\napp-password-123\n\n\n135790\n\n135790\n\n\n\n",
+        );
+
+        let link = ctx.run(&["--pin", "135790", "device", "link"]);
+        let complete = ctx.run(&["--pin", "135790", "device", "complete", "request", "--yes"]);
+        let revoke = ctx.run(&["--pin", "135790", "device", "revoke", "ab", "--yes"]);
+
+        assert_eq!(link.status.code(), Some(1));
+        assert!(
+            String::from_utf8_lossy(&link.stderr)
+                .contains("Device linking failed. Please try again."),
+            "got: {}",
+            String::from_utf8_lossy(&link.stderr)
+        );
+        assert!(!String::from_utf8_lossy(&link.stdout).contains("Device link data"));
+        assert!(!ctx.data_dir.path().join(".pending_device_link").exists());
+        assert_eq!(complete.status.code(), Some(1));
+        assert!(
+            String::from_utf8_lossy(&complete.stderr)
+                .contains("Device linking failed. Please try again."),
+            "got: {}",
+            String::from_utf8_lossy(&complete.stderr)
+        );
+        assert_eq!(revoke.status.code(), Some(1));
+        assert!(
+            String::from_utf8_lossy(&revoke.stderr).contains("Device not found: ab"),
+            "got: {}",
+            String::from_utf8_lossy(&revoke.stderr)
+        );
+    }
+
     /// Trace: device_management.feature - "Generate device linking QR code"
     // @scenario: device_management:Generate device linking QR code
     /// M-5: Verify QR data structure, not just length.
