@@ -222,6 +222,12 @@ security:vet:
 
 security:vet-autofix:
   extends: [.rust-runner-readonly, .security-vet-autofix-job, .verified-fetch-script]
+  # .verified-fetch-script defines before_script and, extended last, would
+  # replace the runner template's: without it the job takes whatever rustc
+  # is on the runner's PATH (Homebrew's on nell — vauchi/private#486).
+  before_script:
+    - !reference [.rust-runner-readonly, before_script]
+    - !reference [.verified-fetch-script, before_script]
   rules:
     - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
     - if: $CI_PIPELINE_SOURCE == "schedule"
