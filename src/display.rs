@@ -448,29 +448,39 @@ use vauchi_core::aha_moments::AhaMoment;
 
 /// Displays an aha moment as a highlighted info box.
 pub fn display_aha_moment(moment: &AhaMoment) {
-    let border = "─".repeat(50);
-    let top = format!("┌{}┐", border);
-    let bottom = format!("└{}┘", border);
-
     println!();
-    println!("{}", style(&top).magenta());
-    println!(
+    for line in aha_moment_lines(moment) {
+        println!("{line}");
+    }
+    println!();
+}
+
+/// The aha moment box, one string per terminal line, each 52 columns wide.
+pub(crate) fn aha_moment_lines(moment: &AhaMoment) -> Vec<String> {
+    let border = "─".repeat(50);
+    let mut lines = vec![style(format!("┌{}┐", border)).magenta().to_string()];
+    lines.push(format!(
         "│ {} {}{}│",
         style("★").magenta().bold(),
         style(moment.title()).magenta().bold(),
         " ".repeat(50 - 3 - moment.title().len())
-    );
-    println!("│{}│", " ".repeat(50));
+    ));
+    lines.push(format!("│{}│", " ".repeat(50)));
     for line in wrap_text(&moment.message(), 46) {
         let padding = 48 - line.len();
-        println!("│  {}{}│", line, " ".repeat(padding));
+        lines.push(format!("│  {}{}│", line, " ".repeat(padding)));
     }
-    println!("{}", style(&bottom).magenta());
-    println!();
+    lines.push(style(format!("└{}┘", border)).magenta().to_string());
+    lines
 }
 
 /// Displays an activity log row.
 pub fn display_activity_row(row: &ActivityLogRow) {
+    println!("{}", activity_row_line(row));
+}
+
+/// One activity log row as the line `vauchi activity` prints.
+pub(crate) fn activity_row_line(row: &ActivityLogRow) -> String {
     let entry: Result<AppActivityEntry, _> = serde_json::from_str(&row.payload);
     let time = chrono::DateTime::from_timestamp(row.created_at as i64, 0)
         .map(|dt| dt.format("%Y-%m-%d %H:%M:%S").to_string())
@@ -531,7 +541,7 @@ pub fn display_activity_row(row: &ActivityLogRow) {
         String::new()
     };
 
-    println!("{} [{}] {}{}", icon, style(time).dim(), title, contact);
+    format!("{} [{}] {}{}", icon, style(time).dim(), title, contact)
 }
 
 /// Simple text wrapping.
@@ -566,6 +576,11 @@ fn wrap_text(text: &str, max_width: usize) -> Vec<String> {
 
     lines
 }
+
+// INLINE_TEST_REQUIRED: Binary crate without lib.rs - tests cannot be external
+#[cfg(test)]
+#[path = "display_tests.rs"]
+mod display_tests;
 
 // INLINE_TEST_REQUIRED: Binary crate without lib.rs - tests cannot be external
 #[cfg(test)]

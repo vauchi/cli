@@ -1,0 +1,15 @@
+# SPDX-FileCopyrightText: 2026 Mattia Egloff <mattia.egloff@pm.me>
+#
+# SPDX-License-Identifier: GPL-3.0-or-later
+
+# Mutants that are equivalent or unreachable, each with its reason
+# (vauchi/private#505).
+exclude_re = [
+    # `printed` is an i32 counter only read modulo 5: counting down from 0
+    # hits a multiple of 5 on exactly the same networks as counting up.
+    "replace \\+= with -= in display_social_networks",
+    # No cli flow fires an aha moment: exchange complete saves through
+    # save_exchanged_contact, which skips the first-contact milestone
+    # (vauchi/private#507). The box itself is tested via aha_moment_lines.
+    "replace display_aha_moment with \\(\\)",
+]
