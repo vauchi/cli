@@ -17,6 +17,9 @@ pub(crate) struct ContactJson {
     pub display_name: String,
     pub fingerprint_verified: bool,
     pub recovery_trusted: bool,
+    pub archived: bool,
+    pub ignored: bool,
+    pub blocked: bool,
     pub card: CardJson,
 }
 
@@ -42,6 +45,9 @@ impl From<&Contact> for ContactJson {
             display_name: c.display_name().to_string(),
             fingerprint_verified: c.is_fingerprint_verified(),
             recovery_trusted: c.is_recovery_trusted(),
+            archived: c.is_archived(),
+            ignored: c.is_ignored(),
+            blocked: c.is_blocked(),
             card: CardJson::from(c.card()),
         }
     }

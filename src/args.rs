@@ -625,6 +625,18 @@ pub(crate) enum ContactCommands {
         /// Contact ID or name
         id: String,
     },
+
+    /// Ignore a contact: no notifications, sorted last, updates keep flowing
+    Ignore {
+        /// Contact ID or name
+        id: String,
+    },
+
+    /// Stop ignoring a contact
+    Unignore {
+        /// Contact ID or name
+        id: String,
+    },
 }
 
 #[derive(Subcommand)]

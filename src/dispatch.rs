@@ -189,6 +189,12 @@ pub(crate) async fn run(
             ContactCommands::Unarchive { id } => {
                 commands::contacts::unarchive(config, &id)?;
             }
+            ContactCommands::Ignore { id } => {
+                commands::contacts::ignore(config, &id)?;
+            }
+            ContactCommands::Unignore { id } => {
+                commands::contacts::unignore(config, &id)?;
+            }
         },
         Commands::Social(cmd) => match cmd {
             SocialCommands::List { query } => {
