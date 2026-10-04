@@ -783,7 +783,7 @@ mod contacts_management {
         ctx.init("Alice Smith");
         ctx.run_success_with_stdin(
             &["duress", "setup"],
-            "app-password-123\napp-password-123\n\n\n135790\n\n135790\n\n\n\n",
+            "app-password-123\napp-password-123\n\n1\n135790\n\n135790\n\n\n\n",
         );
 
         let refused = ctx.run(&["contacts", "list", "--archived"]);
@@ -1197,7 +1197,7 @@ mod device_management {
         ctx.init("Alice Smith");
         ctx.run_success_with_stdin(
             &["duress", "setup"],
-            "app-password-123\napp-password-123\n\n\n135790\n\n135790\n\n\n\n",
+            "app-password-123\napp-password-123\n\n1\n135790\n\n135790\n\n\n\n",
         );
 
         let refused = ctx.run(&["device", "link"]);
@@ -1226,7 +1226,7 @@ mod device_management {
         ctx.init("Alice Smith");
         ctx.run_success_with_stdin(
             &["duress", "setup"],
-            "app-password-123\napp-password-123\n\n\n135790\n\n135790\n\n\n\n",
+            "app-password-123\napp-password-123\n\n1\n135790\n\n135790\n\n\n\n",
         );
 
         let link = ctx.run(&["--pin", "135790", "device", "link"]);
@@ -1813,7 +1813,7 @@ mod duress {
         // continue, (blank alert message), save.
         ctx.run_success_with_stdin(
             &["duress", "setup"],
-            "app-password-123\napp-password-123\n\n\n135790\n\n135790\n\n\n\n",
+            "app-password-123\napp-password-123\n\n1\n135790\n\n135790\n\n\n\n",
         );
 
         let output = ctx.run_success(&["duress", "status"]);
