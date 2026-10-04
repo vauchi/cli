@@ -12,4 +12,13 @@ exclude_re = [
     # save_exchanged_contact, which skips the first-contact milestone
     # (vauchi/private#507). The box itself is tested via aha_moment_lines.
     "replace display_aha_moment with \\(\\)",
+    # The dialoguer prompt and the commands' outer shells around it need a
+    # real terminal: dialoguer refuses a piped stdin ("not a terminal").
+    # What follows the answer is tested through the *_answered functions.
+    "replace prompt -> Result<String>",
+    "replace (schedule_deletion|execute_deletion|panic_shred) -> Result<\\(\\)> with Ok\\(\\(\\)\\)",
+    "replace print_lines with \\(\\)",
+    # Both relay clients are built identically and succeed or fail together,
+    # so `||` and `&&` pick the same branch.
+    "replace \\|\\| with && in panic_shred_answered",
 ]
