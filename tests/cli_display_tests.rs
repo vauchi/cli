@@ -210,10 +210,7 @@ fn hidden_contacts_are_listed_as_a_numbered_table() {
 fn a_faq_category_is_headed_by_the_localized_faq_title() {
     let output = Cli::new().stdout(&["faq", "category", "privacy"]);
 
-    assert!(
-        output.contains("FAQ: Privacy"),
-        "{output}"
-    );
+    assert!(output.contains("FAQ: Privacy"), "{output}");
 }
 
 // @internal
@@ -227,4 +224,3 @@ fn activity_lists_a_card_edit() {
 
     assert!(output.contains("You Updated Your Card"), "{output}");
 }
-
