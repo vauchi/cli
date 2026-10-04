@@ -2918,3 +2918,87 @@ mod contact_tags {
         );
     }
 }
+
+mod ignore_unignore {
+    use super::*;
+
+    fn only_contact_id(ctx: &CliTestContext) -> String {
+        let listed: serde_json::Value =
+            serde_json::from_str(&ctx.run_success(&["--json", "contacts", "list"]))
+                .expect("contact document");
+        listed[0]["id"].as_str().expect("contact id").to_string()
+    }
+
+    fn raw_contact(ctx: &CliTestContext, id: &str) -> serde_json::Value {
+        let stdout = ctx.run_success(&["--raw", "contacts", "show", id]);
+        serde_json::from_str(&stdout)
+            .unwrap_or_else(|e| panic!("raw contact document: {e}; got: {stdout}"))
+    }
+
+    // @scenario: release_privacy_multidevice_certification :: Ignoring a contact removes attention but keeps continuity
+    #[test]
+    fn test_ignored_contact_stays_listed_and_reports_ignored() {
+        let (alice, _bob) = super::contact_tags::exchanged_pair();
+        let bob_id = only_contact_id(&alice);
+
+        let stdout = alice.run_success(&["contacts", "ignore", &bob_id]);
+        let listed: serde_json::Value =
+            serde_json::from_str(&alice.run_success(&["--json", "contacts", "list"]))
+                .expect("contact document");
+        let bob = raw_contact(&alice, &bob_id);
+
+        assert!(
+            stdout.contains("Ignored contact: Bob Jones"),
+            "got: {stdout}"
+        );
+        assert_eq!(listed[0]["display_name"], "Bob Jones");
+        assert_eq!(bob["ignored"], true);
+        assert_eq!(bob["archived"], false);
+        assert_eq!(bob["blocked"], false);
+    }
+
+    // @scenario: release_privacy_multidevice_certification :: Ignoring a contact removes attention but keeps continuity
+    #[test]
+    fn test_unignore_restores_the_contact() {
+        let (alice, _bob) = super::contact_tags::exchanged_pair();
+        let bob_id = only_contact_id(&alice);
+        alice.run_success(&["contacts", "ignore", &bob_id]);
+
+        let stdout = alice.run_success(&["contacts", "unignore", &bob_id]);
+
+        assert!(
+            stdout.contains("Unignored contact: Bob Jones"),
+            "got: {stdout}"
+        );
+        assert_eq!(raw_contact(&alice, &bob_id)["ignored"], false);
+    }
+
+    // @scenario: release_privacy_multidevice_certification :: Ignoring a contact removes attention but keeps continuity
+    #[test]
+    fn test_ignore_unknown_contact_fails() {
+        let ctx = CliTestContext::new();
+        ctx.init("Alice");
+
+        let stderr = ctx.run_failure(&["contacts", "ignore", "nonexistent"]);
+
+        assert!(stderr.contains("not found"), "got: {stderr}");
+    }
+
+    // @scenario: contacts_management:View all contacts
+    #[test]
+    fn test_raw_contact_reports_archived_and_blocked_state() {
+        let (alice, _bob) = super::contact_tags::exchanged_pair();
+        let bob_id = only_contact_id(&alice);
+        let fresh = raw_contact(&alice, &bob_id);
+
+        alice.run_success(&["contacts", "archive", &bob_id]);
+        let archived = raw_contact(&alice, &bob_id);
+        alice.run_success(&["contacts", "block", &bob_id]);
+        let blocked = raw_contact(&alice, &bob_id);
+
+        assert_eq!(fresh["archived"], false);
+        assert_eq!(fresh["blocked"], false);
+        assert_eq!(archived["archived"], true);
+        assert_eq!(blocked["blocked"], true);
+    }
+}
