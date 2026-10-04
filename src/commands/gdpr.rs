@@ -16,7 +16,7 @@ use vauchi_core::api::{
     ConsentManager, ConsentType, DeletionManager, ShredManager, ShredReport, ShredToken,
     ShredVerification, export_all_data, export_encrypted,
 };
-use vauchi_core::network::{HttpTransportAdapter, RelayClient, RelayClientConfig, TransportConfig};
+use vauchi_core::network::{HttpTransportAdapter, RelayClient, RelayClientConfig};
 use vauchi_core::storage::DeletionState;
 use vauchi_core::storage::secure::SecureStorage;
 
@@ -55,39 +55,55 @@ pub fn export_data(config: &CliConfig, output: &Path, password: Option<&str>) ->
     Ok(())
 }
 
+const SECONDS_PER_DAY: u64 = 86_400;
+const SECONDS_PER_HOUR: u64 = 3_600;
+
+fn prompt(text: &str) -> Result<String> {
+    Ok(Input::new().with_prompt(text).interact_text()?)
+}
+
+/// Whole days and remaining hours in a span of seconds.
+fn days_and_hours(seconds: u64) -> (u64, u64) {
+    (
+        seconds / SECONDS_PER_DAY,
+        (seconds % SECONDS_PER_DAY) / SECONDS_PER_HOUR,
+    )
+}
+
 /// Schedules identity deletion with 7-day grace period.
 pub fn schedule_deletion(config: &CliConfig) -> Result<()> {
     let wb = open_vauchi(config)?;
-
-    let confirm: String = Input::new()
-        .with_prompt(
-            "This will schedule your identity for deletion in 7 days. Type 'delete' to confirm",
-        )
-        .interact_text()?;
-
-    if confirm.to_lowercase() != "delete" {
-        display::info("Deletion cancelled.");
-        return Ok(());
+    let answer = prompt(
+        "This will schedule your identity for deletion in 7 days. Type 'delete' to confirm",
+    )?;
+    match schedule_deletion_answered(&wb, &answer)? {
+        Some(days) => {
+            display::warning(&format!(
+                "Identity deletion scheduled. You have {} days to cancel.",
+                days
+            ));
+            display::info("Run 'vauchi gdpr cancel-deletion' to cancel.");
+        }
+        None => display::info("Deletion cancelled."),
     }
+    Ok(())
+}
 
+/// Schedules the deletion when `answer` is "delete" in any case; returns
+/// the grace period in days, or `None` when the answer declined.
+fn schedule_deletion_answered(wb: &Vauchi, answer: &str) -> Result<Option<u64>> {
+    if answer.to_lowercase() != "delete" {
+        return Ok(None);
+    }
     let manager = DeletionManager::new(wb.storage());
     manager.schedule_deletion()?;
-
-    let state = manager.deletion_state()?;
-    if let DeletionState::Scheduled {
-        scheduled_at,
-        execute_at,
-    } = state
-    {
-        let days = (execute_at - scheduled_at) / 86400;
-        display::warning(&format!(
-            "Identity deletion scheduled. You have {} days to cancel.",
-            days
-        ));
-        display::info("Run 'vauchi gdpr cancel-deletion' to cancel.");
-    }
-
-    Ok(())
+    Ok(match manager.deletion_state()? {
+        DeletionState::Scheduled {
+            scheduled_at,
+            execute_at,
+        } => Some(days_and_hours(execute_at - scheduled_at).0),
+        _ => None,
+    })
 }
 
 /// Cancels a scheduled identity deletion.
@@ -105,36 +121,36 @@ pub fn deletion_status(config: &CliConfig) -> Result<()> {
     let wb = open_vauchi(config)?;
     let manager = DeletionManager::new(wb.storage());
     let state = manager.deletion_state()?;
+    // Countdown against persisted `execute_at` — injectable CLI clock.
+    for line in deletion_status_lines(&state, crate::clock::unix_seconds()) {
+        println!("{line}");
+    }
+    Ok(())
+}
 
+/// What `gdpr deletion-status` prints for `state` at `now`.
+fn deletion_status_lines(state: &DeletionState, now: u64) -> Vec<String> {
     match state {
-        DeletionState::None => {
-            display::info("No deletion scheduled.");
-        }
+        DeletionState::None => vec![display::info_line("No deletion scheduled.")],
         DeletionState::Scheduled {
             scheduled_at,
             execute_at,
         } => {
-            // Countdown against persisted `execute_at` — injectable CLI clock.
-            let now = crate::clock::unix_seconds();
-            let remaining = execute_at.saturating_sub(now);
-            let days = remaining / 86400;
-            let hours = (remaining % 86400) / 3600;
-
-            display::warning(&format!(
-                "Deletion scheduled at {} — {} days, {} hours remaining.",
-                scheduled_at, days, hours
-            ));
-            display::info("Run 'vauchi gdpr cancel-deletion' to cancel.");
+            let (days, hours) = days_and_hours(execute_at.saturating_sub(now));
+            vec![
+                display::warning_line(&format!(
+                    "Deletion scheduled at {} — {} days, {} hours remaining.",
+                    scheduled_at, days, hours
+                )),
+                display::info_line("Run 'vauchi gdpr cancel-deletion' to cancel."),
+            ]
         }
-        DeletionState::Executed { executed_at } => {
-            display::warning(&format!("Identity was destroyed at {}.", executed_at));
-        }
-        _ => {
-            display::info("Unknown deletion state.");
-        }
+        DeletionState::Executed { executed_at } => vec![display::warning_line(&format!(
+            "Identity was destroyed at {}.",
+            executed_at
+        ))],
+        _ => vec![display::info_line("Unknown deletion state.")],
     }
-
-    Ok(())
 }
 
 /// Shows consent status for all consent types.
@@ -223,16 +239,14 @@ fn create_shred_relay_client(
 ) -> Result<RelayClient<HttpTransportAdapter>> {
     let http_url = ws_to_http(relay_url);
     let transport = wb.build_relay_transport(&http_url, 10_000);
+    // The URL travels inside `transport`; HttpTransportAdapter ignores the
+    // TransportConfig it is handed, so the client config stays default.
     let adapter = HttpTransportAdapter::new(transport);
-    let transport_config = TransportConfig {
-        server_url: http_url,
-        ..TransportConfig::default()
-    };
-    let config = RelayClientConfig {
-        transport: transport_config,
-        ..RelayClientConfig::default()
-    };
-    let mut client = RelayClient::new(adapter, config, identity_id.to_string());
+    let mut client = RelayClient::new(
+        adapter,
+        RelayClientConfig::default(),
+        identity_id.to_string(),
+    );
     client
         .connect()
         .map_err(|e| anyhow::anyhow!("Failed to connect to relay: {}", e))?;
@@ -250,53 +264,64 @@ fn ws_to_http(url: &str) -> String {
     }
 }
 
-/// Executes a scheduled identity deletion after the grace period.
-pub async fn execute_deletion(config: &CliConfig) -> Result<()> {
-    let wb = open_vauchi(config)?;
-    let identity = wb
-        .identity()
-        .ok_or_else(|| anyhow::anyhow!("No identity found"))?;
-
-    let manager = DeletionManager::new(wb.storage());
-    let state = manager.deletion_state()?;
-    let token = match state {
+/// The shred token for a scheduled deletion whose grace period has ended
+/// at `now`; an error naming why otherwise.
+fn shred_token_after_grace(state: &DeletionState, now: u64) -> Result<ShredToken> {
+    match state {
         DeletionState::Scheduled {
             scheduled_at,
             execute_at,
         } => {
-            // Grace-period gate against persisted `execute_at` — injectable
-            // CLI clock so E2E can fast-forward past the grace period.
-            let now = crate::clock::unix_seconds();
-            if now < execute_at {
-                let remaining = execute_at.saturating_sub(now);
-                let days = remaining / 86400;
-                let hours = (remaining % 86400) / 3600;
+            if now < *execute_at {
+                let (days, hours) = days_and_hours(execute_at.saturating_sub(now));
                 bail!(
                     "Grace period has not elapsed. {} days, {} hours remaining.",
                     days,
                     hours
                 );
             }
-            ShredToken::from_created_at(scheduled_at)
+            Ok(ShredToken::from_created_at(*scheduled_at))
         }
         DeletionState::None => {
             bail!("No deletion scheduled. Run 'vauchi gdpr schedule-deletion' first.")
         }
         DeletionState::Executed { .. } => bail!("Identity has already been destroyed."),
         _ => bail!("Unknown deletion state."),
-    };
-
-    let confirm: String = Input::new()
-        .with_prompt(
-            "This will permanently destroy all data and notify contacts. Type 'EXECUTE' to confirm",
-        )
-        .interact_text()?;
-
-    if confirm != "EXECUTE" {
-        display::info("Deletion cancelled.");
-        return Ok(());
     }
+}
 
+/// Executes a scheduled identity deletion after the grace period.
+pub async fn execute_deletion(config: &CliConfig) -> Result<()> {
+    let wb = open_vauchi(config)?;
+    let state = DeletionManager::new(wb.storage()).deletion_state()?;
+    // Grace-period gate against persisted `execute_at` — injectable CLI
+    // clock so E2E can fast-forward past the grace period.
+    let token = shred_token_after_grace(&state, crate::clock::unix_seconds())?;
+
+    let answer = prompt(
+        "This will permanently destroy all data and notify contacts. Type 'EXECUTE' to confirm",
+    )?;
+    match execute_deletion_answered(config, &wb, token, &answer)? {
+        Some(lines) => print_lines(&lines),
+        None => display::info("Deletion cancelled."),
+    }
+    Ok(())
+}
+
+/// Destroys the identity when `answer` is exactly "EXECUTE"; returns the
+/// report to print, or `None` when the answer declined.
+fn execute_deletion_answered(
+    config: &CliConfig,
+    wb: &Vauchi,
+    token: ShredToken,
+    answer: &str,
+) -> Result<Option<Vec<String>>> {
+    if answer != "EXECUTE" {
+        return Ok(None);
+    }
+    let identity = wb
+        .identity()
+        .ok_or_else(|| anyhow::anyhow!("No identity found"))?;
     let secure_storage = create_secure_storage(config)?;
     let identity_id = hex::encode(identity.signing_public_key());
     let shred_manager = ShredManager::new(
@@ -307,39 +332,46 @@ pub async fn execute_deletion(config: &CliConfig) -> Result<()> {
     );
 
     // Create two separate relay clients (borrow rules: PurgeSender + RevocationSender)
-    let mut purge_client = create_shred_relay_client(&wb, &config.relay_url, &identity_id)?;
-    let mut revocation_client = create_shred_relay_client(&wb, &config.relay_url, &identity_id)?;
+    let mut purge_client = create_shred_relay_client(wb, &config.relay_url, &identity_id)?;
+    let mut revocation_client = create_shred_relay_client(wb, &config.relay_url, &identity_id)?;
 
-    display::info("Destroying identity...");
-
+    let mut lines = vec![display::info_line("Destroying identity...")];
     let report = shred_manager
         .hard_shred(token, Some(&mut purge_client), Some(&mut revocation_client))
         .map_err(|e| anyhow::anyhow!("Shred failed: {}", e))?;
-
-    display_shred_report(&report);
-    let verification = shred_manager.verify_shred();
-    display_shred_verification(&verification);
-
-    display::success("Identity destroyed. Goodbye.");
-    Ok(())
+    lines.extend(shred_summary_lines(&report, &shred_manager.verify_shred()));
+    lines.push(display::success_line("Identity destroyed. Goodbye."));
+    Ok(Some(lines))
 }
 
 /// Emergency immediate deletion — no grace period.
 pub async fn panic_shred(config: &CliConfig) -> Result<()> {
     let wb = open_vauchi(config)?;
+    if wb.identity().is_none() {
+        bail!("No identity found");
+    }
+    let answer =
+        prompt("EMERGENCY: This will immediately destroy ALL data. Type 'PANIC' to confirm")?;
+    match panic_shred_answered(config, &wb, &answer)? {
+        Some(lines) => print_lines(&lines),
+        None => display::info("Panic shred cancelled."),
+    }
+    Ok(())
+}
+
+/// Destroys everything at once when `answer` is exactly "PANIC"; returns
+/// the report to print, or `None` when the answer declined.
+fn panic_shred_answered(
+    config: &CliConfig,
+    wb: &Vauchi,
+    answer: &str,
+) -> Result<Option<Vec<String>>> {
+    if answer != "PANIC" {
+        return Ok(None);
+    }
     let identity = wb
         .identity()
         .ok_or_else(|| anyhow::anyhow!("No identity found"))?;
-
-    let confirm: String = Input::new()
-        .with_prompt("EMERGENCY: This will immediately destroy ALL data. Type 'PANIC' to confirm")
-        .interact_text()?;
-
-    if confirm != "PANIC" {
-        display::info("Panic shred cancelled.");
-        return Ok(());
-    }
-
     let secure_storage = create_secure_storage(config)?;
     let identity_id = hex::encode(identity.signing_public_key());
     let shred_manager = ShredManager::new(
@@ -350,15 +382,16 @@ pub async fn panic_shred(config: &CliConfig) -> Result<()> {
     );
 
     // Best-effort relay connections — failure doesn't block shred
-    let mut purge_client = create_shred_relay_client(&wb, &config.relay_url, &identity_id).ok();
-    let mut revocation_client =
-        create_shred_relay_client(&wb, &config.relay_url, &identity_id).ok();
+    let mut purge_client = create_shred_relay_client(wb, &config.relay_url, &identity_id).ok();
+    let mut revocation_client = create_shred_relay_client(wb, &config.relay_url, &identity_id).ok();
 
+    let mut lines = Vec::new();
     if purge_client.is_none() || revocation_client.is_none() {
-        display::warning("Could not connect to relay. Revocations will be best-effort.");
+        lines.push(display::warning_line(
+            "Could not connect to relay. Revocations will be best-effort.",
+        ));
     }
-
-    display::warning("Executing emergency panic shred...");
+    lines.push(display::warning_line("Executing emergency panic shred..."));
 
     let report = shred_manager
         .panic_shred(
@@ -370,46 +403,48 @@ pub async fn panic_shred(config: &CliConfig) -> Result<()> {
                 .map(|c| c as &mut dyn vauchi_core::api::RevocationSender),
         )
         .map_err(|e| anyhow::anyhow!("Panic shred failed: {}", e))?;
-
-    display_shred_report(&report);
-    let verification = shred_manager.verify_shred();
-    display_shred_verification(&verification);
-
-    display::success("Panic shred complete. All data destroyed.");
-    Ok(())
+    lines.extend(shred_summary_lines(&report, &shred_manager.verify_shred()));
+    lines.push(display::success_line(
+        "Panic shred complete. All data destroyed.",
+    ));
+    Ok(Some(lines))
 }
 
-/// Displays a shred report summary.
-fn display_shred_report(report: &ShredReport) {
-    println!();
-    display::info("=== Shred Report ===");
-    println!("  Contacts notified:      {}", report.contacts_notified);
-    println!("  Relay purge sent:       {}", report.relay_purge_sent);
-    println!("  Devices notified:       {}", report.devices_notified);
-    println!("  SMK destroyed:          {}", report.smk_destroyed);
-    println!(
-        "  Identity file destroyed:{}",
-        report.identity_file_destroyed
-    );
-    println!("  Key files destroyed:    {}", report.key_files_destroyed);
-    println!("  SQLite destroyed:       {}", report.sqlite_destroyed);
-    println!("  Pre-signed deleted:     {}", report.pre_signed_deleted);
-    println!("  Data dir deleted:       {}", report.data_dir_deleted);
-}
-
-/// Displays shred verification results.
-fn display_shred_verification(verification: &ShredVerification) {
-    println!();
-    display::info("=== Shred Verification ===");
-    println!("  SMK absent:        {}", verification.smk_absent);
-    println!("  Database absent:   {}", verification.database_absent);
-    println!("  Data dir absent:   {}", verification.data_dir_absent);
-    println!("  Pre-signed absent: {}", verification.pre_signed_absent);
-    if verification.all_clear {
-        display::success("  All clear — all data verified destroyed.");
-    } else {
-        display::warning("  WARNING: Some data may not have been fully destroyed.");
+fn print_lines(lines: &[String]) {
+    for line in lines {
+        println!("{line}");
     }
+}
+
+/// The shred report and its verification, as printed after a shred.
+fn shred_summary_lines(report: &ShredReport, verification: &ShredVerification) -> Vec<String> {
+    vec![
+        String::new(),
+        display::info_line("=== Shred Report ==="),
+        format!("  Contacts notified:      {}", report.contacts_notified),
+        format!("  Relay purge sent:       {}", report.relay_purge_sent),
+        format!("  Devices notified:       {}", report.devices_notified),
+        format!("  SMK destroyed:          {}", report.smk_destroyed),
+        format!(
+            "  Identity file destroyed:{}",
+            report.identity_file_destroyed
+        ),
+        format!("  Key files destroyed:    {}", report.key_files_destroyed),
+        format!("  SQLite destroyed:       {}", report.sqlite_destroyed),
+        format!("  Pre-signed deleted:     {}", report.pre_signed_deleted),
+        format!("  Data dir deleted:       {}", report.data_dir_deleted),
+        String::new(),
+        display::info_line("=== Shred Verification ==="),
+        format!("  SMK absent:        {}", verification.smk_absent),
+        format!("  Database absent:   {}", verification.database_absent),
+        format!("  Data dir absent:   {}", verification.data_dir_absent),
+        format!("  Pre-signed absent: {}", verification.pre_signed_absent),
+        if verification.all_clear {
+            display::success_line("  All clear — all data verified destroyed.")
+        } else {
+            display::warning_line("  WARNING: Some data may not have been fully destroyed.")
+        },
+    ]
 }
 
 fn parse_consent_type(s: &str) -> Result<ConsentType> {
@@ -420,3 +455,8 @@ fn parse_consent_type(s: &str) -> Result<ConsentType> {
         )
     })
 }
+
+// INLINE_TEST_REQUIRED: Binary crate without lib.rs - tests cannot be external
+#[cfg(test)]
+#[path = "gdpr_tests.rs"]
+mod gdpr_tests;

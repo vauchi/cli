@@ -17,7 +17,12 @@ use vauchi_core::{Contact, ContactCard, FieldType, SocialNetworkRegistry};
 
 /// Prints a success message.
 pub fn success(msg: &str) {
-    println!("{} {}", style("✓").green().bold(), msg);
+    println!("{}", success_line(msg));
+}
+
+/// A success message as `success` prints it.
+pub fn success_line(msg: &str) -> String {
+    format!("{} {}", style("✓").green().bold(), msg)
 }
 
 /// Prints an error message.
@@ -27,12 +32,22 @@ pub fn error(msg: &str) {
 
 /// Prints a warning message.
 pub fn warning(msg: &str) {
-    println!("{} {}", style("⚠").yellow().bold(), msg);
+    println!("{}", warning_line(msg));
+}
+
+/// A warning message as `warning` prints it.
+pub fn warning_line(msg: &str) -> String {
+    format!("{} {}", style("⚠").yellow().bold(), msg)
 }
 
 /// Prints an info message.
 pub fn info(msg: &str) {
-    println!("{} {}", style("ℹ").blue().bold(), msg);
+    println!("{}", info_line(msg));
+}
+
+/// An info message as `info` prints it.
+pub fn info_line(msg: &str) -> String {
+    format!("{} {}", style("ℹ").blue().bold(), msg)
 }
 
 /// Returns the platform-neutral icon token for a field type.
