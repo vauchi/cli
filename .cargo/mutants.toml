@@ -21,4 +21,8 @@ exclude_re = [
     # Both relay clients are built identically and succeed or fail together,
     # so `||` and `&&` pick the same branch.
     "replace \\|\\| with && in panic_shred_answered",
+    # Hands the URI to the operating system's opener; what it opens and
+    # reports is tested through action_uri, opened_description and
+    # action_value.
+    "replace execute_action -> Result<\\(\\)> with Ok\\(\\(\\)\\)",
 ]
