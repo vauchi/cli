@@ -177,3 +177,7 @@ fn collect_node_actions(node: &PresentationNode, actions: &mut Vec<ActionSpec>) 
 #[cfg(test)]
 #[path = "presentation_tests.rs"]
 mod tests;
+
+#[cfg(test)]
+#[path = "presentation_node_tests.rs"]
+mod node_tests;
