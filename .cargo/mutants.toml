@@ -36,4 +36,20 @@ exclude_re = [
     "delete ! in vouch",
     # Printed only after a successful sync against a live relay.
     "src/commands/sync\\.rs:.*delete ! in run$",
+    # contacts open hands the field's URI to the OS opener; the field
+    # lookup and the report text are tested as find_field and
+    # opened_field_description. open_interactive is a dialoguer menu.
+    "replace open_field -> Result<\\(\\)> with Ok\\(\\(\\)\\)",
+    "replace open_interactive -> Result<\\(\\)> with Ok\\(\\(\\)\\)",
+    "delete ! in open_interactive",
+    # Device linking past the parts tests reach: typed confirmations
+    # (dialoguer), and `finish`, which needs the other device over a relay.
+    "replace != with == in (join|revoke)$",
+    "replace finish -> Result<\\(\\)> with Ok\\(\\(\\)\\)",
+    "delete ! in finish$",
+    # A passing probe needs a live OHTTP relay and gateway.
+    "replace ohttp_probe -> u8 with 1",
+    # The "(this device)" marker is printed from the device registry, which
+    # exists only after a second device was linked over a relay.
+    "src/commands/device\\.rs:.*replace == with != in list$",
 ]

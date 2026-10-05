@@ -55,3 +55,12 @@ fn an_explicit_ohttp_relay_is_probed_as_given() {
 
     assert_eq!(url, "https://ohttp.example.org");
 }
+
+// @internal
+#[test]
+fn a_self_hosted_relay_is_probed_on_its_own_host() {
+    let (url, _) = probe_target("wss://relay.example.org", None);
+
+    assert!(url.contains("relay.example.org"), "{url}");
+    assert!(!url.contains("vauchi.app"), "{url}");
+}
