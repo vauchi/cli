@@ -111,67 +111,67 @@ fn truncate_value(s: &str, max: usize) -> &str {
 fn execute_action(action: &ContactAction) -> Result<()> {
     use crate::display;
 
-    let uri = match action {
+    let Some(uri) = action_uri(action) else {
+        display::info("Copy to clipboard is not available in CLI mode.");
+        display::info("Use 'vauchi contacts show <name>' to view field values.");
+        return Ok(());
+    };
+    match open::that(&uri) {
+        Ok(_) => display::success(opened_description(action)),
+        Err(e) => {
+            display::error(&format!("Failed to open: {}", e));
+            println!();
+            println!("  Value: {}", action_value(action));
+            println!();
+            display::info("You can select and copy the value above manually.");
+        }
+    }
+    Ok(())
+}
+
+/// The URI the operating system opens for an action; `None` for actions
+/// the CLI cannot hand to another program.
+fn action_uri(action: &ContactAction) -> Option<String> {
+    match action {
         ContactAction::Call(v) => Some(format!("tel:{}", v)),
         ContactAction::SendSms(v) => Some(format!("sms:{}", v)),
         ContactAction::SendEmail(v) => Some(format!("mailto:{}", v)),
         ContactAction::OpenUrl(v) => Some(v.clone()),
-        ContactAction::OpenMap(v) => {
-            let encoded = url_encode_value(v);
-            Some(format!(
-                "https://www.openstreetmap.org/search?query={encoded}"
-            ))
-        }
-        ContactAction::GetDirections(v) => {
-            let encoded = url_encode_value(v);
-            Some(format!(
-                "https://www.openstreetmap.org/directions?route=&to={encoded}"
-            ))
-        }
-        ContactAction::CopyToClipboard => None,
+        ContactAction::OpenMap(v) => Some(format!(
+            "https://www.openstreetmap.org/search?query={}",
+            url_encode_value(v)
+        )),
+        ContactAction::GetDirections(v) => Some(format!(
+            "https://www.openstreetmap.org/directions?route=&to={}",
+            url_encode_value(v)
+        )),
         _ => None,
-    };
+    }
+}
 
-    match uri {
-        Some(uri_str) => match open::that(&uri_str) {
-            Ok(_) => {
-                let desc = match action {
-                    ContactAction::Call(_) => "Opened dialer",
-                    ContactAction::SendSms(_) => "Opened messaging",
-                    ContactAction::SendEmail(_) => "Opened email client",
-                    ContactAction::OpenUrl(_) => "Opened browser",
-                    ContactAction::OpenMap(_) => "Opened maps",
-                    ContactAction::GetDirections(_) => "Opened directions",
-                    ContactAction::CopyToClipboard => unreachable!(),
-                    _ => "Opened",
-                };
-                display::success(desc);
-                Ok(())
-            }
-            Err(e) => {
-                display::error(&format!("Failed to open: {}", e));
-                let value = match action {
-                    ContactAction::Call(v)
-                    | ContactAction::SendSms(v)
-                    | ContactAction::SendEmail(v) => v.as_str(),
-                    ContactAction::OpenUrl(v)
-                    | ContactAction::OpenMap(v)
-                    | ContactAction::GetDirections(v) => v.as_str(),
-                    ContactAction::CopyToClipboard => unreachable!(),
-                    _ => "",
-                };
-                println!();
-                println!("  Value: {}", value);
-                println!();
-                display::info("You can select and copy the value above manually.");
-                Ok(())
-            }
-        },
-        None => {
-            display::info("Copy to clipboard is not available in CLI mode.");
-            display::info("Use 'vauchi contacts show <name>' to view field values.");
-            Ok(())
-        }
+/// What the CLI reports once the OS opened an action's URI.
+fn opened_description(action: &ContactAction) -> &'static str {
+    match action {
+        ContactAction::Call(_) => "Opened dialer",
+        ContactAction::SendSms(_) => "Opened messaging",
+        ContactAction::SendEmail(_) => "Opened email client",
+        ContactAction::OpenUrl(_) => "Opened browser",
+        ContactAction::OpenMap(_) => "Opened maps",
+        ContactAction::GetDirections(_) => "Opened directions",
+        _ => "Opened",
+    }
+}
+
+/// The raw value shown for manual copying when opening fails.
+fn action_value(action: &ContactAction) -> &str {
+    match action {
+        ContactAction::Call(v)
+        | ContactAction::SendSms(v)
+        | ContactAction::SendEmail(v)
+        | ContactAction::OpenUrl(v)
+        | ContactAction::OpenMap(v)
+        | ContactAction::GetDirections(v) => v.as_str(),
+        _ => "",
     }
 }
 
@@ -179,16 +179,20 @@ fn execute_action(action: &ContactAction) -> Result<()> {
 fn url_encode_value(value: &str) -> String {
     value
         .chars()
-        .map(|c| match c {
-            ' ' => "%20".to_string(),
-            '&' => "%26".to_string(),
-            '?' => "%3F".to_string(),
-            '#' => "%23".to_string(),
-            _ if c.is_ascii_alphanumeric() || "-._~,+/".contains(c) => c.to_string(),
-            _ => format!("%{:02X}", c as u32),
+        .map(|c| {
+            if c.is_ascii_alphanumeric() || "-._~,+/".contains(c) {
+                c.to_string()
+            } else {
+                format!("%{:02X}", c as u32)
+            }
         })
         .collect()
 }
+
+// INLINE_TEST_REQUIRED: Binary crate without lib.rs — tests cannot be external
+#[cfg(test)]
+#[path = "action_tests.rs"]
+mod action_tests;
 
 // INLINE_TEST_REQUIRED: Binary crate without lib.rs — tests cannot be external
 #[cfg(test)]
