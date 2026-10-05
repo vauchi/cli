@@ -531,14 +531,5 @@ pub fn info(config: &CliConfig) -> Result<()> {
 
 /// Formats a Unix timestamp as a human-readable string.
 fn format_timestamp(ts: u64) -> String {
-    use std::time::{Duration, UNIX_EPOCH};
-
-    let d = UNIX_EPOCH + Duration::from_secs(ts);
-    if let Ok(datetime) = d.duration_since(UNIX_EPOCH) {
-        let secs = datetime.as_secs();
-        // Simple formatting - in production use chrono
-        format!("{} seconds since epoch", secs)
-    } else {
-        "Unknown".to_string()
-    }
+    format!("{ts} seconds since epoch")
 }

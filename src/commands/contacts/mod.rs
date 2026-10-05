@@ -150,7 +150,7 @@ fn action_uri(action: &ContactAction) -> Option<String> {
 }
 
 /// What the CLI reports once the OS opened an action's URI.
-fn opened_description(action: &ContactAction) -> &'static str {
+pub(super) fn opened_description(action: &ContactAction) -> &'static str {
     match action {
         ContactAction::Call(_) => "Opened dialer",
         ContactAction::SendSms(_) => "Opened messaging",

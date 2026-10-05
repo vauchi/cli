@@ -94,8 +94,9 @@ pub fn animated_qr_encode(file: &PathBuf, fps: u8, chunk_size: usize, locale: &s
     let payload = std::fs::read(file)
         .map_err(|e| anyhow::anyhow!("Failed to read file '{}': {}", file.display(), e))?;
 
+    // `fps` is reported only: the session never reads it (vauchi-core
+    // exchange/transport/animated_qr.rs), so the config keeps its default.
     let config = AnimatedQrConfig {
-        fps,
         chunk_size,
         ..Default::default()
     };

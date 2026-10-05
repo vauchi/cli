@@ -90,8 +90,15 @@ pub fn status(config: &CliConfig) -> Result<()> {
 /// Lists delivery records, optionally filtered by status.
 pub fn list(config: &CliConfig, filter: Option<&str>) -> Result<()> {
     let wb = open_vauchi(config)?;
-    let storage = wb.storage();
+    for line in list_lines(wb.storage(), filter)? {
+        println!("{line}");
+    }
+    Ok(())
+}
 
+/// What `delivery list` prints: the records matching `filter` ("failed",
+/// "pending", or anything else for all).
+fn list_lines(storage: &vauchi_core::Storage, filter: Option<&str>) -> Result<Vec<String>> {
     let records = match filter {
         Some("failed") => storage.deliveries().get_delivery_records_by_status(
             &vauchi_core::storage::DeliveryStatus::Failed {
@@ -103,50 +110,50 @@ pub fn list(config: &CliConfig, filter: Option<&str>) -> Result<()> {
     };
 
     if records.is_empty() {
-        display::info("No delivery records found.");
-        return Ok(());
+        return Ok(vec![display::info_line("No delivery records found.")]);
     }
 
-    display::info(&format!("{} delivery record(s):", records.len()));
-    println!();
-
+    let mut lines = vec![
+        display::info_line(&format!("{} delivery record(s):", records.len())),
+        String::new(),
+    ];
     for record in &records {
-        let status_str = format_delivery_status(&record.status);
         let id_prefix = &record.message_id[..8.min(record.message_id.len())];
-        println!(
+        lines.push(format!(
             "  {} -> {} [{}]",
-            id_prefix, record.recipient_id, status_str
-        );
+            id_prefix,
+            record.recipient_id,
+            format_delivery_status(&record.status)
+        ));
     }
-
-    Ok(())
+    Ok(lines)
 }
 
 /// Runs the retry scheduler tick, processing due retries.
 pub fn retry(config: &CliConfig) -> Result<()> {
     let wb = open_vauchi(config)?;
-    let storage = wb.storage();
-
     let scheduler = vauchi_core::network::RetryScheduler::new();
-    let result = scheduler.tick(storage, &vauchi_core::rng::OsSecureRng)?;
-
-    if result.due == 0 {
-        display::info("No retries due.");
-    } else {
-        display::success(&format!(
-            "Processed {} due retries: {} rescheduled, {} expired",
-            result.due, result.rescheduled, result.expired
-        ));
-
-        if !result.ready_ids.is_empty() {
-            println!("  Ready for resend:");
-            for id in &result.ready_ids {
-                println!("    {}", id);
-            }
-        }
+    let result = scheduler.tick(wb.storage(), &vauchi_core::rng::OsSecureRng)?;
+    for line in retry_lines(&result) {
+        println!("{line}");
     }
-
     Ok(())
+}
+
+/// What `delivery retry` prints for a scheduler tick.
+fn retry_lines(result: &vauchi_core::network::RetryTickResult) -> Vec<String> {
+    if result.due == 0 {
+        return vec![display::info_line("No retries due.")];
+    }
+    let mut lines = vec![display::success_line(&format!(
+        "Processed {} due retries: {} rescheduled, {} expired",
+        result.due, result.rescheduled, result.expired
+    ))];
+    if !result.ready_ids.is_empty() {
+        lines.push("  Ready for resend:".to_string());
+        lines.extend(result.ready_ids.iter().map(|id| format!("    {}", id)));
+    }
+    lines
 }
 
 /// Runs delivery cleanup: expires old records, removes terminal records.
@@ -186,6 +193,11 @@ fn format_delivery_status(status: &vauchi_core::storage::DeliveryStatus) -> Stri
         _ => "unknown".to_string(),
     }
 }
+
+// INLINE_TEST_REQUIRED: Binary crate without lib.rs - tests cannot be external
+#[cfg(test)]
+#[path = "delivery_tests.rs"]
+mod delivery_tests;
 
 // INLINE_TEST_REQUIRED: Binary crate without lib.rs - tests cannot be external
 #[cfg(test)]
