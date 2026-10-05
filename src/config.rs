@@ -207,62 +207,68 @@ impl CliConfig {
     /// When the `secure-storage` feature is enabled, uses the OS keychain
     /// with a key name derived from the install_id stored next to the data
     /// directory. Otherwise, falls back to encrypted file storage.
-    #[allow(unused_variables)]
     pub fn storage_key(&self) -> Result<SymmetricKey> {
         #[cfg(feature = "secure-storage")]
         {
-            let storage = PlatformKeyring::new("vauchi-cli");
-            let key_name = keychain_key_name(&self.data_dir)?;
-
-            match storage.load_key(&key_name) {
-                Ok(Some(bytes)) if bytes.len() == 32 => {
-                    let mut arr = [0u8; 32];
-                    arr.copy_from_slice(&bytes);
-                    Ok(SymmetricKey::from_bytes(arr))
-                }
-                Ok(Some(_)) => {
-                    anyhow::bail!("Invalid storage key length in keychain");
-                }
-                Ok(None) => {
-                    let key = SymmetricKey::generate();
-                    storage
-                        .save_key(&key_name, key.as_bytes())
-                        .map_err(|e| anyhow::anyhow!("Failed to save key to keychain: {}", e))?;
-                    Ok(key)
-                }
-                Err(e) => {
-                    anyhow::bail!("Keychain error: {}", e);
-                }
-            }
+            storage_key_from_keychain(&self.data_dir)
         }
-
         #[cfg(not(feature = "secure-storage"))]
         {
-            let fallback_key = load_or_generate_fallback_key(&self.data_dir)?;
+            storage_key_from_file(&self.data_dir)
+        }
+    }
+}
 
-            let key_dir = self.data_dir.join("keys");
-            let storage = FileKeyStorage::new(key_dir, fallback_key);
+#[cfg(feature = "secure-storage")]
+fn storage_key_from_keychain(data_dir: &std::path::Path) -> Result<SymmetricKey> {
+    let storage = PlatformKeyring::new("vauchi-cli");
+    let key_name = keychain_key_name(data_dir)?;
 
-            match storage.load_key(KEY_NAME) {
-                Ok(Some(bytes)) if bytes.len() == 32 => {
-                    let mut arr = [0u8; 32];
-                    arr.copy_from_slice(&bytes);
-                    Ok(SymmetricKey::from_bytes(arr))
-                }
-                Ok(Some(_)) => {
-                    anyhow::bail!("Invalid storage key length");
-                }
-                Ok(None) => {
-                    let key = SymmetricKey::generate();
-                    storage
-                        .save_key(KEY_NAME, key.as_bytes())
-                        .map_err(|e| anyhow::anyhow!("Failed to save storage key: {}", e))?;
-                    Ok(key)
-                }
-                Err(e) => {
-                    anyhow::bail!("Storage error: {}", e);
-                }
-            }
+    match storage.load_key(&key_name) {
+        Ok(Some(bytes)) if bytes.len() == 32 => {
+            let mut arr = [0u8; 32];
+            arr.copy_from_slice(&bytes);
+            Ok(SymmetricKey::from_bytes(arr))
+        }
+        Ok(Some(_)) => {
+            anyhow::bail!("Invalid storage key length in keychain");
+        }
+        Ok(None) => {
+            let key = SymmetricKey::generate();
+            storage
+                .save_key(&key_name, key.as_bytes())
+                .map_err(|e| anyhow::anyhow!("Failed to save key to keychain: {}", e))?;
+            Ok(key)
+        }
+        Err(e) => {
+            anyhow::bail!("Keychain error: {}", e);
+        }
+    }
+}
+
+#[cfg(not(feature = "secure-storage"))]
+fn storage_key_from_file(data_dir: &std::path::Path) -> Result<SymmetricKey> {
+    let fallback_key = load_or_generate_fallback_key(data_dir)?;
+    let storage = FileKeyStorage::new(data_dir.join("keys"), fallback_key);
+
+    match storage.load_key(KEY_NAME) {
+        Ok(Some(bytes)) if bytes.len() == 32 => {
+            let mut arr = [0u8; 32];
+            arr.copy_from_slice(&bytes);
+            Ok(SymmetricKey::from_bytes(arr))
+        }
+        Ok(Some(_)) => {
+            anyhow::bail!("Invalid storage key length");
+        }
+        Ok(None) => {
+            let key = SymmetricKey::generate();
+            storage
+                .save_key(KEY_NAME, key.as_bytes())
+                .map_err(|e| anyhow::anyhow!("Failed to save storage key: {}", e))?;
+            Ok(key)
+        }
+        Err(e) => {
+            anyhow::bail!("Storage error: {}", e);
         }
     }
 }
@@ -290,6 +296,27 @@ mod tests {
         backup_data.extend_from_slice(&ciphertext);
 
         IdentityBackup::new(backup_data)
+    }
+
+    #[cfg(not(feature = "secure-storage"))]
+    // @internal
+    #[test]
+    fn a_stored_key_of_the_wrong_length_is_refused() {
+        let temp_dir = tempdir().unwrap();
+        let config = CliConfig {
+            data_dir: temp_dir.path().to_path_buf(),
+            relay_url: "ws://localhost:8080".to_string(),
+            ohttp_relay_url: None,
+            raw: false,
+        };
+        let fallback = load_or_generate_fallback_key(&config.data_dir).unwrap();
+        FileKeyStorage::new(config.data_dir.join("keys"), fallback)
+            .save_key(KEY_NAME, &[7u8; 31])
+            .unwrap();
+
+        let error = config.storage_key().unwrap_err().to_string();
+
+        assert_eq!(error, "Invalid storage key length");
     }
 
     #[test]
