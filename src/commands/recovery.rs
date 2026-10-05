@@ -113,38 +113,13 @@ pub fn vouch(config: &CliConfig, claim_data: &str, auto_confirm: bool) -> Result
     println!("  Old Identity: {}...", &old_pk_hex[..16]);
     println!("  New Identity: {}...", &new_pk_hex[..16]);
 
-    if !auto_confirm {
+    if auto_confirm {
         if let Some(c) = contact {
-            println!();
-            display::success(&format!("This matches your contact: {}", c.display_name()));
-            println!();
-
-            let confirm = Confirm::new()
-                .with_prompt(format!("Vouch for {}'s recovery?", c.display_name()))
-                .default(false)
-                .interact()?;
-
-            if !confirm {
-                display::info("Vouching cancelled.");
-                return Ok(());
-            }
-        } else {
-            println!();
-            display::warning("This public key is NOT in your contacts.");
-            display::warning("Only vouch if you can verify this person in-person!");
-            println!();
-
-            let confirm: String = Input::new()
-                .with_prompt("Type 'I VERIFY' to vouch anyway")
-                .interact_text()?;
-
-            if confirm != "I VERIFY" {
-                display::info("Vouching cancelled.");
-                return Ok(());
-            }
+            display::success(&format!("Auto-confirmed vouch for: {}", c.display_name()));
         }
-    } else if let Some(c) = contact {
-        display::success(&format!("Auto-confirmed vouch for: {}", c.display_name()));
+    } else if !confirm_vouch(contact.map(|c| c.display_name()))? {
+        display::info("Vouching cancelled.");
+        return Ok(());
     }
 
     // Create voucher (CLI does not yet wire guardian tokens — pass None)
@@ -175,6 +150,31 @@ pub fn vouch(config: &CliConfig, claim_data: &str, auto_confirm: bool) -> Result
     display::info("They should run: vauchi recovery add-voucher <voucher>");
 
     Ok(())
+}
+
+/// Asks whether to vouch: a yes/no for a known contact, the typed phrase
+/// "I VERIFY" for a key that is not one.
+fn confirm_vouch(contact_name: Option<&str>) -> Result<bool> {
+    println!();
+    match contact_name {
+        Some(name) => {
+            display::success(&format!("This matches your contact: {}", name));
+            println!();
+            Ok(Confirm::new()
+                .with_prompt(format!("Vouch for {}'s recovery?", name))
+                .default(false)
+                .interact()?)
+        }
+        None => {
+            display::warning("This public key is NOT in your contacts.");
+            display::warning("Only vouch if you can verify this person in-person!");
+            println!();
+            let typed: String = Input::new()
+                .with_prompt("Type 'I VERIFY' to vouch anyway")
+                .interact_text()?;
+            Ok(typed == "I VERIFY")
+        }
+    }
 }
 
 /// Adds a voucher to the pending recovery proof.

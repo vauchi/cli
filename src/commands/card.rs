@@ -61,9 +61,7 @@ pub fn add(config: &CliConfig, field_type: &str, label: &str, value: &str) -> Re
 
     let new_card = wb.own_card()?.unwrap();
     let queued = wb.propagate_card_update(&old_card, &new_card)?;
-    if queued > 0 {
-        display::info(&format!("Update queued to {} contact(s)", queued));
-    }
+    report_queued(queued);
 
     drain_activity_log(&wb, event_rx);
 
@@ -138,9 +136,7 @@ pub fn add_social_interactive(config: &CliConfig) -> Result<()> {
 
     let new_card = wb.own_card()?.unwrap();
     let queued = wb.propagate_card_update(&old_card, &new_card)?;
-    if queued > 0 {
-        display::info(&format!("Update queued to {} contact(s)", queued));
-    }
+    report_queued(queued);
 
     drain_activity_log(&wb, event_rx);
 
@@ -161,9 +157,7 @@ pub fn remove(config: &CliConfig, label: &str) -> Result<()> {
 
         let new_card = wb.own_card()?.unwrap();
         let queued = wb.propagate_card_update(&old_card, &new_card)?;
-        if queued > 0 {
-            display::info(&format!("Update queued to {} contact(s)", queued));
-        }
+        report_queued(queued);
     } else {
         display::warning(&format!("Field '{}' not found", label));
     }
@@ -194,9 +188,7 @@ pub fn edit(config: &CliConfig, label: &str, value: &str) -> Result<()> {
             display::success(&format!("Updated field '{}'", label));
 
             let queued = wb.propagate_card_update(&old_card, &new_card)?;
-            if queued > 0 {
-                display::info(&format!("Update queued to {} contact(s)", queued));
-            }
+            report_queued(queued);
         }
         None => {
             display::warning(&format!("Field '{}' not found", label));
@@ -223,9 +215,7 @@ pub fn edit_name(config: &CliConfig, name: &str) -> Result<()> {
 
     let new_card = wb.own_card()?.unwrap();
     let queued = wb.propagate_card_update(&old_card, &new_card)?;
-    if queued > 0 {
-        display::info(&format!("Update queued to {} contact(s)", queued));
-    }
+    report_queued(queued);
 
     drain_activity_log(&wb, event_rx);
 
@@ -384,5 +374,36 @@ mod tests {
             // allow(zero_assertions): No-panic fuzz test
             let _ = parse_field_type(&s);
         }
+    }
+}
+
+fn report_queued(queued: usize) {
+    if let Some(message) = queued_message(queued) {
+        display::info(&message);
+    }
+}
+
+/// What the CLI says after a card change was queued to `queued` contacts.
+fn queued_message(queued: usize) -> Option<String> {
+    (queued > 0).then(|| format!("Update queued to {} contact(s)", queued))
+}
+
+// INLINE_TEST_REQUIRED: Binary crate without lib.rs - tests cannot be external
+#[cfg(test)]
+mod queued_tests {
+    use super::queued_message;
+
+    // @internal
+    #[test]
+    fn a_queued_update_is_reported_only_when_it_reached_someone() {
+        assert_eq!(queued_message(0), None);
+        assert_eq!(
+            queued_message(1).as_deref(),
+            Some("Update queued to 1 contact(s)")
+        );
+        assert_eq!(
+            queued_message(3).as_deref(),
+            Some("Update queued to 3 contact(s)")
+        );
     }
 }

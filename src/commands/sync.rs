@@ -79,19 +79,7 @@ pub fn run(config: &CliConfig) -> Result<()> {
             ..
         } => {
             println!();
-            let total = received + sent + acknowledged;
-            if total > 0 {
-                let mut summary = format!("Sync complete: {received} received");
-                if sent > 0 {
-                    summary.push_str(&format!(", {sent} sent"));
-                }
-                if acknowledged > 0 {
-                    summary.push_str(&format!(", {acknowledged} acknowledged"));
-                }
-                display::success(&summary);
-            } else {
-                display::info("Sync complete: No new messages or pending updates");
-            }
+            println!("{}", sync_summary_line(received, sent, acknowledged));
             for err in &errors {
                 display::warning(&format!("Sync error: {err}"));
             }
@@ -126,4 +114,54 @@ pub fn run(config: &CliConfig) -> Result<()> {
     wb.disconnect();
 
     Ok(())
+}
+
+/// The line a completed sync reports: the counts that are not zero, or
+/// that nothing moved.
+fn sync_summary_line(received: usize, sent: usize, acknowledged: usize) -> String {
+    if received + sent + acknowledged == 0 {
+        return display::info_line("Sync complete: No new messages or pending updates");
+    }
+    let mut summary = format!("Sync complete: {received} received");
+    if sent > 0 {
+        summary.push_str(&format!(", {sent} sent"));
+    }
+    if acknowledged > 0 {
+        summary.push_str(&format!(", {acknowledged} acknowledged"));
+    }
+    display::success_line(&summary)
+}
+
+// INLINE_TEST_REQUIRED: Binary crate without lib.rs - tests cannot be external
+#[cfg(test)]
+mod tests {
+    use super::sync_summary_line;
+
+    fn plain(line: String) -> String {
+        console::strip_ansi_codes(&line).to_string()
+    }
+
+    // @internal
+    #[test]
+    fn the_summary_names_only_the_counts_that_moved() {
+        let cases = [
+            (
+                (0, 0, 0),
+                "ℹ Sync complete: No new messages or pending updates",
+            ),
+            ((1, 0, 0), "✓ Sync complete: 1 received"),
+            ((0, 1, 0), "✓ Sync complete: 0 received, 1 sent"),
+            ((0, 0, 1), "✓ Sync complete: 0 received, 1 acknowledged"),
+            (
+                (2, 3, 4),
+                "✓ Sync complete: 2 received, 3 sent, 4 acknowledged",
+            ),
+        ];
+        for ((received, sent, acknowledged), expected) in cases {
+            assert_eq!(
+                plain(sync_summary_line(received, sent, acknowledged)),
+                expected
+            );
+        }
+    }
 }
