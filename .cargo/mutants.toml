@@ -25,4 +25,15 @@ exclude_re = [
     # reports is tested through action_uri, opened_description and
     # action_value.
     "replace execute_action -> Result<\\(\\)> with Ok\\(\\(\\)\\)",
+    # Observed 2026-10-05: after a relay-less exchange neither side has a
+    # sending ratchet, so propagate_card_update queues to nobody and the
+    # report never prints. queued_message carries the logic and is tested.
+    "replace report_queued with \\(\\)",
+    # Interactive dialoguer prompts need a terminal (see the GDPR entries).
+    "replace add_social_interactive -> Result<\\(\\)> with Ok\\(\\(\\)\\)",
+    "confirm_vouch",
+    # The only `!` left in vouch guards the answer to that prompt.
+    "delete ! in vouch",
+    # Printed only after a successful sync against a live relay.
+    "src/commands/sync\\.rs:.*delete ! in run$",
 ]
