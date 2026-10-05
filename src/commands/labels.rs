@@ -344,16 +344,13 @@ pub fn hide_field(config: &CliConfig, label_name: &str, field_label: &str) -> Re
 }
 
 fn format_timestamp(ts: u64) -> String {
-    use std::time::{Duration, UNIX_EPOCH};
-    let dt = UNIX_EPOCH + Duration::from_secs(ts);
     // Relative-age display against the injectable CLI clock so E2E
     // clock-skew scenarios see a consistent timeline.
-    let now = crate::clock::now();
-    let elapsed = now
-        .duration_since(dt)
-        .unwrap_or(Duration::from_secs(0))
-        .as_secs();
+    format_age(crate::clock::unix_seconds().saturating_sub(ts))
+}
 
+/// A past age in seconds as the coarse phrase labels show.
+fn format_age(elapsed: u64) -> String {
     if elapsed < 60 {
         "just now".to_string()
     } else if elapsed < 3600 {
@@ -364,3 +361,8 @@ fn format_timestamp(ts: u64) -> String {
         format!("{} days ago", elapsed / 86400)
     }
 }
+
+// INLINE_TEST_REQUIRED: Binary crate without lib.rs - tests cannot be external
+#[cfg(test)]
+#[path = "labels_tests.rs"]
+mod labels_tests;
