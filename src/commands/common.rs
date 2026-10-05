@@ -536,3 +536,33 @@ mod tests {
         );
     }
 }
+
+// INLINE_TEST_REQUIRED: Binary crate without lib.rs - tests cannot be external
+#[cfg(test)]
+mod reset_tests {
+    use super::reset_local_state;
+    use crate::config::CliConfig;
+
+    fn config(dir: &std::path::Path) -> CliConfig {
+        CliConfig {
+            data_dir: dir.to_path_buf(),
+            relay_url: "ws://127.0.0.1:9".to_string(),
+            ohttp_relay_url: None,
+            raw: false,
+        }
+    }
+
+    // @internal
+    #[test]
+    fn resetting_nothing_succeeds_but_an_unremovable_path_fails() {
+        let dir = tempfile::tempdir().unwrap();
+        let config = config(dir.path());
+        assert!(reset_local_state(&config).is_ok(), "missing files are fine");
+
+        std::fs::create_dir_all(config.storage_path()).unwrap();
+        assert!(
+            reset_local_state(&config).is_err(),
+            "a directory where the database belongs cannot be removed as a file"
+        );
+    }
+}

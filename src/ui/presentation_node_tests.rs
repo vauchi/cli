@@ -466,3 +466,76 @@ fn each_nesting_level_indents_two_more_columns() {
         "{rendered:#?}"
     );
 }
+
+// @internal
+#[test]
+fn an_overlay_attaches_only_to_the_current_surface_revision() {
+    let mut state = state_on("overlay", Vec::new());
+    let overlay = |revision| Command::PresentOverlay {
+        surface_id: surface_id("overlay"),
+        revision,
+        overlay: vauchi_core::OverlaySpec {
+            kind: vauchi_core::OverlayKind::ActionMenu,
+            title: None,
+            body: None,
+            close_label: None,
+            items: vec![action("item")],
+        },
+    };
+
+    state.apply(&[overlay(0)]);
+    assert!(state.overlay.is_none(), "a stale overlay is dropped");
+    state.apply(&[overlay(1)]);
+    assert!(
+        state.overlay.is_some(),
+        "the current revision's overlay is kept"
+    );
+}
+
+// @internal
+#[test]
+fn actions_inside_groups_images_statuses_and_confirmations_are_offered() {
+    let state = state_on(
+        "actions",
+        vec![
+            group(
+                None,
+                vec![PresentationNode::Status {
+                    id: None,
+                    title: "S".into(),
+                    detail: None,
+                    icon_token: None,
+                    badge: None,
+                    tone: PresentationTone::Neutral,
+                    activation: Some(action("status")),
+                    accessibility: a11y("S"),
+                }],
+            ),
+            PresentationNode::Image {
+                id: None,
+                data: None,
+                fallback_text: None,
+                shape: PresentationImageShape::Circle,
+                size: None,
+                brightness: 1.0,
+                activation: Some(action("image")),
+                accessibility: a11y("I"),
+            },
+            PresentationNode::Confirmation {
+                id: binding("c"),
+                warning: "W".into(),
+                confirm: action("yes"),
+                cancel: action("no"),
+                accessibility: a11y("C"),
+            },
+        ],
+    );
+
+    let ids: Vec<String> = state
+        .actions()
+        .into_iter()
+        .map(|a| a.interaction_id.as_str().to_string())
+        .collect();
+
+    assert_eq!(ids, ["status", "image", "yes", "no"]);
+}

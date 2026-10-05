@@ -22,6 +22,10 @@ impl Cli {
         }
     }
 
+    pub fn data_dir(&self) -> &std::path::Path {
+        self.data_dir.path()
+    }
+
     pub fn run(&self, args: &[&str]) -> Output {
         Command::new(env!("CARGO_BIN_EXE_vauchi"))
             .arg("--data-dir")

@@ -52,4 +52,23 @@ exclude_re = [
     # The "(this device)" marker is printed from the device registry, which
     # exists only after a second device was linked over a relay.
     "src/commands/device\\.rs:.*replace == with != in list$",
+    # Compiled only with the e2e-test-clock feature, which the mutation
+    # build does not enable; cli_clock_injection_tests covers it there.
+    "time_from_env|parse_epoch",
+    "replace is_pinned -> bool with false",
+    # Compiled only with the secure-storage feature.
+    "storage_key_from_keychain",
+    # Reached only when no CARGO_MANIFEST_DIR is set, i.e. never under
+    # `cargo test`.
+    "delete ! in try_init_i18n",
+    # Duress setup prompts for PINs (dialoguer); status details and test
+    # results need a configured duress PIN.
+    "src/commands/duress\\.rs:.*(delete ! in (status|test)|in test)",
+    # Alerts only exist after a contact's alert arrives over a relay.
+    "delete match arm VauchiEvent::.* in alerts",
+    # USB exchange needs a peer on a socket or a cable.
+    "replace usb_(exchange|listen) -> Result<\\(\\)> with Ok\\(\\(\\)\\)",
+    "delete ! in usb_(exchange|listen)",
+    # Overwriting a backup asks for confirmation (dialoguer).
+    "confirm_overwrite",
 ]
