@@ -36,6 +36,13 @@ pub(crate) struct Cli {
     #[arg(long, global = true, env = "VAUCHI_OHTTP_RELAY_URL")]
     pub ohttp_relay: Option<String>,
 
+    /// Ed25519 OHTTP trust anchor of the `--relay` relay, as 64 hex
+    /// characters (#288). Its gateway keys are then accepted only through a
+    /// chain signed by this key; the relay's operator publishes it with the
+    /// URL.
+    #[arg(long, global = true, env = "VAUCHI_RELAY_ANCHOR", value_parser = parse_relay_anchor)]
+    pub relay_anchor: Option<[u8; 32]>,
+
     /// Locale for output messages (en, de, fr, es)
     #[arg(long, global = true, env = "VAUCHI_LOCALE", default_value = "en")]
     pub locale: String,
@@ -934,3 +941,11 @@ pub(crate) enum RecoverySettingsCommands {
 #[cfg(test)]
 #[path = "args_tests.rs"]
 mod tests;
+
+/// DC-01: an anchor is exactly 32 bytes as 64 hex characters.
+fn parse_relay_anchor(value: &str) -> Result<[u8; 32], String> {
+    let mut anchor = [0u8; 32];
+    hex::decode_to_slice(value.trim(), &mut anchor)
+        .map_err(|_| "a relay anchor is 64 hex characters".to_string())?;
+    Ok(anchor)
+}

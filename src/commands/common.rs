@@ -13,9 +13,12 @@ use crate::config::CliConfig;
 /// Builds a VauchiConfig from the CLI config (storage path, relay, key).
 /// Transport overrides (OHTTP) are layered on by callers that need them.
 fn base_wb_config(config: &CliConfig) -> Result<VauchiConfig> {
-    Ok(VauchiConfig::with_storage_path(config.storage_path())
-        .with_relay_url(&config.relay_url)
-        .with_storage_key(config.storage_key()?))
+    let wb_config = VauchiConfig::with_storage_path(config.storage_path());
+    let wb_config = match config.relay_anchor {
+        Some(anchor) => wb_config.with_relay(&config.relay_url, anchor),
+        None => wb_config.with_relay_url(&config.relay_url),
+    };
+    Ok(wb_config.with_storage_key(config.storage_key()?))
 }
 
 /// Opens Vauchi from the config and loads the identity.
@@ -36,33 +39,6 @@ pub(crate) fn open_vauchi(config: &CliConfig) -> Result<Vauchi> {
     // 2026-05-25-relay-ohttp-forward-hop-502.
     if let Some(ref ohttp_relay_url) = config.ohttp_relay_url {
         wb_config = wb_config.with_ohttp_relay_url(ohttp_relay_url);
-    }
-
-    // Test-only override: `VAUCHI_OVERRIDE_BUNDLED_OHTTP_KEY_HEX` (a
-    // hex-encoded RFC 9458 KeyConfig) takes precedence over the
-    // compiled-in `BUNDLED_OHTTP_KEY`. Lets the e2e orchestrator
-    // inject a freshly-spawned local relay's ephemeral gateway key
-    // so the release cli (which compiles out the `VAUCHI_ALLOW_DIRECT`
-    // hatch above) can still encap to a key the local relay can
-    // decrypt. Release-allowed but WARN-loud — mirrors the F2 pattern
-    // in `relay/src/main.rs` (`RELAY_VERSION_CHANGED_AT_SECS`). The
-    // override changes which key bytes are used; it does NOT enable
-    // direct fetch, so ADR-037 IP-privacy properties hold. Production
-    // deployments must NOT set this env var. See problem record
-    // `_private/docs/problems/2026-05-04-f13-cli-bundled-key-injection-for-e2e/`.
-    if let Ok(hex) = std::env::var("VAUCHI_OVERRIDE_BUNDLED_OHTTP_KEY_HEX") {
-        let bytes = hex::decode(hex.trim()).map_err(|e| {
-            anyhow::anyhow!("VAUCHI_OVERRIDE_BUNDLED_OHTTP_KEY_HEX is not valid hex: {e}")
-        })?;
-        // This diagnostic must remain on stderr: contact-list output is
-        // machine-parsed by E2E and other callers.
-        eprintln!(
-            "OHTTP bundled key overridden via \
-             VAUCHI_OVERRIDE_BUNDLED_OHTTP_KEY_HEX ({} bytes) — \
-             must NOT be set in production",
-            bytes.len()
-        );
-        wb_config.ohttp.bundled_gateway_key = Some(bytes);
     }
 
     let mut wb = build_vauchi(wb_config)?;
@@ -366,6 +342,7 @@ mod tests {
             data_dir: temp_dir.path().to_path_buf(),
             relay_url: "ws://localhost:8080".to_string(),
             ohttp_relay_url: None,
+            relay_anchor: None,
             raw: false,
         };
         let identity = Identity::create("Test User", crate::clock::shared().unix_seconds());
@@ -389,6 +366,7 @@ mod tests {
             data_dir: temp_dir.path().to_path_buf(),
             relay_url: "ws://localhost:8080".to_string(),
             ohttp_relay_url: None,
+            relay_anchor: None,
             raw: false,
         };
 
@@ -411,6 +389,7 @@ mod tests {
             data_dir: temp_dir.path().to_path_buf(),
             relay_url: "ws://localhost:8080".to_string(),
             ohttp_relay_url: None,
+            relay_anchor: None,
             raw: false,
         };
 
@@ -435,6 +414,7 @@ mod tests {
             data_dir: temp_dir.path().to_path_buf(),
             relay_url: "ws://localhost:8080".to_string(),
             ohttp_relay_url: None,
+            relay_anchor: None,
             raw: false,
         };
 
@@ -465,6 +445,7 @@ mod tests {
             data_dir: temp_dir.path().to_path_buf(),
             relay_url: "ws://localhost:9999".to_string(),
             ohttp_relay_url: None,
+            relay_anchor: None,
             raw: false,
         };
 
@@ -581,6 +562,7 @@ mod reset_tests {
             data_dir: dir.to_path_buf(),
             relay_url: "ws://127.0.0.1:9".to_string(),
             ohttp_relay_url: None,
+            relay_anchor: None,
             raw: false,
         }
     }

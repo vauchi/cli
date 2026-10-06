@@ -82,6 +82,7 @@ async fn main() -> ExitCode {
         data_dir,
         relay_url: cli.relay,
         ohttp_relay_url: cli.ohttp_relay,
+        relay_anchor: cli.relay_anchor,
         raw: cli.raw,
     };
 

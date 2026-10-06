@@ -212,6 +212,7 @@ mod tests {
             data_dir: dir.path().to_path_buf(),
             relay_url: "wss://test.example.com".to_string(),
             ohttp_relay_url: None,
+            relay_anchor: None,
             raw: false,
         };
 

@@ -233,6 +233,7 @@ mod tests {
             data_dir,
             relay_url: "http://127.0.0.1:9".to_string(),
             ohttp_relay_url: None,
+            relay_anchor: None,
             raw: false,
         }
     }

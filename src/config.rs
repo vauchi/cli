@@ -45,6 +45,8 @@ pub struct CliConfig {
     /// `None` lets core derive it from `relay_url` (production →
     /// `ohttp.vauchi.app`; self-hosted/local → `relay_url`).
     pub ohttp_relay_url: Option<String>,
+    /// The relay's OHTTP trust anchor (#288); `None` for none.
+    pub relay_anchor: Option<[u8; 32]>,
     /// Output raw JSON instead of formatted text.
     pub raw: bool,
 }
@@ -307,6 +309,7 @@ mod tests {
             data_dir: temp_dir.path().to_path_buf(),
             relay_url: "ws://localhost:8080".to_string(),
             ohttp_relay_url: None,
+            relay_anchor: None,
             raw: false,
         };
         let fallback = load_or_generate_fallback_key(&config.data_dir).unwrap();
@@ -326,6 +329,7 @@ mod tests {
             data_dir: temp_dir.path().to_path_buf(),
             relay_url: "ws://localhost:8080".to_string(),
             ohttp_relay_url: None,
+            relay_anchor: None,
             raw: false,
         };
 
@@ -345,6 +349,7 @@ mod tests {
             data_dir: temp_dir.path().to_path_buf(),
             relay_url: "ws://localhost:8080".to_string(),
             ohttp_relay_url: None,
+            relay_anchor: None,
             raw: false,
         };
 
@@ -403,6 +408,7 @@ mod tests {
             data_dir: temp_dir.path().to_path_buf(),
             relay_url: "ws://localhost:8080".to_string(),
             ohttp_relay_url: None,
+            relay_anchor: None,
             raw: false,
         };
 
@@ -418,6 +424,7 @@ mod tests {
             data_dir: temp_dir.path().to_path_buf(),
             relay_url: "ws://localhost:8080".to_string(),
             ohttp_relay_url: None,
+            relay_anchor: None,
             raw: false,
         };
 
@@ -434,12 +441,14 @@ mod tests {
             data_dir: temp1.path().to_path_buf(),
             relay_url: "ws://localhost:8080".to_string(),
             ohttp_relay_url: None,
+            relay_anchor: None,
             raw: false,
         };
         let config2 = CliConfig {
             data_dir: temp2.path().to_path_buf(),
             relay_url: "ws://localhost:8080".to_string(),
             ohttp_relay_url: None,
+            relay_anchor: None,
             raw: false,
         };
 
@@ -455,6 +464,7 @@ mod tests {
             data_dir: temp_dir.path().to_path_buf(),
             relay_url: "ws://localhost:8080".to_string(),
             ohttp_relay_url: None,
+            relay_anchor: None,
             raw: false,
         };
 
@@ -485,6 +495,7 @@ mod tests {
             data_dir: temp_dir.path().to_path_buf(),
             relay_url: "ws://localhost:8080".to_string(),
             ohttp_relay_url: None,
+            relay_anchor: None,
             raw: false,
         };
 
@@ -502,6 +513,7 @@ mod tests {
             data_dir: temp_dir.path().to_path_buf(),
             relay_url: "ws://localhost:8080".to_string(),
             ohttp_relay_url: None,
+            relay_anchor: None,
             raw: false,
         };
 
@@ -534,6 +546,7 @@ mod tests {
             data_dir: data_dir.clone(),
             relay_url: "ws://localhost:8080".to_string(),
             ohttp_relay_url: None,
+            relay_anchor: None,
             raw: false,
         };
         let key1 = config1.storage_key().expect("should create key");
@@ -542,6 +555,7 @@ mod tests {
             data_dir,
             relay_url: "ws://localhost:8080".to_string(),
             ohttp_relay_url: None,
+            relay_anchor: None,
             raw: false,
         };
         let key2 = config2.storage_key().expect("should load key");
