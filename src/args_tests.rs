@@ -25,6 +25,52 @@ fn ohttp_relay_flag_parses_when_provided() {
     );
 }
 
+const ANCHOR_HEX: &str = "5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a";
+
+/// A custom relay's OHTTP anchor travels with its URL (#288, decision 0.9).
+// @internal
+#[test]
+fn relay_anchor_parses_into_its_32_bytes() {
+    let cli = Cli::parse_from([
+        "vauchi",
+        "--relay",
+        "https://relay.self.example",
+        "--relay-anchor",
+        ANCHOR_HEX,
+        "sync",
+    ]);
+
+    assert_eq!(cli.relay_anchor, Some([0x5a; 32]));
+}
+
+// @internal
+#[test]
+fn relay_anchor_defaults_to_none() {
+    let cli = Cli::parse_from(["vauchi", "sync"]);
+
+    assert_eq!(cli.relay_anchor, None);
+}
+
+/// DC-01: anything but 64 hex characters is refused at the argument
+/// boundary, before any config is built.
+// @internal
+#[test]
+fn relay_anchor_refuses_anything_but_64_hex_characters() {
+    let too_long = format!("{ANCHOR_HEX}00");
+    let not_hex = "zz".repeat(32);
+    for value in [
+        "",
+        "abcd",
+        &ANCHOR_HEX[..62],
+        too_long.as_str(),
+        not_hex.as_str(),
+    ] {
+        let parsed = Cli::try_parse_from(["vauchi", "--relay-anchor", value, "sync"]);
+
+        assert!(parsed.is_err(), "{value:?} must be refused");
+    }
+}
+
 // @internal
 #[test]
 fn ohttp_relay_defaults_to_none() {

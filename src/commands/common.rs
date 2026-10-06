@@ -294,6 +294,39 @@ mod tests {
         );
     }
 
+    fn cli_config(dir: &std::path::Path, relay_anchor: Option<[u8; 32]>) -> CliConfig {
+        CliConfig {
+            data_dir: dir.to_path_buf(),
+            relay_url: "https://relay.self.example".to_string(),
+            ohttp_relay_url: None,
+            relay_anchor,
+            raw: false,
+        }
+    }
+
+    /// The relay and its anchor reach core together, so the relay's OHTTP
+    /// keys are accepted only through its signed chain (#288).
+    // @internal
+    #[test]
+    fn a_relay_anchor_reaches_core_with_its_relay() {
+        let temp_dir = tempdir().unwrap();
+
+        let wb_config = base_wb_config(&cli_config(temp_dir.path(), Some([0x5a; 32]))).unwrap();
+
+        assert_eq!(wb_config.relay.server_url, "https://relay.self.example");
+        assert_eq!(wb_config.relay.ohttp_trust_anchor(), Some([0x5a; 32]));
+    }
+
+    // @internal
+    #[test]
+    fn without_an_anchor_a_custom_relay_has_none() {
+        let temp_dir = tempdir().unwrap();
+
+        let wb_config = base_wb_config(&cli_config(temp_dir.path(), None)).unwrap();
+
+        assert_eq!(wb_config.relay.ohttp_trust_anchor(), None);
+    }
+
     // @internal
     #[test]
     fn unpinned_clock_keeps_system_storage_clock() {
