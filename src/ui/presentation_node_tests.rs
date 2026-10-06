@@ -158,6 +158,7 @@ fn qr(id: &str, purpose: PresentationQrPurpose, label: Option<&str>) -> Presenta
         label: label.map(Into::into),
         placement: None,
         error_correction: None,
+        size: None,
         accessibility: a11y("QR"),
     }
 }
