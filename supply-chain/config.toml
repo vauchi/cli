@@ -495,10 +495,6 @@ criteria = "safe-to-deploy"
 version = "0.8.2"
 criteria = "safe-to-deploy"
 
-[[exemptions.log]]
-version = "0.4.33"
-criteria = "safe-to-deploy"
-
 [[exemptions.lru]]
 version = "0.18.4"
 criteria = "safe-to-deploy"
@@ -521,10 +517,6 @@ criteria = "safe-to-deploy"
 
 [[exemptions.num-bigint]]
 version = "0.4.8"
-criteria = "safe-to-deploy"
-
-[[exemptions.num-complex]]
-version = "0.4.6"
 criteria = "safe-to-deploy"
 
 [[exemptions.num-iter]]
