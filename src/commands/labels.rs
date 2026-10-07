@@ -138,14 +138,42 @@ pub fn show(config: &CliConfig, label_name: &str, locale: &str) -> Result<()> {
     }
     println!();
 
-    println!("Presentation overrides:");
-    println!("  Name: {}", label.display_name_override().unwrap_or("-"));
-    println!("  Bio: {}", label.bio_override().unwrap_or("-"));
     println!(
-        "  Avatar: {}",
-        label
-            .avatar_override()
-            .map_or_else(|| "-".to_string(), |bytes| format!("{} bytes", bytes.len()))
+        "{}",
+        display::t("cli.labels.detail.overrides_header", locale)
+    );
+    let name = label.display_name_override().unwrap_or("-");
+    println!(
+        "  {}",
+        display::tf(
+            "cli.labels.detail.override_name",
+            locale,
+            &[("value", name)]
+        )
+    );
+    let bio = label.bio_override().unwrap_or("-");
+    println!(
+        "  {}",
+        display::tf("cli.labels.detail.override_bio", locale, &[("value", bio)])
+    );
+    let avatar = label.avatar_override().map_or_else(
+        || "-".to_string(),
+        |bytes| {
+            let count = bytes.len().to_string();
+            display::tf(
+                "cli.labels.detail.override_avatar_bytes",
+                locale,
+                &[("count", &count)],
+            )
+        },
+    );
+    println!(
+        "  {}",
+        display::tf(
+            "cli.labels.detail.override_avatar",
+            locale,
+            &[("value", &avatar)]
+        )
     );
 
     Ok(())
