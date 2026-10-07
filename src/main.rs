@@ -91,7 +91,7 @@ async fn main() -> ExitCode {
         // Same report the `Result`-returning main printed before exit codes
         // became Core-owned outcomes.
         Err(error) => {
-            eprintln!("Error: {error:?}");
+            eprintln!("{}: {error:?}", display::t("error.title", &cli.locale));
             ExitCode::FAILURE
         }
     }
