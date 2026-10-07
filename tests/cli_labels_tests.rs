@@ -70,3 +70,30 @@ fn a_field_is_shown_to_and_hidden_from_a_label_by_its_name() {
     let detail = alice.stdout(&["labels", "show", "Family"]);
     assert!(section(&detail, "Visible fields:").is_empty(), "{detail}");
 }
+
+// The presentation-override block reads from the locale like the rest of
+// `labels show`; it printed hardcoded English (vauchi/private#544). The
+// English output keeps its wording.
+// @internal
+#[test]
+fn the_presentation_override_block_follows_the_locale() {
+    let alice = common::Cli::new();
+    alice.stdout(&["init", "Alice"]);
+    alice.stdout(&["labels", "create", "Family"]);
+    alice.stdout(&["labels", "set-name", "Family", "Ali"]);
+
+    let german = alice.stdout(&["--locale", "de", "labels", "show", "Family"]);
+    let english = alice.stdout(&["--locale", "en", "labels", "show", "Family"]);
+
+    assert!(german.contains("Angepasste Darstellung:"), "{german}");
+    assert!(german.contains("  Name: Ali"), "{german}");
+    assert!(!german.contains("Presentation overrides:"), "{german}");
+    for line in [
+        "Presentation overrides:",
+        "  Name: Ali",
+        "  Bio: -",
+        "  Avatar: -",
+    ] {
+        assert!(english.contains(line), "{line:?} not in {english}");
+    }
+}
