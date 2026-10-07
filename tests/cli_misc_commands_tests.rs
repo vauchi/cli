@@ -124,3 +124,16 @@ fn the_support_page_prints_its_title() {
 
     assert!(output.lines().count() > 5, "{output}");
 }
+
+// The last-resort error line names the failure in the user's language: it
+// read a hardcoded "Error:" (vauchi/private#543).
+// @internal
+#[test]
+fn the_error_line_is_named_in_the_chosen_locale() {
+    let cli = initialized();
+
+    let german = stderr_of(&cli, &["--locale", "de", "card", "add", "email"]);
+
+    assert!(german.contains("Fehler:"), "{german}");
+    assert!(!german.contains("Error:"), "{german}");
+}
