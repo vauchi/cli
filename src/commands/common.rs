@@ -55,7 +55,7 @@ pub(crate) fn open_vauchi(config: &CliConfig) -> Result<Vauchi> {
         let identity = config.import_local_identity()?;
         wb.storage()
             .identity()
-            .save_identity(&identity.to_storage_bytes(), identity.display_name())
+            .save_identity(&identity.to_storage_bytes())
             .map_err(|e| anyhow::anyhow!("Failed to migrate identity into core storage: {e}"))?;
         wb.set_identity(identity)?;
     }
