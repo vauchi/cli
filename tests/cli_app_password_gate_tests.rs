@@ -68,7 +68,12 @@ fn test_every_data_command_runs_with_the_app_password() {
     for args in GATED {
         let mut with_pin = vec!["--pin", PASSWORD];
         with_pin.extend_from_slice(args);
-        cli.stdout(&with_pin);
+        let output = cli.run(&with_pin);
+        assert!(
+            output.status.success(),
+            "{args:?} failed with the app password: {}",
+            String::from_utf8_lossy(&output.stderr)
+        );
     }
 }
 
