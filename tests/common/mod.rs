@@ -37,6 +37,30 @@ impl Cli {
             .expect("run vauchi")
     }
 
+    /// Runs a command that reads its answers from stdin.
+    pub fn run_with_stdin(&self, args: &[&str], stdin: &str) -> Output {
+        use std::io::Write as _;
+        use std::process::Stdio;
+        let mut child = Command::new(env!("CARGO_BIN_EXE_vauchi"))
+            .arg("--data-dir")
+            .arg(self.data_dir.path())
+            .arg("--relay")
+            .arg("ws://127.0.0.1:8080")
+            .args(args)
+            .stdin(Stdio::piped())
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
+            .spawn()
+            .expect("spawn vauchi");
+        child
+            .stdin
+            .take()
+            .expect("stdin piped")
+            .write_all(stdin.as_bytes())
+            .expect("write stdin");
+        child.wait_with_output().expect("await vauchi")
+    }
+
     /// Stdout of a command that must succeed.
     pub fn stdout(&self, args: &[&str]) -> String {
         let output = self.run(args);
