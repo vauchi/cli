@@ -9,7 +9,7 @@
 use anyhow::{Result, bail};
 use vauchi_app::ui::AppEngine;
 
-use crate::commands::common::{auth_mode_label, open_vauchi};
+use crate::commands::common::{auth_mode_label, open_for_authentication, open_vauchi};
 use crate::config::CliConfig;
 use crate::display;
 use crate::ui::presentation;
@@ -80,7 +80,7 @@ pub fn disable(config: &CliConfig) -> Result<()> {
 
 /// Test authentication (shows Normal/Duress result).
 pub fn test(config: &CliConfig, pin: &str) -> Result<()> {
-    let mut wb = open_vauchi(config)?;
+    let mut wb = open_for_authentication(config)?;
 
     if !wb.is_password_enabled()? {
         bail!("No app password set. Run 'vauchi duress setup' first.");

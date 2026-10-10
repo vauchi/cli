@@ -1816,7 +1816,7 @@ mod duress {
             "app-password-123\napp-password-123\n\n1\n135790\n\n135790\n\n\n\n",
         );
 
-        let output = ctx.run_success(&["duress", "status"]);
+        let output = ctx.run_success(&["--pin", "app-password-123", "duress", "status"]);
         assert!(
             output.contains("Duress PIN:    ENABLED"),
             "duress setup must persist through the Core reducer, got: {}",

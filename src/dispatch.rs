@@ -22,6 +22,7 @@ pub(crate) async fn run(
     pin: Option<&str>,
     locale: &str,
 ) -> Result<u8> {
+    commands::common::set_session_pin(pin);
     match command {
         Commands::Init { name, force } => {
             commands::init::run(&name, force, config, locale)?;

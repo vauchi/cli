@@ -5,7 +5,7 @@
 //! Shared helpers for CLI commands.
 
 use anyhow::{Result, bail};
-use std::sync::mpsc;
+use std::sync::{OnceLock, mpsc};
 use vauchi_core::{AuthMode, Vauchi, VauchiConfig, VauchiEvent};
 
 use crate::config::CliConfig;
@@ -21,6 +21,32 @@ fn base_wb_config(config: &CliConfig) -> Result<VauchiConfig> {
     Ok(wb_config.with_storage_key(config.storage_key()?))
 }
 
+static SESSION_PIN: OnceLock<Option<String>> = OnceLock::new();
+
+/// Records the global `--pin` once per process, so every [`open_vauchi`]
+/// authenticates with it (#387).
+pub(crate) fn set_session_pin(pin: Option<&str>) {
+    let _ = SESSION_PIN.set(pin.map(str::to_owned));
+}
+
+fn session_pin() -> Option<&'static str> {
+    SESSION_PIN.get().and_then(Option::as_deref)
+}
+
+/// Opens Vauchi authenticated with the global `--pin`: once an app password
+/// is set, no command reads or changes user data without it, and the duress
+/// PIN puts every command in duress mode (#387).
+pub(crate) fn open_vauchi(config: &CliConfig) -> Result<Vauchi> {
+    open_vauchi_authenticated(config, session_pin())
+}
+
+/// Opens Vauchi without authenticating, for a command that authenticates
+/// with a PIN of its own (`duress test`); authenticating twice would queue
+/// the duress alerts twice.
+pub(crate) fn open_for_authentication(config: &CliConfig) -> Result<Vauchi> {
+    open_storage(config)
+}
+
 /// Opens Vauchi from the config and loads the identity.
 ///
 /// Initialization state is owned by core: a [`Vauchi`] instance auto-loads
@@ -28,7 +54,7 @@ fn base_wb_config(config: &CliConfig) -> Result<VauchiConfig> {
 /// is only a migration source for installs that predate core storage; when
 /// core storage is empty and no legacy file exists, Vauchi is not
 /// initialized.
-pub(crate) fn open_vauchi(config: &CliConfig) -> Result<Vauchi> {
+fn open_storage(config: &CliConfig) -> Result<Vauchi> {
     // `mut` is only needed on debug builds where the direct-HTTP escape
     // hatch below may flip `ohttp.allow_direct`.
     let mut wb_config = base_wb_config(config)?;
@@ -164,7 +190,7 @@ fn build_vauchi_with_clock(
 /// When `pin` is `None` but an app password IS configured, returns an error
 /// requiring authentication.
 pub(crate) fn open_vauchi_authenticated(config: &CliConfig, pin: Option<&str>) -> Result<Vauchi> {
-    let mut wb = open_vauchi(config)?;
+    let mut wb = open_storage(config)?;
 
     match pin {
         Some(p) => {
