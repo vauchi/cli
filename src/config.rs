@@ -486,6 +486,16 @@ mod tests {
         )
         .unwrap();
         assert_eq!(reimported.display_name(), "Test User");
+        // The re-exported identity is owner-only (private#285).
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            let mode = std::fs::metadata(config.identity_path())
+                .unwrap()
+                .permissions()
+                .mode();
+            assert_eq!(mode & 0o777, 0o600);
+        }
     }
 
     #[test]

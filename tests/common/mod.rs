@@ -37,6 +37,20 @@ impl Cli {
             .expect("run vauchi")
     }
 
+    /// Runs a command with extra environment variables (secrets reach the
+    /// CLI through the environment, never argv: private#285).
+    pub fn run_with_env(&self, args: &[&str], envs: &[(&str, &str)]) -> Output {
+        Command::new(env!("CARGO_BIN_EXE_vauchi"))
+            .arg("--data-dir")
+            .arg(self.data_dir.path())
+            .arg("--relay")
+            .arg("ws://127.0.0.1:8080")
+            .args(args)
+            .envs(envs.iter().copied())
+            .output()
+            .expect("run vauchi")
+    }
+
     /// Runs a command that reads its answers from stdin.
     pub fn run_with_stdin(&self, args: &[&str], stdin: &str) -> Output {
         use std::io::Write as _;
