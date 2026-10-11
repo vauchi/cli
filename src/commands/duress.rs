@@ -45,19 +45,6 @@ pub fn status(config: &CliConfig) -> Result<()> {
         if duress_enabled { "ENABLED" } else { "NOT SET" }
     );
 
-    if duress_enabled && let Ok(Some(settings)) = wb.load_duress_settings() {
-        println!(
-            "  Alert Contacts: {}",
-            if settings.alert_contact_ids.is_empty() {
-                "none configured".to_string()
-            } else {
-                format!("{} contact(s)", settings.alert_contact_ids.len())
-            }
-        );
-        if !settings.alert_message.is_empty() {
-            println!("  Alert Message:  (custom)");
-        }
-    }
     println!();
 
     Ok(())

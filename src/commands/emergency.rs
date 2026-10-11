@@ -91,7 +91,7 @@ pub fn send(config: &CliConfig, yes: bool) -> Result<()> {
     Ok(())
 }
 
-/// List received safety alerts (emergency and duress).
+/// List received emergency alerts.
 ///
 /// Surfacing rides `surface_pending_safety_alerts` so Core owns the whole
 /// contract (durable facts, at-least-once, ADR-056 blocked-contact silence) —
@@ -114,19 +114,6 @@ pub fn alerts(config: &CliConfig) -> Result<()> {
                 ..
             } => format!(
                 "ALERT kind=emergency contact={} nonce={} at={} message={}",
-                contact_id,
-                hex::encode(alert_nonce),
-                timestamp,
-                message
-            ),
-            VauchiEvent::DuressAlertReceived {
-                contact_id,
-                message,
-                timestamp,
-                alert_nonce,
-                ..
-            } => format!(
-                "ALERT kind=duress contact={} nonce={} at={} message={}",
                 contact_id,
                 hex::encode(alert_nonce),
                 timestamp,
