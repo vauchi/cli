@@ -45,6 +45,7 @@ fn rendered_input(input_kind: PresentationInputKind, value: &str) -> String {
     console::strip_ansi_codes(&render_to_string(&state)).into_owned()
 }
 
+// @internal
 #[test]
 fn a_password_input_prints_one_bullet_per_character_not_the_password() {
     let rendered = rendered_input(PresentationInputKind::Password, "pass1234");
@@ -53,6 +54,7 @@ fn a_password_input_prints_one_bullet_per_character_not_the_password() {
     assert!(rendered.contains("Password: ••••••••"), "{rendered}");
 }
 
+// @internal
 #[test]
 fn a_pin_input_prints_bullets_not_the_digits() {
     let rendered = rendered_input(PresentationInputKind::Pin, "654321");
@@ -61,6 +63,7 @@ fn a_pin_input_prints_bullets_not_the_digits() {
     assert!(rendered.contains("Password: ••••••"), "{rendered}");
 }
 
+// @internal
 #[test]
 fn a_text_input_still_prints_its_value() {
     let rendered = rendered_input(PresentationInputKind::Text, "Alice");
