@@ -43,6 +43,40 @@ pub(crate) struct Cli {
     #[arg(long, global = true, env = "VAUCHI_RELAY_ANCHOR", value_parser = parse_relay_anchor)]
     pub relay_anchor: Option<[u8; 32]>,
 
+    /// Fetch and acknowledge through the outer relay's delayed path
+    /// (`/v2/ohttp-async`): the outer relay forwards each request after a
+    /// random delay and the answer is collected on a later sync, so the
+    /// gateway does not see a fetch when this device connects (#628). The
+    /// outer relay must offer the path.
+    #[arg(
+        long,
+        global = true,
+        env = "VAUCHI_OHTTP_DELAYED",
+        value_parser = clap::builder::FalseyValueParser::new()
+    )]
+    pub ohttp_delayed: bool,
+
+    /// With `--ohttp-delayed`: seconds between collects while `sync` waits
+    /// for its own delayed answers.
+    #[arg(
+        long,
+        global = true,
+        env = "VAUCHI_OHTTP_DELAYED_POLL_SECS",
+        default_value_t = 30
+    )]
+    pub ohttp_delayed_poll_secs: u64,
+
+    /// With `--ohttp-delayed`: longest a `sync` waits for its delayed
+    /// answers. Default: the outer relay's default delay (900 s) plus a
+    /// minute.
+    #[arg(
+        long,
+        global = true,
+        env = "VAUCHI_OHTTP_DELAYED_WAIT_SECS",
+        default_value_t = 960
+    )]
+    pub ohttp_delayed_wait_secs: u64,
+
     /// Locale for output messages (en, de, fr, es)
     #[arg(long, global = true, env = "VAUCHI_LOCALE", default_value = "en")]
     pub locale: String,

@@ -308,6 +308,7 @@ mod tests {
             data_dir: dir.to_path_buf(),
             relay_url: "https://relay.self.example".to_string(),
             ohttp_relay_url: None,
+            ohttp_delayed: None,
             relay_anchor,
             raw: false,
         }
@@ -324,6 +325,23 @@ mod tests {
 
         assert_eq!(wb_config.relay.server_url, "https://relay.self.example");
         assert_eq!(wb_config.relay.ohttp_trust_anchor(), Some([0x5a; 32]));
+    }
+
+    // @internal
+    #[test]
+    fn the_delayed_path_reaches_core_only_when_asked_for() {
+        let temp_dir = tempdir().unwrap();
+        let mut config = cli_config(temp_dir.path(), None);
+
+        let off = base_wb_config(&config).unwrap();
+        config.ohttp_delayed = Some(crate::config::DelayedWait {
+            poll: std::time::Duration::from_secs(30),
+            max_wait: std::time::Duration::from_secs(960),
+        });
+        let on = base_wb_config(&config).unwrap();
+
+        assert!(!off.relay.ohttp_delayed);
+        assert!(on.relay.ohttp_delayed);
     }
 
     // @internal
@@ -375,6 +393,7 @@ mod tests {
             data_dir: temp_dir.path().to_path_buf(),
             relay_url: "ws://localhost:8080".to_string(),
             ohttp_relay_url: None,
+            ohttp_delayed: None,
             relay_anchor: None,
             raw: false,
         };
@@ -399,6 +418,7 @@ mod tests {
             data_dir: temp_dir.path().to_path_buf(),
             relay_url: "ws://localhost:8080".to_string(),
             ohttp_relay_url: None,
+            ohttp_delayed: None,
             relay_anchor: None,
             raw: false,
         };
@@ -422,6 +442,7 @@ mod tests {
             data_dir: temp_dir.path().to_path_buf(),
             relay_url: "ws://localhost:8080".to_string(),
             ohttp_relay_url: None,
+            ohttp_delayed: None,
             relay_anchor: None,
             raw: false,
         };
@@ -447,6 +468,7 @@ mod tests {
             data_dir: temp_dir.path().to_path_buf(),
             relay_url: "ws://localhost:8080".to_string(),
             ohttp_relay_url: None,
+            ohttp_delayed: None,
             relay_anchor: None,
             raw: false,
         };
@@ -478,6 +500,7 @@ mod tests {
             data_dir: temp_dir.path().to_path_buf(),
             relay_url: "ws://localhost:9999".to_string(),
             ohttp_relay_url: None,
+            ohttp_delayed: None,
             relay_anchor: None,
             raw: false,
         };
@@ -600,6 +623,7 @@ mod reset_tests {
             data_dir: dir.to_path_buf(),
             relay_url: "ws://127.0.0.1:9".to_string(),
             ohttp_relay_url: None,
+            ohttp_delayed: None,
             relay_anchor: None,
             raw: false,
         }

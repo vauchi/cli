@@ -201,3 +201,17 @@ fn cli_command_definition_is_valid() {
     // recognised assertion macro.
     Cli::command().debug_assert();
 }
+
+// @internal
+#[test]
+fn the_delayed_path_is_off_unless_asked_for() {
+    let default = Cli::parse_from(["vauchi", "sync"]);
+    let asked = Cli::parse_from(["vauchi", "--ohttp-delayed", "sync"]);
+
+    assert!(!default.ohttp_delayed);
+    assert!(asked.ohttp_delayed);
+    assert_eq!(
+        (asked.ohttp_delayed_poll_secs, asked.ohttp_delayed_wait_secs),
+        (30, 960)
+    );
+}

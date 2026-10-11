@@ -75,6 +75,14 @@ pub fn resolve_data_dir(
         .ok_or_else(|| anyhow::anyhow!("No platform data directory found; pass --data-dir <path>"))
 }
 
+/// How a sync waits for its own delayed answers: one CLI process runs one
+/// sync and its pending answers die with it (private#628, KU-F7).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct DelayedWait {
+    pub poll: std::time::Duration,
+    pub max_wait: std::time::Duration,
+}
+
 /// CLI configuration.
 #[derive(Debug, Clone)]
 pub struct CliConfig {
@@ -88,6 +96,9 @@ pub struct CliConfig {
     pub ohttp_relay_url: Option<String>,
     /// The relay's OHTTP trust anchor (#288); `None` for none.
     pub relay_anchor: Option<[u8; 32]>,
+    /// Fetch and acknowledge through the outer relay's delayed path, and
+    /// how long `sync` waits for the answers (#628). `None`: off.
+    pub ohttp_delayed: Option<DelayedWait>,
     /// Output raw JSON instead of formatted text.
     pub raw: bool,
 }
@@ -350,6 +361,7 @@ mod tests {
             data_dir: temp_dir.path().to_path_buf(),
             relay_url: "ws://localhost:8080".to_string(),
             ohttp_relay_url: None,
+            ohttp_delayed: None,
             relay_anchor: None,
             raw: false,
         };
@@ -370,6 +382,7 @@ mod tests {
             data_dir: temp_dir.path().to_path_buf(),
             relay_url: "ws://localhost:8080".to_string(),
             ohttp_relay_url: None,
+            ohttp_delayed: None,
             relay_anchor: None,
             raw: false,
         };
@@ -390,6 +403,7 @@ mod tests {
             data_dir: temp_dir.path().to_path_buf(),
             relay_url: "ws://localhost:8080".to_string(),
             ohttp_relay_url: None,
+            ohttp_delayed: None,
             relay_anchor: None,
             raw: false,
         };
@@ -449,6 +463,7 @@ mod tests {
             data_dir: temp_dir.path().to_path_buf(),
             relay_url: "ws://localhost:8080".to_string(),
             ohttp_relay_url: None,
+            ohttp_delayed: None,
             relay_anchor: None,
             raw: false,
         };
@@ -465,6 +480,7 @@ mod tests {
             data_dir: temp_dir.path().to_path_buf(),
             relay_url: "ws://localhost:8080".to_string(),
             ohttp_relay_url: None,
+            ohttp_delayed: None,
             relay_anchor: None,
             raw: false,
         };
@@ -482,6 +498,7 @@ mod tests {
             data_dir: temp1.path().to_path_buf(),
             relay_url: "ws://localhost:8080".to_string(),
             ohttp_relay_url: None,
+            ohttp_delayed: None,
             relay_anchor: None,
             raw: false,
         };
@@ -489,6 +506,7 @@ mod tests {
             data_dir: temp2.path().to_path_buf(),
             relay_url: "ws://localhost:8080".to_string(),
             ohttp_relay_url: None,
+            ohttp_delayed: None,
             relay_anchor: None,
             raw: false,
         };
@@ -540,6 +558,7 @@ mod tests {
             data_dir: temp_dir.path().to_path_buf(),
             relay_url: "ws://localhost:8080".to_string(),
             ohttp_relay_url: None,
+            ohttp_delayed: None,
             relay_anchor: None,
             raw: false,
         };
@@ -581,6 +600,7 @@ mod tests {
             data_dir: temp_dir.path().to_path_buf(),
             relay_url: "ws://localhost:8080".to_string(),
             ohttp_relay_url: None,
+            ohttp_delayed: None,
             relay_anchor: None,
             raw: false,
         };
@@ -599,6 +619,7 @@ mod tests {
             data_dir: temp_dir.path().to_path_buf(),
             relay_url: "ws://localhost:8080".to_string(),
             ohttp_relay_url: None,
+            ohttp_delayed: None,
             relay_anchor: None,
             raw: false,
         };
@@ -632,6 +653,7 @@ mod tests {
             data_dir: data_dir.clone(),
             relay_url: "ws://localhost:8080".to_string(),
             ohttp_relay_url: None,
+            ohttp_delayed: None,
             relay_anchor: None,
             raw: false,
         };
@@ -641,6 +663,7 @@ mod tests {
             data_dir,
             relay_url: "ws://localhost:8080".to_string(),
             ohttp_relay_url: None,
+            ohttp_delayed: None,
             relay_anchor: None,
             raw: false,
         };
