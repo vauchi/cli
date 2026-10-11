@@ -18,20 +18,39 @@ use vauchi_core::storage::secure::{FileKeyStorage, SecureStorage};
 /// Legacy hardcoded password used before per-installation backup passwords.
 const LEGACY_BACKUP_PASSWORD: &str = "vauchi-local-storage";
 
-/// Writes data to a file with restrictive permissions (0o600 on Unix).
+/// Writes data to a file only its owner can read (0o600).
 ///
-/// Prevents other users on shared systems from reading sensitive files
-/// like pending device link keys, recovery claims, and tracker state.
+/// The file is created with that mode, so it is never briefly readable under
+/// a permissive umask, and an existing file is narrowed to it. Other
+/// platforms are refused rather than written unprotected: the CLI is not
+/// shipped for them (private#285).
 pub fn write_restricted(path: &Path, data: impl AsRef<[u8]>) -> anyhow::Result<()> {
     use anyhow::Context;
-    std::fs::write(path, data).with_context(|| format!("Failed to write {}", path.display()))?;
     #[cfg(unix)]
     {
-        use std::os::unix::fs::PermissionsExt;
-        std::fs::set_permissions(path, std::fs::Permissions::from_mode(0o600))
+        use std::io::Write as _;
+        use std::os::unix::fs::{OpenOptionsExt, PermissionsExt};
+        let mut file = std::fs::OpenOptions::new()
+            .write(true)
+            .create(true)
+            .truncate(true)
+            .mode(0o600)
+            .open(path)
+            .with_context(|| format!("Failed to create {}", path.display()))?;
+        file.set_permissions(std::fs::Permissions::from_mode(0o600))
             .with_context(|| format!("Failed to set permissions on {}", path.display()))?;
+        file.write_all(data.as_ref())
+            .with_context(|| format!("Failed to write {}", path.display()))?;
+        Ok(())
     }
-    Ok(())
+    #[cfg(not(unix))]
+    {
+        let _ = data;
+        anyhow::bail!(
+            "Refusing to write {}: owner-only file permissions are implemented on Unix only",
+            path.display()
+        )
+    }
 }
 
 /// CLI configuration.
@@ -182,7 +201,7 @@ impl CliConfig {
                 let new_backup = identity
                     .export_backup(&password)
                     .map_err(|e| anyhow::anyhow!("Failed to re-export identity: {:?}", e))?;
-                std::fs::write(self.identity_path(), new_backup.as_bytes())?;
+                write_restricted(&self.identity_path(), new_backup.as_bytes())?;
                 Ok(identity)
             }
         }
@@ -200,7 +219,7 @@ impl CliConfig {
             .export_backup(&password)
             .map_err(|e| anyhow::anyhow!("Failed to export backup: {:?}", e))?;
         std::fs::create_dir_all(&self.data_dir)?;
-        std::fs::write(self.identity_path(), backup.as_bytes())?;
+        write_restricted(&self.identity_path(), backup.as_bytes())?;
         Ok(())
     }
 

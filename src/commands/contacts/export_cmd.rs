@@ -2,9 +2,6 @@
 //
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-use std::fs::File;
-use std::io::Write;
-
 use anyhow::Result;
 use vauchi_core::contact_card::vcard::export_vcard;
 
@@ -22,8 +19,7 @@ pub fn export(config: &CliConfig, id_or_name: &str, output_path: &str) -> Result
 
     let vcard_content = export_vcard(contact.card());
 
-    let mut file = File::create(output_path)?;
-    file.write_all(vcard_content.as_bytes())?;
+    crate::config::write_restricted(std::path::Path::new(output_path), vcard_content.as_bytes())?;
 
     display::success(&format!("Exported {} to {}", contact_name, output_path));
 

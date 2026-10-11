@@ -6,7 +6,6 @@
 //!
 //! Privacy compliance operations: data export, identity deletion, consent management.
 
-use std::fs;
 use std::path::Path;
 
 use anyhow::{Result, bail};
@@ -33,7 +32,7 @@ pub fn export_data(config: &CliConfig, output: &Path, password: Option<&str>) ->
 
     if let Some(pw) = password {
         let encrypted = wb.export_personal_data_encrypted(pw)?;
-        fs::write(output, &encrypted)?;
+        crate::config::write_restricted(output, &encrypted)?;
         display::success(&format!("Encrypted GDPR data export saved to {:?}", output));
     } else {
         let export = wb.export_personal_data()?;
@@ -41,7 +40,7 @@ pub fn export_data(config: &CliConfig, output: &Path, password: Option<&str>) ->
         display::warning(
             "Exporting without encryption. Consider using --encrypt to protect sensitive data.",
         );
-        fs::write(output, &json)?;
+        crate::config::write_restricted(output, &json)?;
         display::success(&format!("GDPR data export saved to {:?}", output));
 
         display::info(&format!(

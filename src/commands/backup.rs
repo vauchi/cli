@@ -27,7 +27,7 @@ pub fn export(config: &CliConfig, output: &Path, password: &str) -> Result<()> {
 
     let backup = identity.export_backup(password)?;
 
-    fs::write(output, backup.as_bytes())?;
+    crate::config::write_restricted(output, backup.as_bytes())?;
 
     display::success(&format!("Backup saved to {:?}", output));
     display::warning("Keep this file and password safe. You'll need both to restore.");
@@ -79,7 +79,7 @@ pub fn export_full(config: &CliConfig, output: &Path, password: &str) -> Result<
     let wb = open_vauchi(config)?;
 
     let backup_hex = wb.export_full_backup(password)?;
-    fs::write(output, backup_hex.as_bytes())?;
+    crate::config::write_restricted(output, backup_hex.as_bytes())?;
 
     display::success(&format!("Full backup saved to {:?}", output));
     display::warning(
