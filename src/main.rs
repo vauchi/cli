@@ -72,11 +72,13 @@ async fn main() -> ExitCode {
 
     let cli = Cli::parse();
 
-    let data_dir = cli.data_dir.unwrap_or_else(|| {
-        dirs::data_dir()
-            .unwrap_or_else(|| PathBuf::from("."))
-            .join("vauchi")
-    });
+    let data_dir = match config::resolve_data_dir(cli.data_dir, dirs::data_dir()) {
+        Ok(dir) => dir,
+        Err(error) => {
+            eprintln!("{}: {error}", display::t("error.title", &cli.locale));
+            return ExitCode::FAILURE;
+        }
+    };
 
     let config = CliConfig {
         data_dir,

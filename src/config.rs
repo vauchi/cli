@@ -53,6 +53,21 @@ pub fn write_restricted(path: &Path, data: impl AsRef<[u8]>) -> anyhow::Result<(
     }
 }
 
+/// Where the CLI keeps its data: `--data-dir` when given, otherwise
+/// `vauchi` under the platform's data directory. Without either it is an
+/// error, never the working directory, which may be shared (private#285).
+pub fn resolve_data_dir(
+    explicit: Option<PathBuf>,
+    platform: Option<PathBuf>,
+) -> anyhow::Result<PathBuf> {
+    if let Some(dir) = explicit {
+        return Ok(dir);
+    }
+    platform
+        .map(|dir| dir.join("vauchi"))
+        .ok_or_else(|| anyhow::anyhow!("No platform data directory found; pass --data-dir <path>"))
+}
+
 /// CLI configuration.
 #[derive(Debug, Clone)]
 pub struct CliConfig {
