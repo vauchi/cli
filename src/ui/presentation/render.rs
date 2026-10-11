@@ -5,7 +5,8 @@ use std::fmt::Write as _;
 
 use console::style;
 use vauchi_core::{
-    PresentationNode, PresentationQrPurpose, PresentationRow, PresentationTextStyle,
+    PresentationInputKind, PresentationNode, PresentationQrPurpose, PresentationRow,
+    PresentationTextStyle,
 };
 
 use super::PresentationState;
@@ -57,11 +58,19 @@ fn render_node(out: &mut String, node: &PresentationNode, indent: usize) {
             label,
             value,
             placeholder,
+            input_kind,
             validation_error,
             ..
         } => {
+            let masked;
             let shown = if value.is_empty() {
                 placeholder.as_deref().unwrap_or("—")
+            } else if matches!(
+                input_kind,
+                PresentationInputKind::Password | PresentationInputKind::Pin
+            ) {
+                masked = "•".repeat(value.chars().count());
+                &masked
             } else {
                 value
             };
