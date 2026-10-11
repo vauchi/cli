@@ -98,10 +98,9 @@ fn test_duress_setup_cannot_replace_the_password_without_it() {
     );
 }
 
-/// Under the duress PIN the personal-data export holds no real contact.
-// @scenario: duress_mode :: Cannot access real contacts from duress mode
-#[test]
-fn test_gdpr_export_under_the_duress_pin_holds_no_real_contact() {
+/// Alice behind an app password and a duress PIN, with Bob Jones as a real
+/// contact made before any duress unlock.
+fn alice_protected_with_bob_as_contact() -> Cli {
     let alice = Cli::new();
     alice.stdout(&["init", "Alice Smith"]);
     protect(&alice);
@@ -111,6 +110,14 @@ fn test_gdpr_export_under_the_duress_pin_holds_no_real_contact() {
     let bob_data = exchange_data(&bob.stdout(&["exchange", "start"]));
     bob.stdout(&["exchange", "complete", &alice_data]);
     alice.stdout(&["--pin", PASSWORD, "exchange", "complete", &bob_data]);
+    alice
+}
+
+/// Under the duress PIN the personal-data export holds no real contact.
+// @scenario: duress_mode :: Cannot access real contacts from duress mode
+#[test]
+fn test_gdpr_export_under_the_duress_pin_holds_no_real_contact() {
+    let alice = alice_protected_with_bob_as_contact();
     let path = alice.data_dir().join("export.json");
     let path_arg = path.to_str().expect("utf-8 path");
 
@@ -120,5 +127,37 @@ fn test_gdpr_export_under_the_duress_pin_holds_no_real_contact() {
     assert!(
         !export.contains("Bob Jones"),
         "duress export holds the real contact: {export}"
+    );
+}
+
+/// The encrypted export follows the duress PIN too (private#616).
+// @scenario: duress_mode :: Cannot access real contacts from duress mode
+#[test]
+fn test_encrypted_gdpr_export_under_the_duress_pin_holds_no_real_contact() {
+    let alice = alice_protected_with_bob_as_contact();
+    let path = alice.data_dir().join("export.enc");
+    let path_arg = path.to_str().expect("utf-8 path");
+
+    alice.stdout(&[
+        "--pin",
+        DURESS_PIN,
+        "gdpr",
+        "export",
+        path_arg,
+        "--password",
+        "export-password",
+    ]);
+
+    let encrypted = std::fs::read(&path).expect("export written");
+    let export = vauchi_core::api::import_encrypted(&encrypted, "export-password")
+        .expect("the export decrypts with its password");
+    let names: Vec<&str> = export
+        .contacts
+        .iter()
+        .map(|c| c.display_name.as_str())
+        .collect();
+    assert!(
+        !names.contains(&"Bob Jones"),
+        "duress encrypted export holds the real contact: {names:?}"
     );
 }
