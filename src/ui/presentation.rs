@@ -181,3 +181,7 @@ mod tests;
 #[cfg(test)]
 #[path = "presentation_node_tests.rs"]
 mod node_tests;
+
+#[cfg(test)]
+#[path = "presentation_secret_input_tests.rs"]
+mod secret_input_tests;
