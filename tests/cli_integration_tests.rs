@@ -31,11 +31,18 @@ impl CliTestContext {
 
     /// Run a CLI command and return the output.
     fn run(&self, args: &[&str]) -> Output {
+        self.run_env(args, &[])
+    }
+
+    /// Run a CLI command with extra environment variables; secrets reach
+    /// the CLI this way, never through argv (private#285).
+    fn run_env(&self, args: &[&str], envs: &[(&str, &str)]) -> Output {
         let mut cmd = Command::new(env!("CARGO_BIN_EXE_vauchi"));
         cmd.arg("--data-dir")
             .arg(self.data_dir.path())
             .arg("--relay")
-            .arg(&self.relay_url);
+            .arg(&self.relay_url)
+            .envs(envs.iter().copied());
 
         for arg in args {
             cmd.arg(arg);
@@ -46,7 +53,12 @@ impl CliTestContext {
 
     /// Run a command and assert success
     fn run_success(&self, args: &[&str]) -> String {
-        let output = self.run(args);
+        self.run_success_env(args, &[])
+    }
+
+    /// Run a command with extra environment variables and assert success.
+    fn run_success_env(&self, args: &[&str], envs: &[(&str, &str)]) -> String {
+        let output = self.run_env(args, envs);
         let stdout = String::from_utf8_lossy(&output.stdout).to_string();
         let stderr = String::from_utf8_lossy(&output.stderr).to_string();
 
@@ -102,7 +114,12 @@ impl CliTestContext {
 
     /// Run a command and assert failure
     fn run_failure(&self, args: &[&str]) -> String {
-        let output = self.run(args);
+        self.run_failure_env(args, &[])
+    }
+
+    /// Run a command with extra environment variables and assert failure.
+    fn run_failure_env(&self, args: &[&str], envs: &[(&str, &str)]) -> String {
+        let output = self.run_env(args, envs);
         let stderr = String::from_utf8_lossy(&output.stderr).to_string();
 
         assert!(
@@ -219,12 +236,10 @@ mod identity_management {
         ctx.init("Alice Smith");
 
         let backup_path = ctx.data_dir.path().join("backup.json");
-        let output = ctx.run_success(&[
-            "export",
-            backup_path.to_str().unwrap(),
-            "--password",
-            "correct horse battery staple 42",
-        ]);
+        let output = ctx.run_success_env(
+            &["export", backup_path.to_str().unwrap()],
+            &[("VAUCHI_BACKUP_PASSWORD", "correct horse battery staple 42")],
+        );
 
         assert!(output.contains("exported") || output.contains("Backup"));
         assert!(backup_path.exists());
@@ -238,20 +253,16 @@ mod identity_management {
         ctx1.init("Alice Smith");
 
         let backup_path = ctx1.data_dir.path().join("backup.json");
-        ctx1.run_success(&[
-            "export",
-            backup_path.to_str().unwrap(),
-            "--password",
-            "correct horse battery staple 42",
-        ]);
+        ctx1.run_success_env(
+            &["export", backup_path.to_str().unwrap()],
+            &[("VAUCHI_BACKUP_PASSWORD", "correct horse battery staple 42")],
+        );
 
         let ctx2 = CliTestContext::new();
-        let output = ctx2.run_success(&[
-            "import",
-            backup_path.to_str().unwrap(),
-            "--password",
-            "correct horse battery staple 42",
-        ]);
+        let output = ctx2.run_success_env(
+            &["import", backup_path.to_str().unwrap()],
+            &[("VAUCHI_BACKUP_PASSWORD", "correct horse battery staple 42")],
+        );
 
         assert!(
             output.contains("imported")
@@ -273,20 +284,15 @@ mod identity_management {
         ctx.init("Alice Smith");
 
         let backup_path = ctx.data_dir.path().join("backup.json");
-        ctx.run_success(&[
-            "export",
-            backup_path.to_str().unwrap(),
-            "--password",
-            "correct horse battery staple 42",
-        ]);
+        ctx.run_success_env(
+            &["export", backup_path.to_str().unwrap()],
+            &[("VAUCHI_BACKUP_PASSWORD", "correct horse battery staple 42")],
+        );
 
-        let output = ctx.run(&[
-            "import",
-            backup_path.to_str().unwrap(),
-            "--password",
-            "definitely the wrong password",
-            "--yes",
-        ]);
+        let output = ctx.run_env(
+            &["import", backup_path.to_str().unwrap(), "--yes"],
+            &[("VAUCHI_BACKUP_PASSWORD", "definitely the wrong password")],
+        );
         assert!(
             !output.status.success(),
             "import with wrong password should fail.\nStdout: {}",
@@ -309,22 +315,15 @@ mod identity_management {
         ctx.init("Alice Smith");
 
         let backup_path = ctx.data_dir.path().join("backup-full.json");
-        ctx.run_success(&[
-            "export",
-            backup_path.to_str().unwrap(),
-            "--full",
-            "--password",
-            "correct horse battery staple 42",
-        ]);
+        ctx.run_success_env(
+            &["export", backup_path.to_str().unwrap(), "--full"],
+            &[("VAUCHI_BACKUP_PASSWORD", "correct horse battery staple 42")],
+        );
 
-        let output = ctx.run(&[
-            "import",
-            backup_path.to_str().unwrap(),
-            "--full",
-            "--password",
-            "definitely the wrong password",
-            "--yes",
-        ]);
+        let output = ctx.run_env(
+            &["import", backup_path.to_str().unwrap(), "--full", "--yes"],
+            &[("VAUCHI_BACKUP_PASSWORD", "definitely the wrong password")],
+        );
         assert!(
             !output.status.success(),
             "import --full with wrong password should fail.\nStdout: {}",
@@ -347,24 +346,17 @@ mod identity_management {
         let ctx1 = CliTestContext::new();
         ctx1.init("Alice Smith");
         let backup_path = ctx1.data_dir.path().join("backup-full.json");
-        ctx1.run_success(&[
-            "export",
-            backup_path.to_str().unwrap(),
-            "--full",
-            "--password",
-            "correct horse battery staple 42",
-        ]);
+        ctx1.run_success_env(
+            &["export", backup_path.to_str().unwrap(), "--full"],
+            &[("VAUCHI_BACKUP_PASSWORD", "correct horse battery staple 42")],
+        );
 
         let ctx2 = CliTestContext::new();
         ctx2.init("Bob Jones");
-        let output = ctx2.run(&[
-            "import",
-            backup_path.to_str().unwrap(),
-            "--full",
-            "--password",
-            "correct horse battery staple 42",
-            "--yes",
-        ]);
+        let output = ctx2.run_env(
+            &["import", backup_path.to_str().unwrap(), "--full", "--yes"],
+            &[("VAUCHI_BACKUP_PASSWORD", "correct horse battery staple 42")],
+        );
         assert!(
             output.status.success(),
             "confirmed overwrite restore should succeed.\nStdout: {}\nStderr: {}",
@@ -787,13 +779,10 @@ mod contacts_management {
         );
 
         let refused = ctx.run(&["contacts", "list", "--archived"]);
-        let allowed = ctx.run(&[
-            "--pin",
-            "app-password-123",
-            "contacts",
-            "list",
-            "--archived",
-        ]);
+        let allowed = ctx.run_env(
+            &["contacts", "list", "--archived"],
+            &[("VAUCHI_PIN", "app-password-123")],
+        );
 
         assert_eq!(refused.status.code(), Some(1));
         assert!(
@@ -1201,7 +1190,7 @@ mod device_management {
         );
 
         let refused = ctx.run(&["device", "link"]);
-        let allowed = ctx.run(&["--pin", "app-password-123", "device", "link"]);
+        let allowed = ctx.run_env(&["device", "link"], &[("VAUCHI_PIN", "app-password-123")]);
 
         assert_eq!(refused.status.code(), Some(1));
         assert!(
@@ -1229,9 +1218,15 @@ mod device_management {
             "app-password-123\napp-password-123\n\n1\n135790\n\n135790\n\n\n\n",
         );
 
-        let link = ctx.run(&["--pin", "135790", "device", "link"]);
-        let complete = ctx.run(&["--pin", "135790", "device", "complete", "request", "--yes"]);
-        let revoke = ctx.run(&["--pin", "135790", "device", "revoke", "ab", "--yes"]);
+        let link = ctx.run_env(&["device", "link"], &[("VAUCHI_PIN", "135790")]);
+        let complete = ctx.run_env(
+            &["device", "complete", "request", "--yes"],
+            &[("VAUCHI_PIN", "135790")],
+        );
+        let revoke = ctx.run_env(
+            &["device", "revoke", "ab", "--yes"],
+            &[("VAUCHI_PIN", "135790")],
+        );
 
         assert_eq!(link.status.code(), Some(1));
         assert!(
@@ -1677,13 +1672,10 @@ mod gdpr {
         ctx.init("Alice Smith");
 
         let export_path = ctx.data_dir.path().join("gdpr-export.enc");
-        let output = ctx.run_success(&[
-            "gdpr",
-            "export",
-            "--password",
-            "MyStr0ngP@ssword!",
-            export_path.to_str().unwrap(),
-        ]);
+        let output = ctx.run_success_env(
+            &["gdpr", "export", export_path.to_str().unwrap()],
+            &[("VAUCHI_EXPORT_PASSWORD", "MyStr0ngP@ssword!")],
+        );
         assert!(
             output.contains("export") || output.contains("Export"),
             "Expected export confirmation, got: {}",
@@ -1816,7 +1808,8 @@ mod duress {
             "app-password-123\napp-password-123\n\n1\n135790\n\n135790\n\n\n\n",
         );
 
-        let output = ctx.run_success(&["--pin", "app-password-123", "duress", "status"]);
+        let output =
+            ctx.run_success_env(&["duress", "status"], &[("VAUCHI_PIN", "app-password-123")]);
         assert!(
             output.contains("Duress PIN:    ENABLED"),
             "duress setup must persist through the Core reducer, got: {}",
@@ -1851,7 +1844,7 @@ mod duress {
         let ctx = CliTestContext::new();
         ctx.init("Alice Smith");
 
-        let stderr = ctx.run_failure(&["--pin", "1234", "duress", "test"]);
+        let stderr = ctx.run_failure_env(&["duress", "test"], &[("VAUCHI_PIN", "1234")]);
         assert!(
             stderr.contains("password") || stderr.contains("Password"),
             "Expected password-required error, got: {}",

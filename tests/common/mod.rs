@@ -77,7 +77,13 @@ impl Cli {
 
     /// Stdout of a command that must succeed.
     pub fn stdout(&self, args: &[&str]) -> String {
-        let output = self.run(args);
+        self.stdout_env(args, &[])
+    }
+
+    /// Stdout of a command that must succeed, run with extra environment
+    /// variables.
+    pub fn stdout_env(&self, args: &[&str], envs: &[(&str, &str)]) -> String {
+        let output = self.run_with_env(args, envs);
         assert!(
             output.status.success(),
             "{args:?} failed: {}",

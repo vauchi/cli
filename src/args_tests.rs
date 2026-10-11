@@ -79,20 +79,34 @@ fn ohttp_relay_defaults_to_none() {
     assert_eq!(cli.ohttp_relay, None);
 }
 
+// Secrets never travel in argv, which every local user can read with ps
+// (private#285): the app password comes from VAUCHI_PIN or a hidden prompt,
+// backup and export passwords from their env vars or a hidden prompt.
 // @internal
 #[test]
-fn backup_password_flag_parses_for_export_and_import() {
-    let export = Cli::parse_from(["vauchi", "export", "out.vauchi", "--password", "hunter2"]);
-    let Commands::Export { password, .. } = export.command else {
-        panic!("expected export");
-    };
-    assert_eq!(password.as_deref(), Some("hunter2"));
-
-    let import = Cli::parse_from(["vauchi", "import", "in.vauchi", "--password", "hunter2"]);
-    let Commands::Import { password, .. } = import.command else {
-        panic!("expected import");
-    };
-    assert_eq!(password.as_deref(), Some("hunter2"));
+fn no_secret_is_accepted_as_a_command_line_flag() {
+    for argv in [
+        &["vauchi", "--pin", "1234", "contacts", "list"][..],
+        &["vauchi", "export", "out.vauchi", "--password", "hunter2"][..],
+        &["vauchi", "import", "in.vauchi", "--password", "hunter2"][..],
+        &[
+            "vauchi",
+            "gdpr",
+            "export",
+            "out.json",
+            "--password",
+            "hunter2",
+        ][..],
+    ] {
+        let Err(err) = Cli::try_parse_from(argv) else {
+            panic!("{argv:?}: a secret flag must be refused");
+        };
+        assert_eq!(
+            err.kind(),
+            clap::error::ErrorKind::UnknownArgument,
+            "{argv:?}: {err}"
+        );
+    }
 }
 
 // @internal

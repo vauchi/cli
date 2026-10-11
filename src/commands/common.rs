@@ -516,8 +516,13 @@ mod tests {
             Ok(_) => panic!("should require PIN when password is set"),
         };
         assert!(
-            err.to_string().contains("--pin"),
-            "Error should mention --pin flag, got: {}",
+            err.to_string().contains("VAUCHI_PIN"),
+            "Error should name VAUCHI_PIN, got: {}",
+            err
+        );
+        assert!(
+            !err.to_string().contains("--pin"),
+            "Error must not suggest a secret on the command line, got: {}",
             err
         );
     }
