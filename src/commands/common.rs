@@ -14,10 +14,11 @@ use crate::config::CliConfig;
 /// Transport overrides (OHTTP) are layered on by callers that need them.
 fn base_wb_config(config: &CliConfig) -> Result<VauchiConfig> {
     let wb_config = VauchiConfig::with_storage_path(config.storage_path());
-    let wb_config = match config.relay_anchor {
+    let mut wb_config = match config.relay_anchor {
         Some(anchor) => wb_config.with_relay(&config.relay_url, anchor),
         None => wb_config.with_relay_url(&config.relay_url),
     };
+    wb_config.relay.ohttp_delayed = config.ohttp_delayed.is_some();
     Ok(wb_config.with_storage_key(config.storage_key()?))
 }
 

@@ -64,7 +64,11 @@ pub fn run(config: &CliConfig) -> Result<()> {
     sync_spinner.set_message("Syncing...");
     sync_spinner.enable_steady_tick(Duration::from_millis(80));
 
-    let outcome = wb.sync().map_err(|e| anyhow::anyhow!("Sync failed: {e}"))?;
+    let outcome = match config.ohttp_delayed {
+        Some(wait) => wb.sync_collecting_delayed(wait.poll, wait.max_wait),
+        None => wb.sync(),
+    }
+    .map_err(|e| anyhow::anyhow!("Sync failed: {e}"))?;
 
     sync_spinner.finish_and_clear();
 
