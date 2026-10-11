@@ -2913,8 +2913,8 @@ dependencies = [
 
 [[package]]
 name = "vauchi-app"
-version = "0.79.1"
-source = "git+https://gitlab.com/vauchi/core.git?tag=v0.79.1#5311ae557c14ec4a26c9b72103483c11dc48d5a1"
+version = "0.80.0"
+source = "git+https://gitlab.com/vauchi/core.git?tag=v0.80.0#b98267ee5cd261ec1494546108ebc83aebab7052"
 dependencies = [
  "base64",
  "hex",
@@ -2961,8 +2961,8 @@ dependencies = [
 
 [[package]]
 name = "vauchi-core"
-version = "0.79.1"
-source = "git+https://gitlab.com/vauchi/core.git?tag=v0.79.1#5311ae557c14ec4a26c9b72103483c11dc48d5a1"
+version = "0.80.0"
+source = "git+https://gitlab.com/vauchi/core.git?tag=v0.80.0#b98267ee5cd261ec1494546108ebc83aebab7052"
 dependencies = [
  "argon2",
  "base64",
@@ -3004,8 +3004,8 @@ dependencies = [
 
 [[package]]
 name = "vauchi-protocol"
-version = "0.79.1"
-source = "git+https://gitlab.com/vauchi/core.git?tag=v0.79.1#5311ae557c14ec4a26c9b72103483c11dc48d5a1"
+version = "0.80.0"
+source = "git+https://gitlab.com/vauchi/core.git?tag=v0.80.0#b98267ee5cd261ec1494546108ebc83aebab7052"
 dependencies = [
  "serde",
  "serde_json",
