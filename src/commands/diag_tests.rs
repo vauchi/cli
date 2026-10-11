@@ -77,8 +77,10 @@ fn a_self_hosted_relay_is_probed_on_its_own_host() {
 fn the_production_relay_is_probed_under_its_own_anchor() {
     let (_, _, anchor) = probe_target("wss://relay.vauchi.app", None, None);
 
-    assert_eq!(anchor, RelayConfig::default().ohttp_trust_anchor());
-    assert!(anchor.is_some());
+    let expected = RelayConfig::default()
+        .ohttp_trust_anchor()
+        .expect("the production relay carries an anchor");
+    assert_eq!(anchor, Some(expected));
 }
 
 // @internal
