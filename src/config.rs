@@ -502,11 +502,13 @@ mod tests {
     // may be shared or a download folder (private#285).
     // An unset secret stays None so the interactive prompt still runs: a
     // default would encrypt a backup under a password nobody chose.
+    // @internal
     #[test]
     fn test_unset_secret_is_none_so_the_prompt_still_runs() {
         assert_eq!(secret_from_env("VAUCHI_TEST_SECRET_NEVER_SET_285"), None);
     }
 
+    // @internal
     #[test]
     fn test_data_dir_is_the_explicit_one_when_given() {
         let dir = resolve_data_dir(
@@ -517,12 +519,14 @@ mod tests {
         assert_eq!(dir, PathBuf::from("/explicit"));
     }
 
+    // @internal
     #[test]
     fn test_data_dir_is_vauchi_under_the_platform_data_dir() {
         let dir = resolve_data_dir(None, Some(PathBuf::from("/platform"))).unwrap();
         assert_eq!(dir, PathBuf::from("/platform/vauchi"));
     }
 
+    // @internal
     #[test]
     fn test_data_dir_without_platform_dir_or_flag_is_refused() {
         let err = resolve_data_dir(None, None).unwrap_err();
