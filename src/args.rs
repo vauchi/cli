@@ -47,10 +47,6 @@ pub(crate) struct Cli {
     #[arg(long, global = true, env = "VAUCHI_LOCALE", default_value = "en")]
     pub locale: String,
 
-    /// PIN for authentication (required when app password is configured)
-    #[arg(long, global = true, env = "VAUCHI_PIN")]
-    pub pin: Option<String>,
-
     /// Output Core's machine-readable JSON document instead of text
     #[arg(long, global = true, visible_alias = "json")]
     pub raw: bool,
@@ -120,10 +116,6 @@ pub(crate) enum Commands {
         /// Export full backup (identity + contacts + own card + labels)
         #[arg(long)]
         full: bool,
-        /// Backup password (skips interactive prompt; use env var
-        /// VAUCHI_BACKUP_PASSWORD for scripted/test use)
-        #[arg(long, env = "VAUCHI_BACKUP_PASSWORD", hide = true)]
-        password: Option<String>,
     },
 
     /// Import from backup
@@ -133,10 +125,6 @@ pub(crate) enum Commands {
         /// Import full backup (identity + contacts + own card + labels)
         #[arg(long)]
         full: bool,
-        /// Backup password (skips interactive prompt; use env var
-        /// VAUCHI_BACKUP_PASSWORD for scripted/test use)
-        #[arg(long, env = "VAUCHI_BACKUP_PASSWORD", hide = true)]
-        password: Option<String>,
         /// Skip the overwrite confirmation prompt (for scripted/E2E use)
         #[arg(long, short = 'y')]
         yes: bool,
@@ -281,10 +269,6 @@ pub(crate) enum GdprCommands {
         /// Encrypt export (prompts for password interactively)
         #[arg(long)]
         encrypt: bool,
-        /// Password for encryption (prefer --encrypt for interactive prompt;
-        /// kept for non-interactive/scripted use via env var VAUCHI_EXPORT_PASSWORD)
-        #[arg(long, env = "VAUCHI_EXPORT_PASSWORD", hide = true)]
-        password: Option<String>,
     },
 
     /// Schedule identity deletion (7-day grace period)

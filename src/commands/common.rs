@@ -199,10 +199,17 @@ pub(crate) fn open_vauchi_authenticated(config: &CliConfig, pin: Option<&str>) -
         }
         None => {
             if wb.is_password_enabled()? {
-                bail!(
-                    "App password is configured. Use --pin to authenticate.\n\
-                     Hint: vauchi --pin <PIN> contacts list"
-                );
+                use std::io::IsTerminal as _;
+                if !std::io::stdin().is_terminal() {
+                    bail!(
+                        "App password is configured. Set VAUCHI_PIN or run interactively to \
+                         be asked for it."
+                    );
+                }
+                let entered = dialoguer::Password::new()
+                    .with_prompt("App password")
+                    .interact()?;
+                wb.authenticate(&entered)?;
             }
             Ok(wb)
         }

@@ -323,12 +323,8 @@ pub(crate) async fn run(
         Commands::Activity { since } => {
             commands::activity::run(config, since.unwrap_or(60))?;
         }
-        Commands::Export {
-            output,
-            full,
-            password,
-        } => {
-            let password = match password {
+        Commands::Export { output, full } => {
+            let password = match crate::config::secret_from_env("VAUCHI_BACKUP_PASSWORD") {
                 Some(pw) => pw,
                 None => dialoguer::Password::new()
                     .with_prompt("Enter backup password")
@@ -341,13 +337,8 @@ pub(crate) async fn run(
                 commands::backup::export(config, &output, &password)?;
             }
         }
-        Commands::Import {
-            input,
-            full,
-            password,
-            yes,
-        } => {
-            let password = match password {
+        Commands::Import { input, full, yes } => {
+            let password = match crate::config::secret_from_env("VAUCHI_BACKUP_PASSWORD") {
                 Some(pw) => pw,
                 None => dialoguer::Password::new()
                     .with_prompt("Enter backup password")
@@ -364,23 +355,20 @@ pub(crate) async fn run(
             generate(shell, &mut cmd, "vauchi", &mut io::stdout());
         }
         Commands::Gdpr(cmd) => match cmd {
-            GdprCommands::Export {
-                output,
-                encrypt,
-                password,
-            } => {
-                let password = if let Some(pw) = password {
-                    // Hidden --password flag or env var (for scripted/test use)
-                    Some(pw)
-                } else if encrypt {
-                    let pw = dialoguer::Password::new()
-                        .with_prompt("Encryption password")
-                        .with_confirmation("Confirm password", "Passwords don't match")
-                        .interact()?;
-                    Some(pw)
-                } else {
-                    None
-                };
+            GdprCommands::Export { output, encrypt } => {
+                let password =
+                    if let Some(pw) = crate::config::secret_from_env("VAUCHI_EXPORT_PASSWORD") {
+                        // Scripted use: the password comes from the environment.
+                        Some(pw)
+                    } else if encrypt {
+                        let pw = dialoguer::Password::new()
+                            .with_prompt("Encryption password")
+                            .with_confirmation("Confirm password", "Passwords don't match")
+                            .interact()?;
+                        Some(pw)
+                    } else {
+                        None
+                    };
                 commands::gdpr::export_data(config, &output, password.as_deref())?;
             }
             GdprCommands::ExecuteDeletion => {

@@ -53,6 +53,13 @@ pub fn write_restricted(path: &Path, data: impl AsRef<[u8]>) -> anyhow::Result<(
     }
 }
 
+/// A secret passed to the CLI through the environment. Secrets never come
+/// from argv, which every local user can read (private#285); an empty
+/// value counts as unset.
+pub fn secret_from_env(var: &str) -> Option<String> {
+    std::env::var(var).ok().filter(|value| !value.is_empty())
+}
+
 /// Where the CLI keeps its data: `--data-dir` when given, otherwise
 /// `vauchi` under the platform's data directory. Without either it is an
 /// error, never the working directory, which may be shared (private#285).
@@ -493,6 +500,13 @@ mod tests {
 
     // The data directory never falls back to the working directory, which
     // may be shared or a download folder (private#285).
+    // An unset secret stays None so the interactive prompt still runs: a
+    // default would encrypt a backup under a password nobody chose.
+    #[test]
+    fn test_unset_secret_is_none_so_the_prompt_still_runs() {
+        assert_eq!(secret_from_env("VAUCHI_TEST_SECRET_NEVER_SET_285"), None);
+    }
+
     #[test]
     fn test_data_dir_is_the_explicit_one_when_given() {
         let dir = resolve_data_dir(

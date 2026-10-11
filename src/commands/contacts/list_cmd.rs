@@ -34,7 +34,7 @@ pub fn list_archived(config: &CliConfig, pin: Option<&str>, locale: &str) -> Res
 }
 
 /// The authenticated handle carries the auth mode, so a duress PIN lists
-/// decoys, and an app password without `--pin` is refused (#387).
+/// decoys, and an app password without `VAUCHI_PIN` is refused (#387).
 fn run_invocation(
     config: &CliConfig,
     pin: Option<&str>,

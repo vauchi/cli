@@ -127,18 +127,6 @@ fn import_yes_flag_parses_and_defaults_to_false() {
 
 // @internal
 #[test]
-fn backup_password_defaults_to_none_so_the_prompt_still_runs() {
-    // Unset must stay None — a default would silently skip the interactive
-    // confirmation and encrypt a backup under a password nobody chose.
-    let cli = Cli::parse_from(["vauchi", "export", "out.vauchi"]);
-    let Commands::Export { password, .. } = cli.command else {
-        panic!("expected export");
-    };
-    assert_eq!(password, None);
-}
-
-// @internal
-#[test]
 fn labels_set_name_parses_value_or_clear_flag() {
     let set = Cli::parse_from(["vauchi", "labels", "set-name", "Business", "Dr. Egloff"]);
     let Commands::Labels(LabelCommands::SetName { label, name, clear }) = set.command else {
