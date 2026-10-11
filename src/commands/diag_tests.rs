@@ -39,7 +39,7 @@ fn a_failing_probe_names_the_step_and_exits_one() {
 // @internal
 #[test]
 fn the_production_relay_is_probed_through_the_ohttp_host_with_the_pins_sync_uses() {
-    let (url, pins) = probe_target("wss://relay.vauchi.app", None);
+    let (url, pins, _) = probe_target("wss://relay.vauchi.app", None, None);
 
     assert_eq!(url, "https://ohttp.vauchi.app");
     assert_eq!(
@@ -51,7 +51,11 @@ fn the_production_relay_is_probed_through_the_ohttp_host_with_the_pins_sync_uses
 // @internal
 #[test]
 fn an_explicit_ohttp_relay_is_probed_as_given() {
-    let (url, _) = probe_target("wss://relay.vauchi.app", Some("https://ohttp.example.org"));
+    let (url, _, _) = probe_target(
+        "wss://relay.vauchi.app",
+        Some("https://ohttp.example.org"),
+        None,
+    );
 
     assert_eq!(url, "https://ohttp.example.org");
 }
@@ -59,8 +63,36 @@ fn an_explicit_ohttp_relay_is_probed_as_given() {
 // @internal
 #[test]
 fn a_self_hosted_relay_is_probed_on_its_own_host() {
-    let (url, _) = probe_target("wss://relay.example.org", None);
+    let (url, _, _) = probe_target("wss://relay.example.org", None, None);
 
     assert!(url.contains("relay.example.org"), "{url}");
     assert!(!url.contains("vauchi.app"), "{url}");
+}
+
+// The probe checks the gateway's signed key record under the relay's
+// anchor (core v0.80.0, private#288): the production relay's own, or the
+// one given with --relay-anchor.
+// @internal
+#[test]
+fn the_production_relay_is_probed_under_its_own_anchor() {
+    let (_, _, anchor) = probe_target("wss://relay.vauchi.app", None, None);
+
+    assert_eq!(anchor, RelayConfig::default().ohttp_trust_anchor());
+    assert!(anchor.is_some());
+}
+
+// @internal
+#[test]
+fn a_given_relay_anchor_is_used_for_any_relay() {
+    let (_, _, anchor) = probe_target("wss://relay.example.org", None, Some([0x5a; 32]));
+
+    assert_eq!(anchor, Some([0x5a; 32]));
+}
+
+// @internal
+#[test]
+fn a_self_hosted_relay_without_an_anchor_has_none() {
+    let (_, _, anchor) = probe_target("wss://relay.example.org", None, None);
+
+    assert_eq!(anchor, None);
 }

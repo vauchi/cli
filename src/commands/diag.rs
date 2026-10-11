@@ -11,7 +11,9 @@ use clap::Subcommand;
 use vauchi_core::api::RelayConfig;
 use vauchi_core::exchange::transport::animated_qr::{AnimatedQrConfig, AnimatedQrSession};
 use vauchi_core::network::PinnedCertificate;
-use vauchi_core::network::ohttp_probe::{OhttpProbeFailure, probe_ohttp_forward_hop};
+use vauchi_core::network::ohttp_probe::{
+    OhttpProbeFailure, OhttpProbeStep, probe_ohttp_forward_hop,
+};
 
 use crate::config::CliConfig;
 use crate::display;
@@ -172,13 +174,19 @@ pub fn animated_qr_encode(file: &PathBuf, fps: u8, chunk_size: usize, locale: &s
 pub(crate) fn probe_target(
     relay_url: &str,
     ohttp_relay_url: Option<&str>,
-) -> (String, Vec<PinnedCertificate>) {
+    relay_anchor: Option<[u8; 32]>,
+) -> (String, Vec<PinnedCertificate>, Option<[u8; 32]>) {
     let relay = RelayConfig {
         server_url: relay_url.to_string(),
         ohttp_relay_url: ohttp_relay_url.map(str::to_string),
+        ohttp_anchor: relay_anchor,
         ..RelayConfig::default()
     };
-    (relay.ohttp_endpoint(), relay.ohttp_endpoint_pins())
+    (
+        relay.ohttp_endpoint(),
+        relay.ohttp_endpoint_pins(),
+        relay.ohttp_trust_anchor(),
+    )
 }
 
 /// The probe's one-line verdict and exit code.
@@ -210,11 +218,33 @@ pub(crate) fn probe_report(
 /// Run `vauchi diag ohttp-probe`: one encapsulated round trip, no identity
 /// needed and no state changed.
 pub fn ohttp_probe(config: &CliConfig, locale: &str) -> u8 {
-    let (url, pins) = probe_target(&config.relay_url, config.ohttp_relay_url.as_deref());
-    let result = probe_ohttp_forward_hop(&url, pins, RelayConfig::default().io_timeout_ms);
+    let (url, pins, anchor) = probe_target(
+        &config.relay_url,
+        config.ohttp_relay_url.as_deref(),
+        config.relay_anchor,
+    );
+    let result = match anchor {
+        Some(anchor) => probe_ohttp_forward_hop(
+            &url,
+            pins,
+            &anchor,
+            unix_now(),
+            RelayConfig::default().io_timeout_ms,
+        ),
+        None => Err(OhttpProbeFailure {
+            step: OhttpProbeStep::KeyFetch,
+            detail: "relay has no OHTTP anchor; pass --relay-anchor".to_string(),
+        }),
+    };
     let (line, code) = probe_report(&url, &result, locale);
     println!("{line}");
     code
+}
+
+fn unix_now() -> u64 {
+    std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map_or(0, |elapsed| elapsed.as_secs())
 }
 
 // INLINE_TEST_REQUIRED: the probe's report and target helpers are private to
