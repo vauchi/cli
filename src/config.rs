@@ -476,6 +476,30 @@ mod tests {
         assert_ne!(pw1, pw2);
     }
 
+    // The data directory never falls back to the working directory, which
+    // may be shared or a download folder (private#285).
+    #[test]
+    fn test_data_dir_is_the_explicit_one_when_given() {
+        let dir = resolve_data_dir(
+            Some(PathBuf::from("/explicit")),
+            Some(PathBuf::from("/platform")),
+        )
+        .unwrap();
+        assert_eq!(dir, PathBuf::from("/explicit"));
+    }
+
+    #[test]
+    fn test_data_dir_is_vauchi_under_the_platform_data_dir() {
+        let dir = resolve_data_dir(None, Some(PathBuf::from("/platform"))).unwrap();
+        assert_eq!(dir, PathBuf::from("/platform/vauchi"));
+    }
+
+    #[test]
+    fn test_data_dir_without_platform_dir_or_flag_is_refused() {
+        let err = resolve_data_dir(None, None).unwrap_err();
+        assert!(err.to_string().contains("--data-dir"), "{err}");
+    }
+
     #[test]
     fn test_migration_from_legacy_password() {
         let temp_dir = tempdir().unwrap();
