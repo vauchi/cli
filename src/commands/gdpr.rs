@@ -14,7 +14,7 @@ use dialoguer::Input;
 use vauchi_core::Vauchi;
 use vauchi_core::api::{
     ConsentManager, ConsentType, DeletionManager, ShredManager, ShredReport, ShredToken,
-    ShredVerification, export_encrypted,
+    ShredVerification,
 };
 use vauchi_core::network::{HttpTransportAdapter, RelayClient, RelayClientConfig};
 use vauchi_core::storage::DeletionState;
@@ -32,7 +32,7 @@ pub fn export_data(config: &CliConfig, output: &Path, password: Option<&str>) ->
     let wb = open_vauchi(config)?;
 
     if let Some(pw) = password {
-        let encrypted = export_encrypted(wb.storage(), pw)?;
+        let encrypted = wb.export_personal_data_encrypted(pw)?;
         fs::write(output, &encrypted)?;
         display::success(&format!("Encrypted GDPR data export saved to {:?}", output));
     } else {
