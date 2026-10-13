@@ -83,11 +83,13 @@ pub(crate) async fn run(
             ExchangeSubcommand::Link {
                 their_link,
                 wait_secs,
+                yes,
             } => {
                 commands::exchange_link::link(
                     config,
                     their_link.as_deref(),
                     std::time::Duration::from_secs(wait_secs),
+                    yes,
                 )?;
             }
         },

@@ -124,7 +124,8 @@ fn exchange_link_rejects_anything_that_is_not_an_exchange_link() {
 }
 
 // Core never processes a link without consent (deep_link_consent, ADR-021);
-// a script must say --yes, and the consent text names the sender.
+// a script must say --yes, and Core's consent text is shown. Naming the
+// sender arrives with core!1844 (after 0.81.0, which this CLI pins).
 // @internal
 #[test]
 fn accepting_a_link_without_a_terminal_needs_yes() {
@@ -137,8 +138,8 @@ fn accepting_a_link_without_a_terminal_needs_yes() {
     assert!(!out.status.success());
     assert!(stderr(&out).contains("--yes"), "{}", stderr(&out));
     assert!(
-        stdout(&out).contains("Alice"),
-        "the consent names the sender: {}",
+        stdout(&out).contains("trust"),
+        "the consent is shown: {}",
         stdout(&out)
     );
     assert!(

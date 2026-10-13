@@ -414,6 +414,10 @@ pub(crate) enum ExchangeSubcommand {
         /// five-minute link window by default)
         #[arg(long, default_value_t = 300)]
         wait_secs: u64,
+        /// Accept the other person's link without the confirmation prompt
+        /// (unattended/scripted use)
+        #[arg(long)]
+        yes: bool,
     },
 }
 

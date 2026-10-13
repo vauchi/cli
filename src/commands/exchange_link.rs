@@ -8,6 +8,7 @@
 //! starts it, prints the share link, and wakes the engine until the
 //! exchange ends or the wait runs out.
 
+use std::io::IsTerminal;
 use std::time::{Duration, Instant};
 
 use anyhow::{Result, bail};
@@ -25,8 +26,9 @@ const FAILED: [&str; 2] = ["exchange_link_failed", "link_responder_failed"];
 const POLL: Duration = Duration::from_secs(2);
 
 /// Shares this device's link (`their_link` absent) or accepts the other
-/// side's, then waits up to `wait` for the exchange to complete.
-pub fn link(config: &CliConfig, their_link: Option<&str>, wait: Duration) -> Result<()> {
+/// side's after consent (`yes`, or a prompt at a terminal), then waits up to
+/// `wait` for the exchange to complete.
+pub fn link(config: &CliConfig, their_link: Option<&str>, wait: Duration, yes: bool) -> Result<()> {
     let their_link = their_link.map(str::trim);
     if let Some(link) = their_link
         && vauchi_core::exchange::link_mode::parse_link_url(link).is_none()
@@ -48,6 +50,16 @@ pub fn link(config: &CliConfig, their_link: Option<&str>, wait: Duration) -> Res
             let _ = engine.handle_action(UserAction::LinkOpened {
                 uri: link.to_string(),
             });
+            let consent = engine.current_screen();
+            if consent.screen_id == CONSENT_SCREEN {
+                if !consented(&consent, yes)? {
+                    display::info("Exchange declined.");
+                    return Ok(());
+                }
+                let _ = engine.handle_action(UserAction::ActionPressed {
+                    action_id: CONSENT_GRANT.to_string(),
+                });
+            }
         }
     }
 
@@ -68,6 +80,37 @@ pub fn link(config: &CliConfig, their_link: Option<&str>, wait: Duration) -> Res
         std::thread::sleep(POLL.min(deadline - now));
         let _ = engine.on_wakeup();
     }
+}
+
+/// Core's consent gate for an opened link (ADR-021: never processed
+/// without consent).
+const CONSENT_SCREEN: &str = "deep_link_consent";
+const CONSENT_GRANT: &str = "grant";
+
+/// Shows the consent text Core prepared, then takes `--yes` or asks.
+fn consented(screen: &ScreenModel, yes: bool) -> Result<bool> {
+    display::info(&screen.title);
+    if let Some(subtitle) = &screen.subtitle {
+        println!("{subtitle}");
+    }
+    for component in &screen.components {
+        match component {
+            Component::Text { content, .. } | Component::Banner { text: content, .. } => {
+                println!("{content}");
+            }
+            _ => {}
+        }
+    }
+    if yes {
+        return Ok(true);
+    }
+    if !std::io::stdin().is_terminal() {
+        bail!("run again with --yes to accept this link without a prompt");
+    }
+    let answer: String = dialoguer::Input::new()
+        .with_prompt("Type 'yes' to accept this exchange")
+        .interact_text()?;
+    Ok(answer.trim().eq_ignore_ascii_case("yes"))
 }
 
 fn share_url(screen: &ScreenModel) -> Option<String> {
