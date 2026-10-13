@@ -107,9 +107,13 @@ fn exchange_link_rejects_anything_that_is_not_an_exchange_link() {
         "https://example.com/x#pk=a&n=b",
         "https://vauchi.app/x#",
         "vauchi://exchange",
-        "https://vauchi.app/x#pk=\0&n=\0",
-    ] {
-        let out = bob.run(&["exchange", "link", junk, "--wait-secs", "0"]);
+        "https://vauchi.app/x#pk=📇&n=📇",
+    ]
+    .into_iter()
+    .map(String::from)
+    .chain([format!("https://vauchi.app/x#pk={}", "A".repeat(100_000))])
+    {
+        let out = bob.run(&["exchange", "link", &junk, "--wait-secs", "0"]);
         assert!(!out.status.success(), "{junk:?} must fail");
         assert!(
             stderr(&out).contains("not a Vauchi exchange link"),

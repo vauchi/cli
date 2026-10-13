@@ -403,6 +403,18 @@ pub(crate) enum ExchangeSubcommand {
         #[arg(long, default_value_t = 19283)]
         port: u16,
     },
+
+    /// Exchange remotely over a link: without an argument, print this
+    /// device's link to send; with the other person's link, accept it.
+    /// Waits until the exchange completes.
+    Link {
+        /// The other person's exchange link (https://vauchi.app/x#…)
+        their_link: Option<String>,
+        /// Longest wait for the exchange to complete, in seconds (ADR-035's
+        /// five-minute link window by default)
+        #[arg(long, default_value_t = 300)]
+        wait_secs: u64,
+    },
 }
 
 #[derive(Subcommand)]

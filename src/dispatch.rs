@@ -80,6 +80,16 @@ pub(crate) async fn run(
             ExchangeSubcommand::UsbListen { port } => {
                 commands::exchange::usb_listen(config, port)?;
             }
+            ExchangeSubcommand::Link {
+                their_link,
+                wait_secs,
+            } => {
+                commands::exchange_link::link(
+                    config,
+                    their_link.as_deref(),
+                    std::time::Duration::from_secs(wait_secs),
+                )?;
+            }
         },
         Commands::Contacts(cmd) => match cmd {
             ContactCommands::List {

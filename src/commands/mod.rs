@@ -17,6 +17,7 @@ pub mod diag;
 pub mod duress;
 pub mod emergency;
 pub mod exchange;
+pub mod exchange_link;
 pub mod gdpr;
 pub mod init;
 pub mod labels;
