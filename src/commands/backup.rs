@@ -102,9 +102,7 @@ pub fn import_full(config: &CliConfig, input: &Path, password: &str, yes: bool) 
     // rejects full restores onto an initialized instance
     // (`AlreadyInitialized`), so the reset happens only after the backup
     // is proven readable.
-    let backup_bytes =
-        hex::decode(backup_hex.trim()).map_err(|e| anyhow::anyhow!("Invalid backup file: {e}"))?;
-    vauchi_core::backup::import_full_backup(&backup_bytes, password)
+    vauchi_core::backup::validate_full_backup(&backup_hex, password)
         .map_err(|e| anyhow::anyhow!("Backup validation failed (wrong password?): {e}"))?;
 
     crate::commands::common::reset_local_state(config)?;
