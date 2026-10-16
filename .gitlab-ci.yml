@@ -45,6 +45,12 @@ include:
       - '/ci-templates/tool-install.yml'
       - '/ci-templates/cross-cutting-lint.yml'
 
+# Temporary containment for the allyson compiler stall (vauchi/private#198).
+# A tiny compile probe passed while real dependency compilation still hung.
+.self-hosted:
+  variables:
+    RUSTC_WRAPPER: ""
+
 variables:
   VAUCHI_SCRIPTS_REF: "ea3bfb1d139b56a6e2708f7f4757d48552aebd1d"
   # cargo audit runs with --deny warnings; every entry here is an
