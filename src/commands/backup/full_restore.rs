@@ -36,8 +36,14 @@ pub(super) fn restore(
     publish: impl FnOnce(&Path, &Path) -> io::Result<()>,
 ) -> Result<RestoredIdentity> {
     check_target(config)?;
-    let staging = tempfile::Builder::new()
-        .prefix(".restore-")
+    let mut staging_builder = tempfile::Builder::new();
+    staging_builder.prefix(".restore-");
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        staging_builder.permissions(fs::Permissions::from_mode(0o700));
+    }
+    let staging = staging_builder
         .tempdir_in(&config.data_dir)
         .context("Cannot prepare the restore directory")?;
     let staged_path = staging.path().join("vauchi.db");
@@ -107,3 +113,7 @@ fn restrict_permissions(path: &Path) -> Result<()> {
 fn restrict_permissions(_path: &Path) -> Result<()> {
     bail!("Full restore requires a platform with private file permissions")
 }
+
+#[cfg(all(test, unix))]
+#[path = "../../../tests/commands/full_restore.rs"]
+mod tests;

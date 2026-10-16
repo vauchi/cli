@@ -341,9 +341,8 @@ mod identity_management {
         );
     }
 
-    /// A confirmed overwrite restore actually replaces the identity (core
-    /// rejects imports onto an initialized full-backup instance, so the CLI
-    /// must reset local state — after validating the backup).
+    /// A confirmed overwrite publishes a restored identity in place of the
+    /// existing database, after restoring into fresh staged storage.
     // @internal
     #[test]
     fn test_import_full_confirmed_overwrite_replaces_identity() {

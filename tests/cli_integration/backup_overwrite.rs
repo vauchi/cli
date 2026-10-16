@@ -105,3 +105,65 @@ fn backup_overwrite_shared_access_keeps_ordinary_cli_commands_available() {
 
     assert!(card.contains("Bob original"), "{card}");
 }
+
+// @internal
+#[test]
+fn backup_overwrite_retains_its_input_backup_and_unrelated_profile_files() {
+    let source = CliTestContext::new();
+    source.init("Alice replacement");
+    source.run_success(&["labels", "create", "Restored group"]);
+    let target = CliTestContext::new();
+    target.init("Bob original");
+    target.run_success(&["labels", "create", "Old group"]);
+    let saved = target.data_dir.path().join("input-backup.vauchi");
+    source.run_success_env(
+        &["export", saved.to_str().unwrap(), "--full"],
+        &[("VAUCHI_BACKUP_PASSWORD", PASSWORD)],
+    );
+    let backup = fs::read(&saved).unwrap();
+    let marker = target.data_dir.path().join("keep.txt");
+    fs::write(&marker, b"unrelated profile file").unwrap();
+
+    target.run_success_env(
+        &["import", saved.to_str().unwrap(), "--full", "--yes"],
+        &[("VAUCHI_BACKUP_PASSWORD", PASSWORD)],
+    );
+
+    let card = target.run_success(&["card", "show"]);
+    assert!(card.contains("Alice replacement"), "{card}");
+    assert!(!card.contains("Bob original"), "{card}");
+    let labels = target.run_success(&["labels", "list"]);
+    assert!(labels.contains("Restored group"), "{labels}");
+    assert!(!labels.contains("Old group"), "{labels}");
+    assert_eq!(fs::read(saved).unwrap(), backup);
+    assert_eq!(fs::read(marker).unwrap(), b"unrelated profile file");
+}
+
+// @internal
+#[test]
+fn backup_overwrite_refuses_a_database_symlink_without_replacing_it() {
+    let source = CliTestContext::new();
+    source.init("Alice replacement");
+    let backup = source.data_dir.path().join("full.vauchi");
+    source.run_success_env(
+        &["export", backup.to_str().unwrap(), "--full"],
+        &[("VAUCHI_BACKUP_PASSWORD", PASSWORD)],
+    );
+    let target = CliTestContext::new();
+    target.init("Bob original");
+    let database = target.data_dir.path().join("vauchi.db");
+    let original = target.data_dir.path().join("original.db");
+    fs::rename(&database, &original).unwrap();
+    std::os::unix::fs::symlink(&original, &database).unwrap();
+
+    let output = target.run_env(
+        &["import", backup.to_str().unwrap(), "--full", "--yes"],
+        &[("VAUCHI_BACKUP_PASSWORD", PASSWORD)],
+    );
+
+    assert!(!output.status.success());
+    assert_eq!(fs::read_link(database).unwrap(), original);
+    let card = target.run_success(&["card", "show"]);
+    assert!(card.contains("Bob original"), "{card}");
+    assert!(!card.contains("Alice replacement"), "{card}");
+}
