@@ -12,6 +12,7 @@ mod commands;
 mod config;
 mod dispatch;
 mod display;
+mod profile_access;
 mod raw;
 mod ui;
 

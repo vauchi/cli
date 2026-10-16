@@ -17,6 +17,8 @@ use crate::commands::common::{identity_exists, open_vauchi};
 use crate::config::CliConfig;
 use crate::display;
 
+mod full_restore;
+
 /// Exports an identity backup.
 pub fn export(config: &CliConfig, output: &Path, password: &str) -> Result<()> {
     let wb = open_vauchi(config)?;
@@ -91,45 +93,20 @@ pub fn export_full(config: &CliConfig, output: &Path, password: &str) -> Result<
 
 /// Imports a full backup (identity + contacts + own card + labels).
 pub fn import_full(config: &CliConfig, input: &Path, password: &str, yes: bool) -> Result<()> {
+    full_restore::check_target(config)?;
     if !confirm_overwrite(config, yes)? {
         return Ok(());
     }
 
     let backup_hex = fs::read_to_string(input)?;
 
-    // Validate and decrypt BEFORE touching local state: a typo'd path or
-    // wrong password must leave the existing install fully intact. Core
-    // rejects full restores onto an initialized instance
-    // (`AlreadyInitialized`), so the reset happens only after the backup
-    // is proven readable.
-    // A disposable restore follows Core's format support without a new API pin.
-    Vauchi::in_memory()?
-        .import_full_backup(&backup_hex, password)
-        .map_err(|e| anyhow::anyhow!("Backup validation failed (wrong password?): {e}"))?;
+    let restored = full_restore::restore(config, &backup_hex, password, |from, to| {
+        fs::rename(from, to)
+    })?;
 
-    crate::commands::common::reset_local_state(config)?;
-
-    fs::create_dir_all(&config.data_dir)?;
-
-    let wb_config = VauchiConfig::with_storage_path(config.storage_path())
-        .with_relay_url(&config.relay_url)
-        .with_storage_key(config.storage_key()?);
-
-    let mut wb = Vauchi::new(wb_config)?;
-    // Core persists the restored identity (and contacts, card, labels) into
-    // its encrypted storage — no frontend-side identity file needed.
-    wb.import_full_backup(&backup_hex, password)?;
-
-    let name = wb
-        .identity()
-        .map(|id| id.display_name().to_string())
-        .ok_or_else(|| anyhow::anyhow!("Identity missing after restore"))?;
-
-    let public_id = wb.public_id()?;
-
-    display::success(&format!("Full backup restored: {}", name));
+    display::success(&format!("Full backup restored: {}", restored.name));
     println!();
-    println!("  Public ID: {}", public_id);
+    println!("  Public ID: {}", restored.public_id);
     println!("  Data dir:  {:?}", config.data_dir);
     println!();
     display::info("Identity, contacts, own card, and labels have been restored.");
@@ -141,9 +118,8 @@ pub fn import_full(config: &CliConfig, input: &Path, password: &str, yes: bool) 
 ///
 /// Fails closed on probe errors and returns false when the user cancels.
 /// `yes` skips the prompt for scripted/E2E use (the probe still runs).
-/// Never touches local state: callers decide whether a reset is needed
-/// (full restores, after validating the backup) or not (identity-only
-/// restores overwrite the identity row in place).
+/// Full restores stage a replacement database; identity-only restores
+/// update the identity row in existing storage.
 fn confirm_overwrite(config: &CliConfig, yes: bool) -> Result<bool> {
     if !identity_exists(config)? {
         return Ok(true);

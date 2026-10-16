@@ -15,6 +15,10 @@ use rstest::rstest;
 use std::process::{Command, Output};
 use tempfile::TempDir;
 
+#[cfg(unix)]
+#[path = "cli_integration/backup_overwrite.rs"]
+mod backup_overwrite;
+
 /// Helper to run CLI commands in an isolated data directory
 struct CliTestContext {
     data_dir: TempDir,

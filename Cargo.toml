@@ -54,6 +54,9 @@ serde_json = "1"
 # Error handling
 anyhow = "1"
 
+# Private staging directory for full-backup replacement.
+tempfile = "3"
+
 # QR code generation
 
 # Hex encoding
@@ -80,7 +83,6 @@ secure-storage = ["vauchi-core/secure-storage"]
 e2e-test-clock = []
 
 [dev-dependencies]
-tempfile = "3"
 proptest = "1"
 rstest = "0.26"
 insta = "1.41"
