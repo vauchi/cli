@@ -33,6 +33,8 @@ pub(crate) struct CardJson {
 /// Serializable view of a contact field.
 #[derive(Serialize)]
 pub(crate) struct FieldJson {
+    /// Names the entry where two share a label (private#651).
+    pub id: String,
     pub field_type: String,
     pub label: String,
     pub value: String,
@@ -61,6 +63,7 @@ impl From<&ContactCard> for CardJson {
                 .fields()
                 .iter()
                 .map(|f| FieldJson {
+                    id: f.id().to_string(),
                     field_type: format!("{:?}", f.field_type()),
                     label: f.label().to_string(),
                     value: f.value().to_string(),

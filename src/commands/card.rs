@@ -177,7 +177,12 @@ pub fn edit(config: &CliConfig, label: &str, value: &str) -> Result<()> {
         .own_card()?
         .ok_or_else(|| anyhow::anyhow!("No contact card found"))?;
 
-    let field = old_card.fields().iter().find(|f| f.label() == label);
+    let field_id = match wb.resolve_own_field_id(label) {
+        Ok(id) => Some(id),
+        Err(vauchi_core::VauchiError::NotFound(_)) => None,
+        Err(error) => return Err(error.into()),
+    };
+    let field = field_id.and_then(|id| old_card.fields().iter().find(|f| f.id() == id));
 
     match field {
         Some(f) => {

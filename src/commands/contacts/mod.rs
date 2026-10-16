@@ -67,18 +67,10 @@ pub(crate) fn find_contact(wb: &Vauchi, id_or_name: &str) -> Result<vauchi_core:
 }
 
 /// Helper to find field ID by label in own card
-fn find_field_id(wb: &Vauchi, label: &str) -> Result<String> {
-    let card = wb
-        .own_card()?
-        .ok_or_else(|| anyhow::anyhow!("No contact card found"))?;
-
-    let field = card
-        .fields()
-        .iter()
-        .find(|f| f.label() == label)
-        .ok_or_else(|| anyhow::anyhow!("Field '{}' not found in your card", label))?;
-
-    Ok(field.id().to_string())
+/// An own entry named by its id or by a label only one entry has; Core
+/// refuses a label several entries share, naming their ids (private#651).
+fn find_field_id(wb: &Vauchi, label_or_id: &str) -> Result<String> {
+    Ok(wb.resolve_own_field_id(label_or_id)?)
 }
 
 /// Returns a human-readable label for a ContactAction.
