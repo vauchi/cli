@@ -1255,8 +1255,8 @@ mod device_management {
         );
     }
 
-    /// Trace: device_management.feature - "Generate device linking QR code"
-    // @scenario: device_management:Generate device linking QR code
+    /// Trace: device_management.feature - "Generate device linking code"
+    // @scenario: device_management:Generate device linking code
     /// M-5: Verify QR data structure, not just length.
     #[test]
     fn test_device_link_generates_qr() {
@@ -1883,8 +1883,8 @@ mod emergency {
     /// CLI as a subprocess with no tty, so the flags must bypass every
     /// dialoguer prompt (record:
     /// 2026-07-24-duress-alert-e2e-coverage-gap).
-    /// Trace: emergency_broadcast.feature - "Configure emergency broadcast"
-    // @scenario: emergency_broadcast:Configure emergency broadcast
+    /// Trace: emergency_broadcast.feature - "Configure emergency broadcast contacts"
+    // @scenario: emergency_broadcast:Configure emergency broadcast contacts
     #[test]
     fn test_emergency_configure_noninteractive_flags() {
         let ctx = CliTestContext::new();
