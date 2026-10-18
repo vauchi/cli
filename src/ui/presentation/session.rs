@@ -7,7 +7,24 @@ use std::io::{self, BufRead, Write};
 use vauchi_app::ui::AppEngine;
 use vauchi_core::{Command, Event};
 
-use super::{OfferedInputs, PresentationState, prompt_event, render_to_string};
+use super::{
+    OfferedInputs, PresentationState, SecretReader, prompt_event, prompt_event_with,
+    render_to_string,
+};
+
+/// Reads a password or PIN at the terminal without echoing it
+/// (vauchi/private#630).
+struct TerminalSecrets;
+
+impl SecretReader for TerminalSecrets {
+    fn read_secret(&mut self, label: &str) -> io::Result<String> {
+        dialoguer::Password::new()
+            .with_prompt(format!("  {label}"))
+            .allow_empty_password(true)
+            .interact()
+            .map_err(io::Error::other)
+    }
+}
 
 pub trait CommandReducer {
     type Error: Display;
@@ -29,15 +46,31 @@ impl CommandReducer for AppEngine {
 }
 
 pub fn run_engine(engine: &mut AppEngine) -> anyhow::Result<()> {
+    use std::io::IsTerminal as _;
     let stdin = io::stdin();
     let stdout = io::stdout();
-    run_with_io(engine, &mut stdin.lock(), &mut stdout.lock()).map_err(Into::into)
+    let (mut input, mut output) = (stdin.lock(), stdout.lock());
+    if stdin.is_terminal() {
+        run_session(engine, &mut input, &mut output, Some(&mut TerminalSecrets))
+    } else {
+        run_with_io(engine, &mut input, &mut output)
+    }
+    .map_err(Into::into)
 }
 
 pub fn run_with_io(
     reducer: &mut impl CommandReducer,
     input: &mut impl BufRead,
     output: &mut impl Write,
+) -> io::Result<()> {
+    run_session(reducer, input, output, None)
+}
+
+fn run_session(
+    reducer: &mut impl CommandReducer,
+    input: &mut impl BufRead,
+    output: &mut impl Write,
+    mut secrets: Option<&mut dyn SecretReader>,
 ) -> io::Result<()> {
     let mut state = PresentationState::default();
     let mut offered = OfferedInputs::default();
@@ -53,7 +86,10 @@ pub fn run_with_io(
         }
         write!(output, "{}", render_to_string(&state))?;
         output.flush()?;
-        let event = prompt_event(&state, &mut offered, input, output)?;
+        let event = match secrets.as_deref_mut() {
+            Some(reader) => prompt_event_with(&state, &mut offered, input, output, reader)?,
+            None => prompt_event(&state, &mut offered, input, output)?,
+        };
         commands = reducer.dispatch(event).map_err(reducer_error)?;
     }
 }

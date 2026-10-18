@@ -4,17 +4,44 @@
 use std::io::{self, BufRead, Write};
 
 use vauchi_core::{
-    BindingId, Event, InputValue, PresentationNode, PresentationQrPurpose, StandardShortcut,
-    SurfaceId,
+    BindingId, Event, InputValue, PresentationInputKind, PresentationNode, PresentationQrPurpose,
+    StandardShortcut, SurfaceId,
 };
 
 use super::PresentationState;
 
+/// Reads a password or PIN without echoing it (vauchi/private#630).
+pub trait SecretReader {
+    fn read_secret(&mut self, label: &str) -> io::Result<String>;
+}
+
+/// Without a secret reader, password and PIN values are read from `input`
+/// like any other line, which scripted runs rely on.
 pub fn prompt_event(
     state: &PresentationState,
     offered: &mut OfferedInputs,
     input: &mut impl BufRead,
     output: &mut impl Write,
+) -> io::Result<Event> {
+    prompt_secret_aware(state, offered, input, output, None)
+}
+
+pub fn prompt_event_with(
+    state: &PresentationState,
+    offered: &mut OfferedInputs,
+    input: &mut impl BufRead,
+    output: &mut impl Write,
+    secrets: &mut dyn SecretReader,
+) -> io::Result<Event> {
+    prompt_secret_aware(state, offered, input, output, Some(secrets))
+}
+
+fn prompt_secret_aware(
+    state: &PresentationState,
+    offered: &mut OfferedInputs,
+    input: &mut impl BufRead,
+    output: &mut impl Write,
+    mut secrets: Option<&mut (dyn SecretReader + '_)>,
 ) -> io::Result<Event> {
     let surface = state
         .surface()
@@ -37,7 +64,7 @@ pub fn prompt_event(
     offered.enter_surface(&surface_id);
     if let Some(target) = first_empty_input(&surface.nodes, offered) {
         offered.mark(&target);
-        return read_target(target, surface_id, input, output);
+        return read_target(target, surface_id, input, output, secrets.as_deref_mut());
     }
     if targets.is_empty() {
         return Ok(Event::BackRequested { surface_id });
@@ -57,7 +84,13 @@ pub fn prompt_event(
         if let Ok(index) = selected.parse::<usize>()
             && let Some(target) = targets.get(index.saturating_sub(1))
         {
-            return read_target(target.clone(), surface_id, input, output);
+            return read_target(
+                target.clone(),
+                surface_id,
+                input,
+                output,
+                secrets.as_deref_mut(),
+            );
         }
         write!(output, "  Invalid selection > ")?;
         output.flush()?;
@@ -73,6 +106,7 @@ enum Target {
     Text {
         label: String,
         binding_id: BindingId,
+        secret: bool,
     },
     Number {
         label: String,
@@ -90,21 +124,39 @@ impl Target {
     }
 }
 
+fn is_secret(kind: &PresentationInputKind) -> bool {
+    matches!(
+        kind,
+        PresentationInputKind::Password | PresentationInputKind::Pin
+    )
+}
+
 fn read_target(
     target: Target,
     surface_id: SurfaceId,
     input: &mut impl BufRead,
     output: &mut impl Write,
+    secrets: Option<&mut (dyn SecretReader + '_)>,
 ) -> io::Result<Event> {
     match target {
         Target::Ready { event, .. } => Ok(event),
-        Target::Text { label, binding_id } => {
-            write!(output, "  {label} > ")?;
-            output.flush()?;
+        Target::Text {
+            label,
+            binding_id,
+            secret,
+        } => {
+            let value = match (secret, secrets) {
+                (true, Some(reader)) => reader.read_secret(&label)?,
+                _ => {
+                    write!(output, "  {label} > ")?;
+                    output.flush()?;
+                    read_line(input)?
+                }
+            };
             Ok(Event::ValueChanged {
                 surface_id,
                 binding_id,
-                value: InputValue::Text(read_line(input)?),
+                value: InputValue::Text(value),
             })
         }
         Target::Number { label, binding_id } => loop {
@@ -173,12 +225,14 @@ fn first_empty_input(nodes: &[PresentationNode], offered: &OfferedInputs) -> Opt
                 binding_id,
                 label,
                 value,
+                input_kind,
                 enabled: true,
                 ..
             } if value.is_empty() && !offered.already_offered(binding_id) => {
                 return Some(Target::Text {
                     label: label.clone(),
                     binding_id: binding_id.clone(),
+                    secret: is_secret(input_kind),
                 });
             }
             PresentationNode::Qr {
@@ -190,6 +244,7 @@ fn first_empty_input(nodes: &[PresentationNode], offered: &OfferedInputs) -> Opt
                 return Some(Target::Text {
                     label: label.clone().unwrap_or_else(|| "QR data".into()),
                     binding_id: id.clone(),
+                    secret: false,
                 });
             }
             PresentationNode::Group { children, .. } => {
@@ -215,11 +270,13 @@ fn collect_targets(node: &PresentationNode, surface_id: &SurfaceId, targets: &mu
         PresentationNode::Input {
             binding_id,
             label,
+            input_kind,
             enabled: true,
             ..
         } => targets.push(Target::Text {
             label: format!("Edit {label}"),
             binding_id: binding_id.clone(),
+            secret: is_secret(input_kind),
         }),
         PresentationNode::Toggle {
             binding_id,
