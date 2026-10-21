@@ -12,8 +12,8 @@ use anyhow::{Result, bail};
 use dialoguer::Input;
 use vauchi_core::Vauchi;
 use vauchi_core::api::{
-    ConsentManager, ConsentType, DeletionManager, ShredManager, ShredReport, ShredToken,
-    ShredVerification,
+    ConsentManager, ConsentType, DeletionManager, PreSignedPurgeRequest, PurgeSender, ShredError,
+    ShredManager, ShredReport, ShredToken, ShredVerification,
 };
 use vauchi_core::network::{HttpTransportAdapter, RelayClient, RelayClientConfig};
 use vauchi_core::storage::DeletionState;
@@ -75,7 +75,20 @@ pub fn schedule_deletion(config: &CliConfig) -> Result<()> {
     let answer = prompt(
         "This will schedule your identity for deletion in 7 days. Type 'delete' to confirm",
     )?;
-    match schedule_deletion_answered(&wb, &answer)? {
+    let recovery_answer = if confirms_deletion(&answer) && trusts_anyone_for_recovery(&wb)? {
+        display::info(
+            "Your trusted contacts can help you move your contacts to a new identity later. \
+             If you keep recovery, the relay holds the encrypted list of who you trust for \
+             up to 365 days. If you erase everything, that list goes with the rest, and \
+             recovery is no longer possible.",
+        );
+        Some(prompt(
+            "Type 'keep' to keep recovery or 'erase' to erase everything",
+        )?)
+    } else {
+        None
+    };
+    match schedule_deletion_answered(&wb, &answer, recovery_answer.as_deref())? {
         Some(days) => {
             display::warning(&format!(
                 "Identity deletion scheduled. You have {} days to cancel.",
@@ -88,14 +101,44 @@ pub fn schedule_deletion(config: &CliConfig) -> Result<()> {
     Ok(())
 }
 
+fn confirms_deletion(answer: &str) -> bool {
+    answer.to_lowercase() == "delete"
+}
+
+/// Whether the identity has anyone to keep recovery possible with; only
+/// then is there a choice to make when deleting.
+fn trusts_anyone_for_recovery(wb: &Vauchi) -> Result<bool> {
+    Ok(wb
+        .list_contacts()?
+        .iter()
+        .any(|contact| contact.is_recovery_trusted()))
+}
+
 /// Schedules the deletion when `answer` is "delete" in any case; returns
 /// the grace period in days, or `None` when the answer declined.
-fn schedule_deletion_answered(wb: &Vauchi, answer: &str) -> Result<Option<u64>> {
-    if answer.to_lowercase() != "delete" {
+///
+/// With anyone trusted for recovery, `recovery_answer` must be "keep" or
+/// "erase"; with nobody trusted there is nothing to keep, so the deletion
+/// erases everything (#711).
+fn schedule_deletion_answered(
+    wb: &Vauchi,
+    answer: &str,
+    recovery_answer: Option<&str>,
+) -> Result<Option<u64>> {
+    if !confirms_deletion(answer) {
         return Ok(None);
     }
+    let erase_guardian_set = if trusts_anyone_for_recovery(wb)? {
+        match recovery_answer.map(|a| a.trim().to_lowercase()).as_deref() {
+            Some("keep") => false,
+            Some("erase") => true,
+            _ => bail!("Answer 'keep' to keep recovery or 'erase' to erase everything."),
+        }
+    } else {
+        true
+    };
     let manager = DeletionManager::new(wb.storage());
-    manager.schedule_deletion()?;
+    manager.schedule_deletion_erasing_guardian_set(erase_guardian_set)?;
     Ok(match manager.deletion_state()? {
         DeletionState::Scheduled {
             scheduled_at,
@@ -318,9 +361,45 @@ fn execute_deletion_answered(
     token: ShredToken,
     answer: &str,
 ) -> Result<Option<Vec<String>>> {
+    execute_deletion_purging_with(config, wb, token, answer, |erase_guardian_set| {
+        wb.purge_relay_data(erase_guardian_set)?;
+        Ok(())
+    })
+}
+
+/// Hands the shred a purge that is signed when the shred sends it, with
+/// the recovery choice made at scheduling. The pre-signed purge would be
+/// stale: the relay accepts a purge only within 60 seconds of its
+/// timestamp (#711).
+struct PurgeSignedAtSend<F> {
+    erase_guardian_set: bool,
+    purge: F,
+}
+
+impl<F: FnMut(bool) -> Result<()>> PurgeSender for PurgeSignedAtSend<F> {
+    fn send_purge(
+        &mut self,
+        _pre_signed: &PreSignedPurgeRequest,
+        _now: u64,
+    ) -> Result<bool, ShredError> {
+        Ok((self.purge)(self.erase_guardian_set).is_ok())
+    }
+}
+
+/// [`execute_deletion_answered`] with `purge` standing in for the relay
+/// purge, so the recovery choice it receives can be observed.
+fn execute_deletion_purging_with(
+    config: &CliConfig,
+    wb: &Vauchi,
+    token: ShredToken,
+    answer: &str,
+    purge: impl FnMut(bool) -> Result<()>,
+) -> Result<Option<Vec<String>>> {
     if answer != "EXECUTE" {
         return Ok(None);
     }
+    // Read before the shred: executing it leaves the deletion state behind.
+    let erase_guardian_set = DeletionManager::new(wb.storage()).scheduled_erases_guardian_set()?;
     let identity = wb
         .identity()
         .ok_or_else(|| anyhow::anyhow!("No identity found"))?;
@@ -333,14 +412,21 @@ fn execute_deletion_answered(
         &config.data_dir,
     );
 
-    // Create two separate relay clients (borrow rules: PurgeSender + RevocationSender)
-    let mut purge_client = create_shred_relay_client(wb, &config.relay_url, &identity_id)?;
+    let mut purge = PurgeSignedAtSend {
+        erase_guardian_set,
+        purge,
+    };
     let mut revocation_client = create_shred_relay_client(wb, &config.relay_url, &identity_id)?;
 
     let mut lines = vec![display::info_line("Destroying identity...")];
     let report = shred_manager
-        .hard_shred(token, Some(&mut purge_client), Some(&mut revocation_client))
+        .hard_shred(token, Some(&mut purge), Some(&mut revocation_client))
         .map_err(|e| anyhow::anyhow!("Shred failed: {}", e))?;
+    if !report.relay_purge_sent {
+        lines.push(display::warning_line(
+            "The relay could not be reached to purge your data; the local deletion continued.",
+        ));
+    }
     lines.extend(shred_summary_lines(&report, &shred_manager.verify_shred()));
     lines.push(display::success_line("Identity destroyed. Goodbye."));
     Ok(Some(lines))
