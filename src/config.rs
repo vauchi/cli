@@ -576,8 +576,11 @@ mod tests {
         assert!(err.to_string().contains("--data-dir"), "{err}");
     }
 
+    // The shared password every install used before per-installation
+    // passwords; installs never migrated off it are no longer opened
+    // (private#745, owner decision 2026-10-21).
     #[test]
-    fn test_migration_from_legacy_password() {
+    fn an_identity_file_under_the_retired_shared_password_is_refused() {
         let temp_dir = tempdir().unwrap();
         let config = CliConfig {
             data_dir: temp_dir.path().to_path_buf(),
@@ -590,33 +593,23 @@ mod tests {
         };
 
         let identity = Identity::create("Test User", crate::clock::shared().unix_seconds());
-        let backup = create_test_backup(&identity, LEGACY_BACKUP_PASSWORD);
+        let backup = create_test_backup(&identity, "vauchi-local-storage");
         std::fs::create_dir_all(&config.data_dir).unwrap();
         std::fs::write(config.identity_path(), backup.as_bytes()).unwrap();
 
-        let imported = config.import_local_identity().unwrap();
-        assert_eq!(imported.display_name(), "Test User");
+        let Err(err) = config.import_local_identity() else {
+            panic!("an identity under the retired password was opened");
+        };
 
-        let new_password = config.backup_password().unwrap();
-        let new_backup_data = std::fs::read(config.identity_path()).unwrap();
-        let new_backup = IdentityBackup::new(new_backup_data);
-        let reimported = Identity::import_backup(
-            &new_backup,
-            &new_password,
-            crate::clock::shared().unix_seconds(),
-        )
-        .unwrap();
-        assert_eq!(reimported.display_name(), "Test User");
-        // The re-exported identity is owner-only (private#285).
-        #[cfg(unix)]
-        {
-            use std::os::unix::fs::PermissionsExt;
-            let mode = std::fs::metadata(config.identity_path())
-                .unwrap()
-                .permissions()
-                .mode();
-            assert_eq!(mode & 0o777, 0o600);
-        }
+        assert!(
+            err.to_string().contains("Failed to import identity"),
+            "{err}"
+        );
+        assert_eq!(
+            std::fs::read(config.identity_path()).unwrap(),
+            backup.as_bytes(),
+            "the refused file is left as it was"
+        );
     }
 
     #[test]
@@ -637,38 +630,6 @@ mod tests {
 
         let imported = config.import_local_identity().unwrap();
         assert_eq!(imported.display_name(), "Test User");
-    }
-
-    #[test]
-    fn test_re_export_after_migration_uses_new_password() {
-        let temp_dir = tempdir().unwrap();
-        let config = CliConfig {
-            data_dir: temp_dir.path().to_path_buf(),
-            relay_url: "ws://localhost:8080".to_string(),
-            ohttp_relay_url: None,
-            ohttp_delayed: false,
-            delayed_wait: crate::config::DelayedWait::default(),
-            relay_anchor: None,
-            raw: false,
-        };
-
-        let identity = Identity::create("Migration User", crate::clock::shared().unix_seconds());
-        let backup = create_test_backup(&identity, LEGACY_BACKUP_PASSWORD);
-        std::fs::create_dir_all(&config.data_dir).unwrap();
-        std::fs::write(config.identity_path(), backup.as_bytes()).unwrap();
-
-        config.import_local_identity().unwrap();
-
-        let new_data = std::fs::read(config.identity_path()).unwrap();
-        let new_backup = IdentityBackup::new(new_data);
-        assert!(
-            Identity::import_backup(
-                &new_backup,
-                LEGACY_BACKUP_PASSWORD,
-                crate::clock::shared().unix_seconds()
-            )
-            .is_err()
-        );
     }
 
     #[cfg(not(feature = "secure-storage"))]
