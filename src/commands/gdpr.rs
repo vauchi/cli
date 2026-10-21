@@ -100,6 +100,7 @@ fn schedule_deletion_answered(wb: &Vauchi, answer: &str) -> Result<Option<u64>> 
         DeletionState::Scheduled {
             scheduled_at,
             execute_at,
+            ..
         } => Some(days_and_hours(execute_at - scheduled_at).0),
         _ => None,
     })
@@ -134,6 +135,7 @@ fn deletion_status_lines(state: &DeletionState, now: u64) -> Vec<String> {
         DeletionState::Scheduled {
             scheduled_at,
             execute_at,
+            ..
         } => {
             let (days, hours) = days_and_hours(execute_at.saturating_sub(now));
             vec![
@@ -270,6 +272,7 @@ fn shred_token_after_grace(state: &DeletionState, now: u64) -> Result<ShredToken
         DeletionState::Scheduled {
             scheduled_at,
             execute_at,
+            ..
         } => {
             if now < *execute_at {
                 let (days, hours) = days_and_hours(execute_at.saturating_sub(now));

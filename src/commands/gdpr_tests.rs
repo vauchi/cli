@@ -76,6 +76,7 @@ fn the_status_names_each_state() {
     let scheduled = DeletionState::Scheduled {
         scheduled_at: 100,
         execute_at: 100 + 7 * DAY,
+        erase_guardian_set: false,
     };
 
     assert_eq!(
@@ -104,6 +105,7 @@ fn the_grace_period_gates_the_shred_token() {
     let scheduled = DeletionState::Scheduled {
         scheduled_at: 100,
         execute_at: 100 + 7 * DAY,
+        erase_guardian_set: false,
     };
 
     let early = shred_token_after_grace(&scheduled, 100 + 6 * DAY + 2 * HOUR).unwrap_err();
