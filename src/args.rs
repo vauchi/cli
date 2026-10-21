@@ -56,24 +56,23 @@ pub(crate) struct Cli {
     )]
     pub ohttp_delayed: bool,
 
-    /// With `--ohttp-delayed`: seconds between collects while `sync` waits
-    /// for its own delayed answers.
+    /// Seconds between collects while `sync` waits for its own delayed
+    /// answers (forced, or once the outer relay advertises a window).
     #[arg(
         long,
         global = true,
         env = "VAUCHI_OHTTP_DELAYED_POLL_SECS",
-        default_value_t = 30
+        default_value_t = crate::config::DEFAULT_DELAYED_POLL_SECS
     )]
     pub ohttp_delayed_poll_secs: u64,
 
-    /// With `--ohttp-delayed`: longest a `sync` waits for its delayed
-    /// answers. Default: the outer relay's default delay (900 s) plus a
-    /// minute.
+    /// Longest a `sync` waits for its delayed answers. Default: the outer
+    /// relay's default delay (900 s) plus a minute.
     #[arg(
         long,
         global = true,
         env = "VAUCHI_OHTTP_DELAYED_WAIT_SECS",
-        default_value_t = 960
+        default_value_t = crate::config::DEFAULT_DELAYED_WAIT_SECS
     )]
     pub ohttp_delayed_wait_secs: u64,
 

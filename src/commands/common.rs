@@ -18,7 +18,7 @@ fn base_wb_config(config: &CliConfig) -> Result<VauchiConfig> {
         Some(anchor) => wb_config.with_relay(&config.relay_url, anchor),
         None => wb_config.with_relay_url(&config.relay_url),
     };
-    wb_config.relay.ohttp_delayed = config.ohttp_delayed.is_some();
+    wb_config.relay.ohttp_delayed = config.ohttp_delayed;
     Ok(wb_config.with_storage_key(config.storage_key()?))
 }
 
@@ -309,7 +309,8 @@ mod tests {
             data_dir: dir.to_path_buf(),
             relay_url: "https://relay.self.example".to_string(),
             ohttp_relay_url: None,
-            ohttp_delayed: None,
+            ohttp_delayed: false,
+            delayed_wait: crate::config::DelayedWait::default(),
             relay_anchor,
             raw: false,
         }
@@ -335,10 +336,7 @@ mod tests {
         let mut config = cli_config(temp_dir.path(), None);
 
         let off = base_wb_config(&config).unwrap();
-        config.ohttp_delayed = Some(crate::config::DelayedWait {
-            poll: std::time::Duration::from_secs(30),
-            max_wait: std::time::Duration::from_secs(960),
-        });
+        config.ohttp_delayed = true;
         let on = base_wb_config(&config).unwrap();
 
         assert!(!off.relay.ohttp_delayed);
@@ -394,7 +392,8 @@ mod tests {
             data_dir: temp_dir.path().to_path_buf(),
             relay_url: "ws://localhost:8080".to_string(),
             ohttp_relay_url: None,
-            ohttp_delayed: None,
+            ohttp_delayed: false,
+            delayed_wait: crate::config::DelayedWait::default(),
             relay_anchor: None,
             raw: false,
         };
@@ -419,7 +418,8 @@ mod tests {
             data_dir: temp_dir.path().to_path_buf(),
             relay_url: "ws://localhost:8080".to_string(),
             ohttp_relay_url: None,
-            ohttp_delayed: None,
+            ohttp_delayed: false,
+            delayed_wait: crate::config::DelayedWait::default(),
             relay_anchor: None,
             raw: false,
         };
@@ -443,7 +443,8 @@ mod tests {
             data_dir: temp_dir.path().to_path_buf(),
             relay_url: "ws://localhost:8080".to_string(),
             ohttp_relay_url: None,
-            ohttp_delayed: None,
+            ohttp_delayed: false,
+            delayed_wait: crate::config::DelayedWait::default(),
             relay_anchor: None,
             raw: false,
         };
@@ -469,7 +470,8 @@ mod tests {
             data_dir: temp_dir.path().to_path_buf(),
             relay_url: "ws://localhost:8080".to_string(),
             ohttp_relay_url: None,
-            ohttp_delayed: None,
+            ohttp_delayed: false,
+            delayed_wait: crate::config::DelayedWait::default(),
             relay_anchor: None,
             raw: false,
         };
@@ -501,7 +503,8 @@ mod tests {
             data_dir: temp_dir.path().to_path_buf(),
             relay_url: "ws://localhost:9999".to_string(),
             ohttp_relay_url: None,
-            ohttp_delayed: None,
+            ohttp_delayed: false,
+            delayed_wait: crate::config::DelayedWait::default(),
             relay_anchor: None,
             raw: false,
         };
@@ -624,7 +627,8 @@ mod reset_tests {
             data_dir: dir.to_path_buf(),
             relay_url: "ws://127.0.0.1:9".to_string(),
             ohttp_relay_url: None,
-            ohttp_delayed: None,
+            ohttp_delayed: false,
+            delayed_wait: crate::config::DelayedWait::default(),
             relay_anchor: None,
             raw: false,
         }

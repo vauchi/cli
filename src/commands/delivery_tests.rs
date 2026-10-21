@@ -38,7 +38,8 @@ fn config_with_records() -> (TempDir, CliConfig) {
         data_dir: dir.path().to_path_buf(),
         relay_url: "ws://127.0.0.1:9".to_string(),
         ohttp_relay_url: None,
-        ohttp_delayed: None,
+        ohttp_delayed: false,
+        delayed_wait: crate::config::DelayedWait::default(),
         relay_anchor: None,
         raw: false,
     };

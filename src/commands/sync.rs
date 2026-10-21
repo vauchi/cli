@@ -64,11 +64,14 @@ pub fn run(config: &CliConfig) -> Result<()> {
     sync_spinner.set_message("Syncing...");
     sync_spinner.enable_steady_tick(Duration::from_millis(80));
 
-    let outcome = match config.ohttp_delayed {
-        Some(wait) => wb.sync_collecting_delayed(wait.poll, wait.max_wait),
-        None => wb.sync(),
-    }
-    .map_err(|e| anyhow::anyhow!("Sync failed: {e}"))?;
+    // Core sends fetches through the delayed path once the outer relay has
+    // advertised a window, and the answers live in this process only; it
+    // must collect them before exiting (private#628). Without a window this
+    // is a plain sync.
+    let wait = config.delayed_wait;
+    let outcome = wb
+        .sync_collecting_delayed(wait.poll, wait.max_wait)
+        .map_err(|e| anyhow::anyhow!("Sync failed: {e}"))?;
 
     sync_spinner.finish_and_clear();
 

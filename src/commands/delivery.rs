@@ -212,7 +212,8 @@ mod tests {
             data_dir: dir.path().to_path_buf(),
             relay_url: "wss://test.example.com".to_string(),
             ohttp_relay_url: None,
-            ohttp_delayed: None,
+            ohttp_delayed: false,
+            delayed_wait: crate::config::DelayedWait::default(),
             relay_anchor: None,
             raw: false,
         };

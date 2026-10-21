@@ -238,7 +238,8 @@ mod tests {
             data_dir,
             relay_url: "http://127.0.0.1:9".to_string(),
             ohttp_relay_url: None,
-            ohttp_delayed: None,
+            ohttp_delayed: false,
+            delayed_wait: crate::config::DelayedWait::default(),
             relay_anchor: None,
             raw: false,
         }
