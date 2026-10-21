@@ -6,14 +6,17 @@
 //! (vauchi/private#505). `dialoguer` refuses a non-terminal stdin, so the
 //! prompts themselves stay untested; everything after the answer is here.
 
+use rstest::rstest;
 use tempfile::TempDir;
-use vauchi_core::Vauchi;
 use vauchi_core::api::{DeletionManager, ShredReport, ShredVerification};
+use vauchi_core::contact_card::ContactCard;
 use vauchi_core::storage::DeletionState;
+use vauchi_core::{Contact, Identity, SymmetricKey, Vauchi};
 
 use super::{
-    days_and_hours, deletion_status_lines, execute_deletion_answered, panic_shred_answered,
-    schedule_deletion_answered, shred_summary_lines, shred_token_after_grace, ws_to_http,
+    days_and_hours, deletion_status_lines, execute_deletion_answered,
+    execute_deletion_purging_with, panic_shred_answered, schedule_deletion_answered,
+    shred_summary_lines, shred_token_after_grace, trusts_anyone_for_recovery, ws_to_http,
 };
 use crate::commands::common::open_vauchi;
 use crate::config::CliConfig;
@@ -33,6 +36,32 @@ fn initialized() -> (TempDir, CliConfig) {
     };
     crate::commands::init::run("Alice", false, &config, "en").unwrap();
     (dir, config)
+}
+
+fn trust_a_contact_for_recovery(wb: &mut Vauchi) {
+    let friend = Identity::create("Amira", 0);
+    let contact = Contact::from_exchange(
+        *friend.signing_public_key(),
+        ContactCard::new("Amira"),
+        SymmetricKey::generate(),
+        0,
+    );
+    let id = contact.id().to_string();
+    wb.add_contact(contact).unwrap();
+    // Recovery trust needs a Verified or High trust level (ADR-034).
+    wb.verify_contact_fingerprint(&id).unwrap();
+    wb.toggle_recovery_trust(&id).unwrap();
+}
+
+/// A deletion whose grace period ended long ago, so Core's own check passes.
+fn due_deletion(wb: &Vauchi, erase_guardian_set: bool) -> vauchi_core::api::ShredToken {
+    let state = DeletionState::Scheduled {
+        scheduled_at: 1,
+        execute_at: 1,
+        erase_guardian_set,
+    };
+    wb.storage().consent().save_deletion_state(&state).unwrap();
+    shred_token_after_grace(&state, 1).unwrap()
 }
 
 fn deletion_state(wb: &Vauchi) -> DeletionState {
@@ -60,10 +89,13 @@ fn scheduling_needs_the_word_delete_in_any_case() {
     let (_dir, config) = initialized();
     let wb = open_vauchi(&config).unwrap();
 
-    assert_eq!(schedule_deletion_answered(&wb, "nope").unwrap(), None);
+    assert_eq!(schedule_deletion_answered(&wb, "nope", None).unwrap(), None);
     assert!(matches!(deletion_state(&wb), DeletionState::None));
 
-    assert_eq!(schedule_deletion_answered(&wb, "DELETE").unwrap(), Some(7));
+    assert_eq!(
+        schedule_deletion_answered(&wb, "DELETE", None).unwrap(),
+        Some(7)
+    );
     assert!(matches!(
         deletion_state(&wb),
         DeletionState::Scheduled { .. }
@@ -133,7 +165,7 @@ fn the_grace_period_gates_the_shred_token() {
 fn execution_needs_the_exact_word_and_leaves_the_identity_otherwise() {
     let (_dir, config) = initialized();
     let wb = open_vauchi(&config).unwrap();
-    schedule_deletion_answered(&wb, "delete").unwrap();
+    schedule_deletion_answered(&wb, "delete", None).unwrap();
     let scheduled = deletion_state(&wb);
     let token = shred_token_after_grace(&scheduled, u64::MAX).unwrap();
 
@@ -222,7 +254,7 @@ fn relay_urls_turn_from_websocket_to_http() {
 fn an_accepted_execution_reaches_cores_own_grace_check() {
     let (_dir, config) = initialized();
     let wb = open_vauchi(&config).unwrap();
-    schedule_deletion_answered(&wb, "delete").unwrap();
+    schedule_deletion_answered(&wb, "delete", None).unwrap();
     let scheduled = deletion_state(&wb);
     // The shell's gate is passed with a far-future clock; Core checks the
     // grace period again with the system clock and refuses, which is the
@@ -236,4 +268,118 @@ fn an_accepted_execution_reaches_cores_own_grace_check() {
         "Shred failed: Deletion error: Grace period not elapsed"
     );
     assert!(wb.identity().is_some());
+}
+
+fn erases_guardian_set(wb: &Vauchi) -> bool {
+    DeletionManager::new(wb.storage())
+        .scheduled_erases_guardian_set()
+        .unwrap()
+}
+
+// @scenario: privacy_compliance :: Deleting my identity asks whether recovery stays possible
+#[test]
+fn with_trusted_contacts_nothing_is_scheduled_until_recovery_is_chosen() {
+    let (_dir, config) = initialized();
+    let mut wb = open_vauchi(&config).unwrap();
+    trust_a_contact_for_recovery(&mut wb);
+
+    assert!(trusts_anyone_for_recovery(&wb).unwrap());
+    for unanswered in [None, Some(""), Some("maybe")] {
+        let error = schedule_deletion_answered(&wb, "delete", unanswered).unwrap_err();
+        assert_eq!(
+            error.to_string(),
+            "Answer 'keep' to keep recovery or 'erase' to erase everything."
+        );
+        assert_eq!(deletion_state(&wb), DeletionState::None);
+    }
+}
+
+// @scenario: privacy_compliance :: Deleting my identity asks whether recovery stays possible
+#[rstest]
+#[case::keep("keep", false)]
+#[case::erase_in_any_case(" Erase ", true)]
+fn with_trusted_contacts_the_answer_decides_whether_recovery_stays(
+    #[case] answer: &str,
+    #[case] erases: bool,
+) {
+    let (_dir, config) = initialized();
+    let mut wb = open_vauchi(&config).unwrap();
+    trust_a_contact_for_recovery(&mut wb);
+
+    assert_eq!(
+        schedule_deletion_answered(&wb, "delete", Some(answer)).unwrap(),
+        Some(7)
+    );
+    assert_eq!(erases_guardian_set(&wb), erases);
+}
+
+// @scenario: privacy_compliance :: With nobody trusted for recovery, deleting erases everything
+#[test]
+fn with_nobody_trusted_the_deletion_erases_everything_unasked() {
+    let (_dir, config) = initialized();
+    let wb = open_vauchi(&config).unwrap();
+
+    assert!(!trusts_anyone_for_recovery(&wb).unwrap());
+    assert_eq!(
+        schedule_deletion_answered(&wb, "delete", None).unwrap(),
+        Some(7)
+    );
+    assert!(erases_guardian_set(&wb));
+}
+
+// @scenario: privacy_compliance :: The relay purge carries my recovery choice
+#[rstest]
+#[case::keep_recovery(false)]
+#[case::erase_everything(true)]
+fn execution_purges_the_relay_with_the_scheduled_choice(#[case] erase_guardian_set: bool) {
+    let (_dir, config) = initialized();
+    let wb = open_vauchi(&config).unwrap();
+    let token = due_deletion(&wb, erase_guardian_set);
+    let mut purged_with = Vec::new();
+
+    let lines = plain(
+        &execute_deletion_purging_with(&config, &wb, token, "EXECUTE", |erase| {
+            purged_with.push(erase);
+            Ok(())
+        })
+        .unwrap()
+        .unwrap(),
+    );
+
+    assert_eq!(purged_with, [erase_guardian_set]);
+    assert!(
+        lines.contains(&"  Relay purge sent:       true".to_string()),
+        "{lines:?}"
+    );
+    assert_eq!(lines.last().unwrap(), "✓ Identity destroyed. Goodbye.");
+    assert!(!config.data_dir.join("vauchi.db").exists());
+}
+
+// @internal
+#[test]
+fn a_failed_relay_purge_does_not_stop_the_deletion() {
+    let (_dir, config) = initialized();
+    let wb = open_vauchi(&config).unwrap();
+    let token = due_deletion(&wb, true);
+
+    // No OHTTP route to the unreachable test relay, so Core's purge fails.
+    let lines = plain(
+        &execute_deletion_answered(&config, &wb, token, "EXECUTE")
+            .unwrap()
+            .unwrap(),
+    );
+
+    assert!(
+        lines.contains(&"  Relay purge sent:       false".to_string()),
+        "{lines:?}"
+    );
+    assert!(
+        lines.contains(
+            &"⚠ The relay could not be reached to purge your data; the local deletion continued."
+                .to_string()
+        ),
+        "{lines:?}"
+    );
+    assert_eq!(lines.last().unwrap(), "✓ Identity destroyed. Goodbye.");
+    assert!(!config.data_dir.join("vauchi.db").exists());
 }
