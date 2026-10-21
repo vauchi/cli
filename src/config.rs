@@ -15,9 +15,6 @@ use vauchi_core::storage::secure::{PlatformKeyring, SecureStorage};
 #[cfg(not(feature = "secure-storage"))]
 use vauchi_core::storage::secure::{FileKeyStorage, SecureStorage};
 
-/// Legacy hardcoded password used before per-installation backup passwords.
-const LEGACY_BACKUP_PASSWORD: &str = "vauchi-local-storage";
-
 /// Writes data to a file only its owner can read (0o600).
 ///
 /// The file is created with that mode, so it is never briefly readable under
@@ -229,33 +226,15 @@ impl CliConfig {
         load_or_generate_backup_password(&self.data_dir)
     }
 
-    /// Imports the local identity with migration from legacy hardcoded password.
-    ///
-    /// Tries the per-installation password first. If that fails, falls back to the
-    /// legacy `"vauchi-local-storage"` password and re-exports with the new password.
+    /// Imports the local identity under the per-installation password. A
+    /// file under the shared password installs used before that is refused
+    /// (private#745).
     pub fn import_local_identity(&self) -> Result<Identity> {
         let password = self.backup_password()?;
         let backup_data = std::fs::read(self.identity_path())?;
         let backup = IdentityBackup::new(backup_data);
-
-        match Identity::import_backup(&backup, &password, crate::clock::shared().unix_seconds()) {
-            Ok(identity) => Ok(identity),
-            Err(_) => {
-                // Try legacy hardcoded password for migration
-                let identity = Identity::import_backup(
-                    &backup,
-                    LEGACY_BACKUP_PASSWORD,
-                    crate::clock::shared().unix_seconds(),
-                )
-                .map_err(|e| anyhow::anyhow!("Failed to import identity: {:?}", e))?;
-                // Re-export with per-installation password
-                let new_backup = identity
-                    .export_backup(&password)
-                    .map_err(|e| anyhow::anyhow!("Failed to re-export identity: {:?}", e))?;
-                write_restricted(&self.identity_path(), new_backup.as_bytes())?;
-                Ok(identity)
-            }
-        }
+        Identity::import_backup(&backup, &password, crate::clock::shared().unix_seconds())
+            .map_err(|e| anyhow::anyhow!("Failed to import identity: {:?}", e))
     }
 
     /// Saves the identity to the local persistence file.
