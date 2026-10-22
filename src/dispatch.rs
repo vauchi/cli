@@ -37,9 +37,12 @@ pub(crate) async fn run(
             } => {
                 // Social fields support interactive prompting when label/value
                 // are omitted: `vauchi card add social`
-                let is_social = vauchi_core::FieldType::from_alias(&field_type)
-                    .map(|(ft, _)| ft.is_social())
-                    .unwrap_or(false);
+                let is_social = vauchi_core::FieldType::from_alias(
+                    &field_type,
+                    &vauchi_app::social::active_registry(),
+                )
+                .map(|(ft, _)| ft.is_social())
+                .unwrap_or(false);
 
                 match (label, value) {
                     (Some(l), Some(v)) => {

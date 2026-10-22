@@ -182,7 +182,7 @@ fn contract_add_field_to_own_card() {
 #[test]
 fn contract_phone_field_secondary_actions_include_sms() {
     let field = ContactField::new(FieldType::Phone, "Mobile", "+1234567890", 0);
-    let actions = field.to_secondary_actions();
+    let actions = field.to_secondary_actions(&vauchi_app::social::active_registry());
 
     assert!(
         actions.len() >= 3,
@@ -210,7 +210,7 @@ fn contract_phone_field_secondary_actions_include_sms() {
 #[test]
 fn contract_address_field_secondary_actions_include_directions() {
     let field = ContactField::new(FieldType::Address, "Home", "123 Main St, Zurich", 0);
-    let actions = field.to_secondary_actions();
+    let actions = field.to_secondary_actions(&vauchi_app::social::active_registry());
 
     assert!(
         actions

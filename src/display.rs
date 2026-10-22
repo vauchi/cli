@@ -294,7 +294,7 @@ use vauchi_app::i18n::{Locale, get_string, get_string_with_args};
 
 /// Parse locale code to Locale enum
 fn parse_locale(code: &str) -> Locale {
-    Locale::from_code(code).unwrap_or(Locale::English)
+    vauchi_app::i18n::translated_locale(code).unwrap_or(Locale::ENGLISH)
 }
 
 /// Get localized string

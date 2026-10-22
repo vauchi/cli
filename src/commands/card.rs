@@ -15,7 +15,7 @@ use crate::display;
 
 /// Parses a field type string using core's alias table.
 fn parse_field_type(s: &str) -> Result<(FieldType, Option<String>)> {
-    FieldType::from_alias(s).ok_or_else(|| {
+    FieldType::from_alias(s, &vauchi_app::social::active_registry()).ok_or_else(|| {
         anyhow::anyhow!(
             "Unknown field type: {}. Use: email, phone, website, address, social, custom",
             s

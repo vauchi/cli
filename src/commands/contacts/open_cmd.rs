@@ -21,8 +21,9 @@ pub fn open_field(config: &CliConfig, contact_id_or_name: &str, field_label: &st
         .ok_or_else(|| anyhow::anyhow!("Field '{}' not found for {}", field_label, contact_name))?;
 
     // Get URI using vauchi-core's secure URI builder
-    let uri = field.to_uri();
-    let action = field.to_action();
+    let registry = vauchi_app::social::active_registry();
+    let uri = field.to_uri(&registry);
+    let action = field.to_action(&registry);
 
     match uri {
         Some(uri_str) => {
@@ -87,7 +88,7 @@ pub fn open_interactive(config: &CliConfig, contact_id_or_name: &str) -> Result<
         .interact()?;
 
     let selected_field = &fields[field_idx];
-    let actions = selected_field.to_secondary_actions();
+    let actions = selected_field.to_secondary_actions(&vauchi_app::social::active_registry());
 
     if !offers_action_menu(&actions) {
         return open_field(config, contact.id(), selected_field.label());
