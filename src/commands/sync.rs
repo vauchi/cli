@@ -10,7 +10,7 @@ use std::time::Duration;
 
 use anyhow::Result;
 use indicatif::{ProgressBar, ProgressStyle};
-use vauchi_core::api::VauchiSyncOutcome;
+use vauchi_core::api::{FetchPath, VauchiSyncOutcome};
 
 use crate::commands::common::{drain_activity_log, open_vauchi, register_activity_log_handler};
 use crate::config::CliConfig;
@@ -139,10 +139,22 @@ fn sync_summary_line(received: usize, sent: usize, acknowledged: usize) -> Strin
     display::success_line(&summary)
 }
 
+/// The warning when this sync fetched synchronously because the outer
+/// relay withdrew its delayed path (private#628, owner decision
+/// 2026-10-23: the fallback is shown, not taken silently).
+fn fetch_path_warning(path: FetchPath) -> Option<String> {
+    let _ = path;
+    todo!("private#628 fetch path warning")
+}
+
 // INLINE_TEST_REQUIRED: Binary crate without lib.rs - tests cannot be external
 #[cfg(test)]
 mod tests {
-    use super::sync_summary_line;
+    use std::time::Duration;
+
+    use vauchi_core::api::FetchPath;
+
+    use super::{fetch_path_warning, sync_summary_line};
 
     fn plain(line: String) -> String {
         console::strip_ansi_codes(&line).to_string()
@@ -170,5 +182,33 @@ mod tests {
                 expected
             );
         }
+    }
+
+    // @internal
+    #[test]
+    fn a_withdrawn_delayed_path_is_warned_about_with_its_time() {
+        let warning = fetch_path_warning(FetchPath::SynchronousSinceWithdrawn {
+            since_unix: 1_792_754_666,
+        });
+
+        assert_eq!(
+            warning.as_deref(),
+            Some(
+                "Fetched without delay: the outer relay stopped offering delayed \
+                 fetching on 2026-10-23 11:24 UTC"
+            )
+        );
+    }
+
+    // @internal
+    #[test]
+    fn a_delayed_or_never_offered_path_gives_no_warning() {
+        assert_eq!(
+            fetch_path_warning(FetchPath::Delayed {
+                window: Duration::from_secs(900)
+            }),
+            None
+        );
+        assert_eq!(fetch_path_warning(FetchPath::Synchronous), None);
     }
 }
