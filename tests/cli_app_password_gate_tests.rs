@@ -13,8 +13,10 @@ use common::{Cli, exchange_data};
 const PASSWORD: &str = "app-password-123";
 const DURESS_PIN: &str = "135790";
 
-/// Answers `duress setup`: the app password twice, then a duress PIN.
-const SETUP_ANSWERS: &str = "app-password-123\napp-password-123\n\n1\n135790\n\n135790\n\n\n\n";
+/// Answers `duress setup`: the app password twice, a duress PIN twice, then
+/// the app password again for the session PIN step (#777).
+const SETUP_ANSWERS: &str =
+    "app-password-123\napp-password-123\n\n1\n135790\n\n135790\n\napp-password-123\n\n\n\n";
 
 fn protect(cli: &Cli) {
     let output = cli.run_with_stdin(&["duress", "setup"], SETUP_ANSWERS);
