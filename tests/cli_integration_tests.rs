@@ -82,11 +82,23 @@ impl CliTestContext {
     /// run is the headless equivalent of an interactive session — an empty
     /// line activates the surface's primary action.
     fn run_success_with_stdin(&self, args: &[&str], stdin: &str) -> String {
+        self.run_success_env_with_stdin(args, &[], stdin)
+    }
+
+    /// Run a command with extra environment variables and scripted stdin,
+    /// and assert success.
+    fn run_success_env_with_stdin(
+        &self,
+        args: &[&str],
+        envs: &[(&str, &str)],
+        stdin: &str,
+    ) -> String {
         let mut cmd = Command::new(env!("CARGO_BIN_EXE_vauchi"));
         cmd.arg("--data-dir")
             .arg(self.data_dir.path())
             .arg("--relay")
-            .arg(&self.relay_url);
+            .arg(&self.relay_url)
+            .envs(envs.iter().copied());
         for arg in args {
             cmd.arg(arg);
         }
@@ -1805,7 +1817,7 @@ mod duress {
 
         // Core drives the step order; a blank line takes the primary action.
         // password, confirm, submit, configure, PIN, continue, confirm PIN,
-        // continue, (blank alert message), save.
+        // continue, app password at the step before the change, confirm.
         ctx.run_success_with_stdin(
             &["duress", "setup"],
             "app-password-123\napp-password-123\n\n1\n135790\n\n135790\n\napp-password-123\n\n\n\n",
@@ -1821,6 +1833,40 @@ mod duress {
         assert!(
             output.contains("App Password:  ENABLED"),
             "the app-password precondition must have been satisfied first, got: {}",
+            output
+        );
+    }
+
+    /// Turning the duress PIN off runs Core's duress screen like setup does,
+    /// so Core asks for the app password again before it changes anything
+    /// (private#777).
+    // @scenario: duress_pin:Disable duress mode
+    #[test]
+    fn test_duress_disable_turns_it_off_through_core_after_the_password() {
+        let ctx = CliTestContext::new();
+        ctx.init("Alice Smith");
+        ctx.run_success_with_stdin(
+            &["duress", "setup"],
+            "app-password-123\napp-password-123\n\n1\n135790\n\n135790\n\napp-password-123\n\n",
+        );
+        let pin = [("VAUCHI_PIN", "app-password-123")];
+
+        let disable = ctx.run_success_env_with_stdin(
+            &["duress", "disable"],
+            &pin,
+            // Turn off, Disable, the app password at the step, confirm.
+            "4\n5\napp-password-123\n\n",
+        );
+
+        assert!(
+            disable.contains("Enter your password to change the duress PIN."),
+            "Core's password step must run before the change, got: {}",
+            disable
+        );
+        let output = ctx.run_success_env(&["duress", "status"], &pin);
+        assert!(
+            output.contains("Duress PIN:    NOT SET"),
+            "disable must turn the duress PIN off, got: {}",
             output
         );
     }
