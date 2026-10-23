@@ -90,6 +90,9 @@ pub fn run(config: &CliConfig) -> Result<()> {
             for err in &errors {
                 display::warning(&format!("Sync error: {err}"));
             }
+            if let Some(warning) = fetch_path_warning(wb.fetch_path()) {
+                display::warning(&warning);
+            }
 
             // Real clock on purpose: pairs with `start_time` above to
             // measure the sync's wall-clock window; the injected test
@@ -143,8 +146,14 @@ fn sync_summary_line(received: usize, sent: usize, acknowledged: usize) -> Strin
 /// relay withdrew its delayed path (private#628, owner decision
 /// 2026-10-23: the fallback is shown, not taken silently).
 fn fetch_path_warning(path: FetchPath) -> Option<String> {
-    let _ = path;
-    todo!("private#628 fetch path warning")
+    let FetchPath::SynchronousSinceWithdrawn { since_unix } = path else {
+        return None;
+    };
+    let since = chrono::DateTime::from_timestamp(i64::try_from(since_unix).ok()?, 0)?;
+    Some(format!(
+        "Fetched without delay: the outer relay stopped offering delayed fetching on {}",
+        since.format("%Y-%m-%d %H:%M UTC")
+    ))
 }
 
 // INLINE_TEST_REQUIRED: Binary crate without lib.rs - tests cannot be external
