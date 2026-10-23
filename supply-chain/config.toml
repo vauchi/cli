@@ -355,14 +355,6 @@ criteria = "safe-to-deploy"
 version = "0.2.2"
 criteria = "safe-to-deploy"
 
-[[exemptions.getrandom]]
-version = "0.2.17"
-criteria = "safe-to-deploy"
-
-[[exemptions.getrandom]]
-version = "0.4.3"
-criteria = "safe-to-deploy"
-
 [[exemptions.ghash]]
 version = "0.5.1"
 criteria = "safe-to-deploy"
@@ -619,10 +611,6 @@ criteria = "safe-to-deploy"
 version = "5.2.0"
 criteria = "safe-to-deploy"
 
-[[exemptions.r-efi]]
-version = "6.0.0"
-criteria = "safe-to-deploy"
-
 [[exemptions.rand]]
 version = "0.9.5"
 criteria = "safe-to-deploy"
@@ -851,10 +839,6 @@ criteria = "safe-to-deploy"
 version = "0.5.2"
 criteria = "safe-to-deploy"
 
-[[exemptions.untrusted]]
-version = "0.9.0"
-criteria = "safe-to-deploy"
-
 [[exemptions.ureq]]
 version = "3.3.0"
 criteria = "safe-to-deploy"
@@ -905,10 +889,6 @@ criteria = "safe-to-deploy"
 
 [[exemptions.wasm-bindgen-shared]]
 version = "0.2.126"
-criteria = "safe-to-deploy"
-
-[[exemptions.web-time]]
-version = "1.1.0"
 criteria = "safe-to-deploy"
 
 [[exemptions.webpki-roots]]
