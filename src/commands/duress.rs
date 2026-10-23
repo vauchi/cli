@@ -52,17 +52,17 @@ pub fn status(config: &CliConfig) -> Result<()> {
 
 /// Disable duress PIN.
 pub fn disable(config: &CliConfig) -> Result<()> {
-    let mut wb = open_vauchi(config)?;
+    let wb = open_vauchi(config)?;
 
     if !wb.is_duress_enabled()? {
         display::info("Duress PIN is not enabled");
         return Ok(());
     }
 
-    wb.disable_duress()?;
-    display::success("Duress PIN disabled");
-
-    Ok(())
+    // Core's duress screen turns it off, so Core asks for the password again
+    // first (private#777) instead of this shell changing it directly.
+    let mut engine = AppEngine::for_duress_setup(wb);
+    presentation::run_engine(&mut engine)
 }
 
 /// Test authentication (shows Normal/Duress result).
