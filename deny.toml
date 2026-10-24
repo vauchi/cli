@@ -28,6 +28,7 @@ ignore = [
 version = 2
 allow = [
     "GPL-3.0-or-later",
+    "AGPL-3.0-or-later",  # vauchi-core, vauchi-relay (#801)
     "MIT",
     "Apache-2.0",
     "Apache-2.0 WITH LLVM-exception",
