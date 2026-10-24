@@ -47,23 +47,30 @@ fn try_init_i18n() {
         }
     }
 
-    // Installed binary: search upward from the executable for a locales dir.
-    if let Ok(exe) = std::env::current_exe() {
-        let mut base = exe.parent().map(PathBuf::from).unwrap_or_default();
-        for _ in 0..6 {
-            let candidate = base.join("locales");
-            if candidate.is_dir() {
-                let _ = init_i18n(&candidate);
-                return;
-            }
-            if !base.pop() {
-                break;
-            }
-        }
+    if let Some(dir) = std::env::current_exe()
+        .ok()
+        .as_deref()
+        .and_then(install_locales_dir)
+    {
+        let _ = init_i18n(&dir);
     }
+}
 
-    // Last resort: current working directory.
-    let _ = init_i18n(Path::new("locales"));
+/// The locales folder of the binary's own install layout: next to it,
+/// `<prefix>/share/vauchi/locales`, or the workspace's for a `target/<profile>`
+/// build. Never an arbitrary ancestor or the working directory, where anyone
+/// able to write a `locales` folder would supply the CLI's text
+/// (vauchi/private#792).
+fn install_locales_dir(exe: &Path) -> Option<PathBuf> {
+    let exe_dir = exe.parent()?;
+    let mut candidates = vec![
+        exe_dir.join("locales"),
+        exe_dir.join("../share/vauchi/locales"),
+    ];
+    if exe_dir.parent().and_then(Path::file_name) == Some("target".as_ref()) {
+        candidates.push(exe_dir.join("../../../locales"));
+    }
+    candidates.into_iter().find(|dir| dir.is_dir())
 }
 
 #[tokio::main]

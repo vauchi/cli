@@ -58,9 +58,6 @@ exclude_re = [
     "replace is_pinned -> bool with false",
     # Compiled only with the secure-storage feature.
     "storage_key_from_keychain",
-    # Reached only when no CARGO_MANIFEST_DIR is set, i.e. never under
-    # `cargo test`.
-    "delete ! in try_init_i18n",
     # Duress setup prompts for PINs (dialoguer); status details and test
     # results need a configured duress PIN.
     "src/commands/duress\\.rs:.*(delete ! in (status|test)|in test)",
