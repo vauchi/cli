@@ -127,9 +127,11 @@ check:release-provenance:
 lint:duplicates:
   extends: [.rust-runner-nocache, .lint-duplicates-job, .timeout-quick]
 
-# Unused dependency check (advisory)
+# Unused dependency check. Blocking here although the shared template
+# allows failure: the CLI has no unused dependency to excuse (private#810).
 lint:machete:
   extends: [.rust-runner-nocache, .lint-machete-job, .timeout-quick]
+  allow_failure: false
 
 # ============================================================
 # Test Stage (runs on Rust code changes, gated by lint)
@@ -247,10 +249,12 @@ security:vet-autofix:
 # ============================================================
 # Advisory: Cargo.lock Freshness Check
 # ============================================================
-# Warns when vauchi-core dependency is behind main. Never blocks.
+# Passes when the Core pin is merely behind main; fails, and blocks, only
+# when the pin points at a commit Core no longer has (private#810).
 
 check:core-freshness:
   extends: .check-core-freshness
+  allow_failure: false
 
 # Blocks MRs with non-main branch refs in Cargo.toml git dependencies.
 check:branch-refs:
