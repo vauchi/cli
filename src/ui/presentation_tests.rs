@@ -43,7 +43,7 @@ struct ExpectedPresentationState {
 
 // @internal — accept the explicit effect corpus while retaining strict fixture decoding.
 #[test]
-fn fixture_notification_effects_reach_the_native_executor_unchanged() {
+fn fixture_notification_effects_pass_through_the_reducer_unchanged() {
     let mut wire: serde_json::Value =
         serde_json::from_str(vauchi_app::ui::presentation_contract_fixture_json()).unwrap();
     wire["effect_commands"] = serde_json::json!([{"PostNotification": {"notification": {
