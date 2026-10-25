@@ -1840,7 +1840,7 @@ mod duress {
     /// Turning the duress PIN off runs Core's duress screen like setup does,
     /// so Core asks for the app password again before it changes anything
     /// (private#777).
-    // @scenario: duress_pin:Disable duress mode
+    // @scenario: duress_mode :: Disable duress mode from settings
     #[test]
     fn test_duress_disable_turns_it_off_through_core_after_the_password() {
         let ctx = CliTestContext::new();
