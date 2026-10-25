@@ -39,6 +39,28 @@ struct ExpectedPresentationState {
     context_bar: ContextBar,
 }
 
+// @internal — accept the explicit effect corpus while retaining strict fixture decoding.
+#[test]
+fn fixture_notification_effects_reach_the_native_executor_unchanged() {
+    let mut wire: serde_json::Value =
+        serde_json::from_str(vauchi_app::ui::presentation_contract_fixture_json()).unwrap();
+    wire["effect_commands"] = serde_json::json!([{"PostNotification": {"notification": {
+        "title": "Prepared title", "body": "Prepared body", "deep_link_uri": null,
+        "category_id": "category", "channel_id": "channel",
+        "urgency": "default", "category_options": []
+    }}}]);
+    let fixture: PresentationContractFixture = serde_json::from_value(wire.clone()).unwrap();
+    let expected: Vec<Command> = serde_json::from_value(wire["effect_commands"].clone()).unwrap();
+    let mut state = PresentationState::default();
+    assert_eq!(state.apply(&fixture.effect_commands), expected);
+
+    wire["unknown_corpus"] = serde_json::json!([]);
+    let error = serde_json::from_value::<PresentationContractFixture>(wire)
+        .err()
+        .expect("unreviewed fixture fields must still be rejected");
+    assert!(error.to_string().contains("unknown field `unknown_corpus`"));
+}
+
 fn action(id: &str, label: &str) -> ActionSpec {
     ActionSpec {
         interaction_id: InteractionId::new(id).unwrap(),
