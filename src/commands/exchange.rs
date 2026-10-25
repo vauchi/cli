@@ -101,7 +101,11 @@ pub fn start(config: &CliConfig, locale: &str) -> Result<()> {
         .map_err(|e| anyhow::anyhow!("Failed to generate QR: {:?}", e))?;
 
     let (qr_data, qr_image) = match session.qr() {
-        Some(qr) => (qr.to_data_string(), qr.to_qr_image_string()),
+        Some(qr) => (
+            qr.to_data_string(),
+            qr.to_qr_image_string()
+                .map_err(|e| anyhow::anyhow!("Failed to render QR: {:?}", e))?,
+        ),
         None => bail!("QR code not generated"),
     };
     save_pending_qr(config, &session)?;
