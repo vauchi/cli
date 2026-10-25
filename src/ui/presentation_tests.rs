@@ -16,6 +16,8 @@ use vauchi_core::{
 #[serde(deny_unknown_fields)]
 struct PresentationContractFixture {
     schema_version: u64,
+    #[serde(default)]
+    effect_commands: Vec<Command>,
     initial_commands: Vec<Command>,
     steps: Vec<PresentationContractStep>,
     expected_state: ExpectedPresentationState,
@@ -224,6 +226,10 @@ fn cli_consumes_the_core_owned_presentation_contract_fixture() {
     assert!(
         effects.is_empty(),
         "initial fixture batch emitted shell effects: {effects:?}"
+    );
+    assert_eq!(
+        state.apply(&fixture.effect_commands),
+        fixture.effect_commands
     );
     for (index, step) in fixture.steps.into_iter().enumerate() {
         assert!(!step.commands.is_empty(), "fixture step {index} is empty");
