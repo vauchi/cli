@@ -89,6 +89,7 @@ fn surface(revision: u64, title: &str) -> SurfaceSpec {
             spacing_large: 3,
             corner_radius: 0,
             minimum_target_size: 1,
+            colors: crate::ui::test_colors::test_colors(),
         },
         nodes: vec![PresentationNode::Text {
             id: None,

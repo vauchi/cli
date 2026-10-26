@@ -32,6 +32,7 @@ fn state_with_input(input_kind: PresentationInputKind, value: &str) -> Presentat
                 spacing_large: 3,
                 corner_radius: 1,
                 minimum_target_size: 1,
+                colors: crate::ui::test_colors::test_colors(),
             },
             nodes: vec![PresentationNode::Input {
                 binding_id: BindingId::new("surface.1.pin").unwrap(),

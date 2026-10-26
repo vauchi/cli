@@ -38,6 +38,7 @@ fn surface(title: &str) -> Command {
                 spacing_large: 16,
                 corner_radius: 8,
                 minimum_target_size: 44,
+                colors: crate::ui::test_colors::test_colors(),
             },
             nodes: Vec::new(),
         },

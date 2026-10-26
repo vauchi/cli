@@ -6,3 +6,7 @@
 
 pub mod invocation;
 pub mod presentation;
+// INLINE_TEST_REQUIRED: the extracted white-box test modules share one
+// theme-colours fixture for the surfaces they build.
+#[cfg(test)]
+pub(crate) mod test_colors;
