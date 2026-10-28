@@ -41,7 +41,7 @@ fn a_social_search_without_match_says_so() {
     );
 }
 
-// @internal
+// @scenario: help_faq :: View FAQ categories from CLI
 #[test]
 fn faq_categories_list_their_counts() {
     let output = Cli::new().stdout(&["faq", "categories"]);
@@ -58,7 +58,7 @@ fn faq_categories_list_their_counts() {
     }
     assert!(output.contains("FAQs)"), "{output}");
     assert!(
-        output.contains("Use: vauchi help category <name>"),
+        output.contains("Use: vauchi faq category <name>"),
         "{output}"
     );
 }
