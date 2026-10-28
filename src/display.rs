@@ -374,7 +374,7 @@ pub fn display_faq_categories(locale: &str) {
 
     println!();
     println!("{}", "─".repeat(40));
-    let help_cmd = style("vauchi help category <name>").cyan().to_string();
+    let help_cmd = style("vauchi faq category <name>").cyan().to_string();
     println!(
         "{}",
         tf(
