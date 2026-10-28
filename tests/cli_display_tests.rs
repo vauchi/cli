@@ -77,6 +77,54 @@ fn a_faq_category_lists_its_questions_and_an_unknown_one_is_an_error() {
     assert!(stderr.contains("✗ Unknown category: nonsense"), "{stderr}");
 }
 
+// @scenario: help_faq :: Access FAQs from CLI
+#[test]
+fn faq_list_prints_every_bundled_question() {
+    let output = Cli::new().stdout(&["faq", "list"]);
+
+    let faqs = vauchi_app::help::get_faqs();
+    assert_eq!(faqs.len(), 14);
+    for faq in faqs {
+        assert!(output.contains(&faq.question), "{}: {output}", faq.id);
+    }
+}
+
+// @scenario: help_faq :: Search FAQs from CLI
+#[test]
+fn a_faq_query_prints_the_matching_questions_and_no_others() {
+    let output = Cli::new().stdout(&["faq", "list", "encryption"]);
+
+    let matching = vauchi_app::help::search_faqs("encryption");
+    assert!(!matching.is_empty());
+    for faq in vauchi_app::help::get_faqs() {
+        let expected = matching.iter().any(|m| m.id == faq.id);
+        assert_eq!(
+            output.contains(&faq.question),
+            expected,
+            "{}: {output}",
+            faq.id
+        );
+    }
+}
+
+// @scenario: help_faq :: View specific FAQ from CLI
+#[test]
+fn faq_show_prints_the_question_the_whole_answer_and_related_ids() {
+    let output = Cli::new().stdout(&["faq", "show", "faq-phone-lost"]);
+
+    let faq = vauchi_app::help::get_faq_by_id("faq-phone-lost").unwrap();
+    let printed_words: Vec<&str> = output.split_whitespace().collect();
+    let answer_words: Vec<&str> = faq.answer.split_whitespace().collect();
+    assert!(output.contains(&faq.question), "{output}");
+    assert!(
+        printed_words
+            .windows(answer_words.len())
+            .any(|w| w == answer_words),
+        "the whole answer, wrapped: {output}"
+    );
+    assert!(output.contains("Related: faq-recovery-setup"), "{output}");
+}
+
 // @internal
 #[test]
 fn a_faq_shows_its_related_entries_only_when_it_has_some() {
