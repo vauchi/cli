@@ -40,7 +40,7 @@ fn each_action_has_its_label() {
     );
 }
 
-// @internal
+// @scenario: contact_actions :: CLI hands each field's link to the system handler
 #[test]
 fn each_action_opens_its_uri_and_copying_opens_nothing() {
     let uris: Vec<Option<String>> = every_action().iter().map(action_uri).collect();
