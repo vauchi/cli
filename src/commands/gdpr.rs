@@ -473,7 +473,7 @@ fn panic_shred_answered(
     let mut lines = vec![display::warning_line("Executing emergency panic shred...")];
 
     let report = shred_manager
-        .panic_shred()
+        .panic_shred(None, None)
         .map_err(|e| anyhow::anyhow!("Panic shred failed: {}", e))?;
     lines.extend(shred_summary_lines(&report, &shred_manager.verify_shred()));
     lines.push(display::success_line(
