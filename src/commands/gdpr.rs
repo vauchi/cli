@@ -461,7 +461,6 @@ fn panic_shred_answered(
         .identity()
         .ok_or_else(|| anyhow::anyhow!("No identity found"))?;
     let secure_storage = create_secure_storage(config)?;
-    let identity_id = hex::encode(identity.signing_public_key());
     let shred_manager = ShredManager::new(
         wb.storage(),
         secure_storage.as_ref(),
@@ -469,27 +468,12 @@ fn panic_shred_answered(
         &config.data_dir,
     );
 
-    // Best-effort relay connections — failure doesn't block shred
-    let mut purge_client = create_shred_relay_client(wb, &config.relay_url, &identity_id).ok();
-    let mut revocation_client = create_shred_relay_client(wb, &config.relay_url, &identity_id).ok();
-
-    let mut lines = Vec::new();
-    if purge_client.is_none() || revocation_client.is_none() {
-        lines.push(display::warning_line(
-            "Could not connect to relay. Revocations will be best-effort.",
-        ));
-    }
-    lines.push(display::warning_line("Executing emergency panic shred..."));
+    // Sends nothing: a wipe concerns this device, the identity lives on in
+    // its other devices (vauchi/private#910).
+    let mut lines = vec![display::warning_line("Executing emergency panic shred...")];
 
     let report = shred_manager
-        .panic_shred(
-            purge_client
-                .as_mut()
-                .map(|c| c as &mut dyn vauchi_core::api::PurgeSender),
-            revocation_client
-                .as_mut()
-                .map(|c| c as &mut dyn vauchi_core::api::RevocationSender),
-        )
+        .panic_shred()
         .map_err(|e| anyhow::anyhow!("Panic shred failed: {}", e))?;
     lines.extend(shred_summary_lines(&report, &shred_manager.verify_shred()));
     lines.push(display::success_line(
