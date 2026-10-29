@@ -297,6 +297,7 @@ pub fn usb_exchange(config: &CliConfig, address: &str) -> Result<()> {
         Command::DirectSend {
             payload,
             is_initiator,
+            ..
         } => (payload.clone(), *is_initiator),
         other => bail!("expected DirectSend command, got {:?}", other),
     };
@@ -416,6 +417,7 @@ pub fn usb_listen(config: &CliConfig, port: u16) -> Result<()> {
         Command::DirectSend {
             payload,
             is_initiator,
+            ..
         } => (payload.clone(), *is_initiator),
         other => bail!("expected DirectSend command, got {:?}", other),
     };
