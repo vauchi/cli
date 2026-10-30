@@ -60,6 +60,7 @@ fn due_deletion(wb: &Vauchi, erase_guardian_set: bool) -> vauchi_core::api::Shre
         scheduled_at: 1,
         execute_at: 1,
         erase_guardian_set,
+        wipe_other_devices: false,
     };
     wb.storage().consent().save_deletion_state(&state).unwrap();
     shred_token_after_grace(&state, 1).unwrap()
@@ -110,6 +111,7 @@ fn the_status_names_each_state() {
         scheduled_at: 100,
         execute_at: 100 + 7 * DAY,
         erase_guardian_set: false,
+        wipe_other_devices: false,
     };
 
     assert_eq!(
@@ -139,6 +141,7 @@ fn the_grace_period_gates_the_shred_token() {
         scheduled_at: 100,
         execute_at: 100 + 7 * DAY,
         erase_guardian_set: false,
+        wipe_other_devices: false,
     };
 
     let early = shred_token_after_grace(&scheduled, 100 + 6 * DAY + 2 * HOUR).unwrap_err();
