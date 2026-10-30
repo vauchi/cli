@@ -186,3 +186,34 @@ fn settings_warn_when_too_few_contacts_are_trusted() {
         "{output}"
     );
 }
+
+// A helper vouches only for a key it exchanged with (vauchi/private#708,
+// #928): `--yes` must not skip the contact check.
+// @scenario: contact_recovery :: Voucher does not recognize the claimed identity
+#[test]
+fn vouch_yes_refuses_a_claim_whose_old_key_is_not_a_contact() {
+    let w = world();
+    let claim = blob(&w.new_alice.stdout(&["recovery", "claim", &w.old_id]));
+    let (stranger, _) = identity("Stranger");
+
+    let output = stranger.run(&["recovery", "vouch", &claim, "--yes"]);
+
+    assert!(!output.status.success(), "a stranger must not vouch");
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(stderr.contains("not one of your contacts"), "{stderr}");
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(!stdout.contains("Recovery Voucher Created"), "{stdout}");
+}
+
+// @internal
+#[test]
+fn a_claim_is_shown_to_expire_in_192_hours() {
+    let w = world();
+
+    let output = w.new_alice.stdout(&["recovery", "claim", &w.old_id]);
+
+    assert!(
+        output.contains("This claim expires in 192 hours."),
+        "{output}"
+    );
+}
