@@ -10,7 +10,7 @@ use std::fs;
 
 use anyhow::{Result, bail};
 use base64::{Engine as _, engine::general_purpose::STANDARD as BASE64};
-use dialoguer::{Confirm, Input};
+use dialoguer::Confirm;
 use vauchi_core::recovery::{
     RecoveryClaim, RecoveryProof, RecoverySettings, RecoveryVoucher, VerificationResult,
 };
@@ -65,7 +65,10 @@ pub fn claim(config: &CliConfig, old_pk_hex: &str) -> Result<()> {
     println!();
     println!("{}", "─".repeat(60));
     println!();
-    display::warning("This claim expires in 48 hours.");
+    display::warning(&format!(
+        "This claim expires in {} hours.",
+        RecoveryClaim::MAX_AGE_SECS / 3600
+    ));
     display::info("Ask your contacts to run: vauchi recovery vouch <claim>");
     println!();
 
@@ -81,26 +84,32 @@ pub fn claim(config: &CliConfig, old_pk_hex: &str) -> Result<()> {
 /// Use this to help a contact recover their identity.
 pub fn vouch(config: &CliConfig, claim_data: &str, auto_confirm: bool) -> Result<()> {
     let wb = open_vauchi(config)?;
-
-    let identity = wb
-        .identity()
+    wb.identity()
         .ok_or_else(|| anyhow::anyhow!("No identity found"))?;
 
     let claim_bytes = BASE64.decode(claim_data.trim())?;
     let claim = RecoveryClaim::from_bytes(&claim_bytes)?;
 
     if claim.is_expired(crate::clock::shared().unix_seconds()) {
-        bail!("This recovery claim has expired (older than 48 hours)");
+        bail!(
+            "This recovery claim has expired (older than {} hours)",
+            RecoveryClaim::MAX_AGE_SECS / 3600
+        );
     }
+
+    // A helper signs only for a key it exchanged with; Core checks it
+    // again when it creates the voucher (vauchi/private#708, #928).
+    let contact = match wb.recovery_claim_contact(&claim) {
+        Ok(contact) => contact,
+        Err(vauchi_core::VauchiError::ContactNotFound(_)) => bail!(
+            "The claim's old key is not one of your contacts. \
+             Vouch only for someone you exchanged cards with."
+        ),
+        Err(e) => return Err(e.into()),
+    };
 
     let old_pk_hex = hex::encode(claim.old_pk());
     let new_pk_hex = hex::encode(claim.new_pk());
-
-    let contacts = wb.storage().contacts().list_contacts()?;
-    let contact = contacts.iter().find(|c| {
-        c.public_key()
-            .is_some_and(|pk| hex::encode(pk) == old_pk_hex)
-    });
 
     println!();
     println!("{}", "─".repeat(60));
@@ -114,24 +123,17 @@ pub fn vouch(config: &CliConfig, claim_data: &str, auto_confirm: bool) -> Result
     println!("  New Identity: {}...", &new_pk_hex[..16]);
 
     if auto_confirm {
-        if let Some(c) = contact {
-            display::success(&format!("Auto-confirmed vouch for: {}", c.display_name()));
-        }
-    } else if !confirm_vouch(contact.map(|c| c.display_name()))? {
+        display::success(&format!(
+            "Auto-confirmed vouch for: {}",
+            contact.display_name()
+        ));
+    } else if !confirm_vouch(contact.display_name())? {
         display::info("Vouching cancelled.");
         return Ok(());
     }
 
-    // Create voucher (CLI does not yet wire guardian tokens — pass None)
-    let voucher = RecoveryVoucher::create_from_claim(
-        &claim,
-        identity.signing_keypair(),
-        None,
-        crate::clock::shared().unix_seconds(),
-    )?;
-
-    let voucher_bytes = voucher.to_bytes();
-    let voucher_b64 = BASE64.encode(&voucher_bytes);
+    // No guardian token yet: the CLI vouches as a plain contact.
+    let voucher_b64 = wb.create_voucher_from_claim_b64(claim_data.trim())?;
 
     println!();
     println!("{}", "─".repeat(60));
@@ -152,29 +154,15 @@ pub fn vouch(config: &CliConfig, claim_data: &str, auto_confirm: bool) -> Result
     Ok(())
 }
 
-/// Asks whether to vouch: a yes/no for a known contact, the typed phrase
-/// "I VERIFY" for a key that is not one.
-fn confirm_vouch(contact_name: Option<&str>) -> Result<bool> {
+/// Asks whether to vouch for the contact the claim's old key belongs to.
+fn confirm_vouch(contact_name: &str) -> Result<bool> {
     println!();
-    match contact_name {
-        Some(name) => {
-            display::success(&format!("This matches your contact: {}", name));
-            println!();
-            Ok(Confirm::new()
-                .with_prompt(format!("Vouch for {}'s recovery?", name))
-                .default(false)
-                .interact()?)
-        }
-        None => {
-            display::warning("This public key is NOT in your contacts.");
-            display::warning("Only vouch if you can verify this person in-person!");
-            println!();
-            let typed: String = Input::new()
-                .with_prompt("Type 'I VERIFY' to vouch anyway")
-                .interact_text()?;
-            Ok(typed == "I VERIFY")
-        }
-    }
+    display::success(&format!("This matches your contact: {}", contact_name));
+    println!();
+    Ok(Confirm::new()
+        .with_prompt(format!("Vouch for {}'s recovery?", contact_name))
+        .default(false)
+        .interact()?)
 }
 
 /// Adds a voucher to the pending recovery proof.

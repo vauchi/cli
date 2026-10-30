@@ -144,9 +144,11 @@ fn a_voucher_must_be_signed_and_match_the_recovery_in_progress() {
     let rejected = w.new_alice.run(&["recovery", "add-voucher", &tampered]);
     assert!(!rejected.status.success(), "a tampered voucher is refused");
 
-    // Same new identity, different old key.
-    let (_, bob_id) = identity("Somebody");
-    let other_old = blob(&w.new_alice.stdout(&["recovery", "claim", &bob_id]));
+    // Same new identity, different old key: Carol vouches for Somebody,
+    // whom she exchanged with (a helper vouches only for a contact, #708).
+    let (somebody, somebody_id) = identity("Somebody");
+    exchange(&somebody, &w.carol);
+    let other_old = blob(&w.new_alice.stdout(&["recovery", "claim", &somebody_id]));
     let other_old_voucher = w.carol.stdout(&["recovery", "vouch", &other_old, "--yes"]);
     let other_old_voucher = blob(
         &other_old_voucher[other_old_voucher
