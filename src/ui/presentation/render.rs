@@ -135,7 +135,6 @@ fn render_node(out: &mut String, node: &PresentationNode, indent: usize) {
             let kind = match purpose {
                 PresentationQrPurpose::Display => "QR code",
                 PresentationQrPurpose::Capture => "QR input",
-                _ => "QR",
             };
             let _ = writeln!(out, "{pad}[{kind}: {}]", label.as_deref().unwrap_or(""));
         }
@@ -156,9 +155,6 @@ fn render_node(out: &mut String, node: &PresentationNode, indent: usize) {
         }
         PresentationNode::Divider => {
             let _ = writeln!(out, "{pad}{}", "─".repeat(46));
-        }
-        _ => {
-            let _ = writeln!(out, "{pad}[Unsupported presentation element]");
         }
     }
 }
