@@ -15,6 +15,8 @@ use rstest::rstest;
 use std::process::{Command, Output};
 use tempfile::TempDir;
 
+#[path = "cli_integration/backup_default.rs"]
+mod backup_default;
 #[cfg(unix)]
 #[path = "cli_integration/backup_overwrite.rs"]
 mod backup_overwrite;
