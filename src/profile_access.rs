@@ -18,9 +18,11 @@ pub(crate) fn acquire(command: &Commands, data_dir: &Path) -> Result<Option<File
     let access = File::open(data_dir).context("Cannot open the data directory")?;
     // A database replacement changes the file's inode; the profile directory
     // stays stable so ordinary CLI opens cannot race the rename (#696).
+    // Every import takes it: the backup's kind now comes from the file, not
+    // from `--full`, so a full restore cannot be told apart here (#1060).
     let lock = if matches!(
         command,
-        Commands::Import { full: true, .. } | Commands::Init { force: true, .. }
+        Commands::Import { .. } | Commands::Init { force: true, .. }
     ) {
         access.try_lock()
     } else {

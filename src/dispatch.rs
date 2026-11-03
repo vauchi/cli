@@ -339,7 +339,11 @@ pub(crate) async fn run(
         Commands::Activity { since } => {
             commands::activity::run(config, since.unwrap_or(60))?;
         }
-        Commands::Export { output, full } => {
+        Commands::Export {
+            output,
+            identity_only,
+            full: _,
+        } => {
             let password = match crate::config::secret_from_env("VAUCHI_BACKUP_PASSWORD") {
                 Some(pw) => pw,
                 None => dialoguer::Password::new()
@@ -347,23 +351,30 @@ pub(crate) async fn run(
                     .with_confirmation("Confirm password", "Passwords don't match")
                     .interact()?,
             };
-            if full {
-                commands::backup::export_full(config, &output, &password)?;
-            } else {
+            if identity_only {
                 commands::backup::export(config, &output, &password)?;
+            } else {
+                commands::backup::export_full(config, &output, &password)?;
             }
         }
-        Commands::Import { input, full, yes } => {
+        Commands::Import {
+            input,
+            full: _,
+            yes,
+        } => {
             let password = match crate::config::secret_from_env("VAUCHI_BACKUP_PASSWORD") {
                 Some(pw) => pw,
                 None => dialoguer::Password::new()
                     .with_prompt("Enter backup password")
                     .interact()?,
             };
-            if full {
-                commands::backup::import_full(config, &input, &password, yes)?;
-            } else {
-                commands::backup::import(config, &input, &password, yes)?;
+            match commands::backup::backup_kind(&input)? {
+                commands::backup::BackupKind::Full => {
+                    commands::backup::import_full(config, &input, &password, yes)?
+                }
+                commands::backup::BackupKind::Identity => {
+                    commands::backup::import(config, &input, &password, yes)?
+                }
             }
         }
         Commands::Completions { shell } => {

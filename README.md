@@ -98,10 +98,13 @@ vauchi sync
 ### Backup and Restore
 
 ```bash
-# Export identity backup (encrypted)
+# Export an encrypted backup: identity, contacts, own card and labels
 vauchi export backup.vauchi
 
-# Import from backup
+# Export the identity alone
+vauchi export identity.vauchi --identity-only
+
+# Import either kind; the file says which it is
 vauchi import backup.vauchi
 ```
 

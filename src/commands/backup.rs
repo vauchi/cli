@@ -19,6 +19,32 @@ use crate::display;
 
 mod full_restore;
 
+/// What a backup file holds, told apart by encoding: `export` writes an
+/// identity backup as binary led by its format byte 0x02 (ADR-058), and
+/// `export_full` a full backup as hex text, whose own version Core checks
+/// on import (v6 today, not ADR-058's v3).
+#[derive(Debug, PartialEq, Eq)]
+pub enum BackupKind {
+    Identity,
+    Full,
+}
+
+pub fn backup_kind(input: &Path) -> Result<BackupKind> {
+    let data = fs::read(input)?;
+    let is_hex_text = !data.is_empty()
+        && data
+            .iter()
+            .all(|b| b.is_ascii_hexdigit() || b.is_ascii_whitespace());
+    match data.first() {
+        Some(0x02) => Ok(BackupKind::Identity),
+        _ if is_hex_text => Ok(BackupKind::Full),
+        _ => anyhow::bail!(
+            "{} is not a Vauchi backup (unknown format)",
+            input.display()
+        ),
+    }
+}
+
 /// Exports an identity backup.
 pub fn export(config: &CliConfig, output: &Path, password: &str) -> Result<()> {
     let wb = open_vauchi(config)?;
@@ -83,7 +109,7 @@ pub fn export_full(config: &CliConfig, output: &Path, password: &str) -> Result<
     let backup_hex = wb.export_full_backup(password)?;
     crate::config::write_restricted(output, backup_hex.as_bytes())?;
 
-    display::success(&format!("Full backup saved to {:?}", output));
+    display::success(&format!("Backup saved to {:?}", output));
     display::warning(
         "This file contains your identity, contacts, and labels. Keep it and the password safe.",
     );

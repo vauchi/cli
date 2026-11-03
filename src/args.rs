@@ -142,21 +142,26 @@ pub(crate) enum Commands {
         since: Option<u64>,
     },
 
-    /// Export backup (identity-only by default, --full includes contacts + labels)
+    /// Export a backup: identity, contacts, own card and labels
+    /// (--identity-only for the identity alone)
     Export {
         /// Output file path
         output: PathBuf,
-        /// Export full backup (identity + contacts + own card + labels)
-        #[arg(long)]
+        /// Back up the identity only, without contacts, card or labels
+        #[arg(long, conflicts_with = "full")]
+        identity_only: bool,
+        /// The full backup is the default since ADR-058's 2026-10-28
+        /// amendment; still accepted so existing scripts keep working
+        #[arg(long, hide = true)]
         full: bool,
     },
 
-    /// Import from backup
+    /// Import a backup; its kind (full or identity-only) is read from the file
     Import {
         /// Input file path
         input: PathBuf,
-        /// Import full backup (identity + contacts + own card + labels)
-        #[arg(long)]
+        /// Accepted for existing scripts; the backup's kind comes from the file
+        #[arg(long, hide = true)]
         full: bool,
         /// Skip the overwrite confirmation prompt (for scripted/E2E use)
         #[arg(long, short = 'y')]

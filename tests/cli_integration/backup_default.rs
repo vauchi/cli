@@ -75,3 +75,27 @@ fn import_refuses_a_file_that_is_no_vauchi_backup() {
         "the refusal must say what is wrong: {error}"
     );
 }
+
+// A full import replaces the database, so it needs the profile to itself
+// even when the kind comes from the file instead of `--full` (#696).
+// @internal
+#[cfg(unix)]
+#[test]
+fn a_detected_full_import_still_refuses_a_profile_used_by_another_command() {
+    let source = source_with_label("Climbing club");
+    let backup = source.data_dir.path().join("default.vauchi");
+    source.run_success_env(&["export", backup.to_str().unwrap()], &ENV);
+    let target = CliTestContext::new();
+    target.init("Bob original");
+    let access = fs::File::open(target.data_dir.path()).unwrap();
+    access.lock_shared().unwrap();
+
+    let output = target.run_env(&["import", backup.to_str().unwrap(), "--yes"], &ENV);
+
+    assert!(!output.status.success());
+    let error = String::from_utf8_lossy(&output.stderr);
+    assert!(
+        error.contains("Another Vauchi command is using this data directory"),
+        "{error}"
+    );
+}
