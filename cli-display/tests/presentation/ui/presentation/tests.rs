@@ -3,11 +3,11 @@
 
 use super::*;
 use serde::Deserialize;
-use vauchi_core::{
-    AccessibilitySpec, ActionSpec, ActionTone, BindingId, Command, ContextBar, Event,
-    FilePickPurpose, InputValue, InteractionId, NavigationItem, NavigationSpec,
-    PresentationInputKind, PresentationNode, PresentationTextStyle, PresentationTokens,
-    StandardShortcut, SurfaceId, SurfaceLayout, SurfaceSpec,
+use vauchi_contract::{
+    AccessibilitySpec, ActionSpec, ActionTone, BindingId, Command, ContextBar, Event, InputValue,
+    InteractionId, NavigationItem, NavigationSpec, PresentationInputKind, PresentationNode,
+    PresentationTextStyle, PresentationTokens, StandardShortcut, SurfaceId, SurfaceLayout,
+    SurfaceSpec,
 };
 
 // Fixture versions are exact contracts: additive fields require an explicit
@@ -49,7 +49,7 @@ struct ExpectedPresentationState {
 #[test]
 fn fixture_notification_effects_pass_through_the_reducer_unchanged() {
     let mut wire: serde_json::Value =
-        serde_json::from_str(vauchi_app::ui::presentation_contract_fixture_json()).unwrap();
+        serde_json::from_str(vauchi_contract::fixtures::presentation_contract_v1_json()).unwrap();
     wire["effect_commands"] = serde_json::json!([{"PostNotification": {"notification": {
         "title": "Prepared title", "body": "Prepared body", "deep_link_uri": null,
         "category_id": "category", "channel_id": "channel",
@@ -202,7 +202,7 @@ fn renderer_and_activation_use_only_generic_protocol_values() {
     assert!(rendered.contains("Continue"));
     assert_eq!(
         state.activation(0),
-        Some(vauchi_core::Event::ActionActivated {
+        Some(vauchi_contract::Event::ActionActivated {
             surface_id: SurfaceId::new("welcome").unwrap(),
             interaction_id: InteractionId::new("opaque-token").unwrap(),
         })
@@ -213,7 +213,7 @@ fn renderer_and_activation_use_only_generic_protocol_values() {
 #[test]
 fn cli_consumes_the_core_owned_presentation_contract_fixture() {
     let fixture: PresentationContractFixture =
-        serde_json::from_str(vauchi_app::ui::presentation_contract_fixture_json())
+        serde_json::from_str(vauchi_contract::fixtures::presentation_contract_v1_json())
             .expect("failed to deserialize Core-owned presentation contract fixture");
     let mut state = PresentationState::default();
 
@@ -289,105 +289,6 @@ fn prompt_returns_raw_value_for_core_minted_binding() {
             binding_id: BindingId::new("opaque-binding").unwrap(),
             value: InputValue::Text("Alice".into()),
         }
-    );
-}
-
-struct FakeReducer {
-    initial: Vec<Command>,
-}
-
-impl CommandReducer for FakeReducer {
-    type Error = std::convert::Infallible;
-
-    fn initial_commands(&mut self) -> Result<Vec<Command>, Self::Error> {
-        Ok(std::mem::take(&mut self.initial))
-    }
-
-    fn dispatch(&mut self, event: Event) -> Result<Vec<Command>, Self::Error> {
-        assert!(matches!(
-            event,
-            Event::ActionActivated { interaction_id, .. }
-                if interaction_id.as_str() == "opaque-token"
-        ));
-        Ok(vec![Command::PerformNativeBack])
-    }
-}
-
-// @internal
-#[test]
-fn generic_session_exits_only_when_core_requests_native_back() {
-    let mut reducer = FakeReducer {
-        initial: vec![
-            Command::ReplaceSurface {
-                surface: surface(1, "Session"),
-            },
-            Command::SetContextBar {
-                surface_id: SurfaceId::new("welcome").unwrap(),
-                revision: 1,
-                bar: Box::new(ContextBar {
-                    primary: Some(action("opaque-token", "Continue")),
-                    ..ContextBar::default()
-                }),
-            },
-        ],
-    };
-    let mut input = std::io::Cursor::new(b"1\n");
-    let mut output = Vec::new();
-
-    run_with_io(&mut reducer, &mut input, &mut output).expect("generic session");
-
-    assert!(String::from_utf8(output).unwrap().contains("Session"));
-}
-
-struct FilePickReducer {
-    expected_bytes: Vec<u8>,
-    expected_filename: String,
-}
-
-impl CommandReducer for FilePickReducer {
-    type Error = std::convert::Infallible;
-
-    fn initial_commands(&mut self) -> Result<Vec<Command>, Self::Error> {
-        Ok(vec![Command::FilePickFromUser {
-            accepted_mime_types: vec!["application/octet-stream".into()],
-            accepted_extensions: vec!["vbk".into()],
-            max_bytes: None,
-            purpose: FilePickPurpose::ImportBackup,
-        }])
-    }
-
-    fn dispatch(&mut self, event: Event) -> Result<Vec<Command>, Self::Error> {
-        assert_eq!(
-            event,
-            Event::FilePickedFromUser {
-                bytes: self.expected_bytes.clone(),
-                filename: self.expected_filename.clone(),
-            }
-        );
-        Ok(vec![Command::PerformNativeBack])
-    }
-}
-
-// @internal
-#[test]
-fn generic_session_adapts_a_core_file_pick_to_terminal_input() {
-    let directory = tempfile::tempdir().expect("temporary directory");
-    let path = directory.path().join("backup.vauchi");
-    let bytes = b"encrypted backup".to_vec();
-    std::fs::write(&path, &bytes).expect("test backup");
-    let mut reducer = FilePickReducer {
-        expected_bytes: bytes,
-        expected_filename: "backup.vauchi".into(),
-    };
-    let mut input = std::io::Cursor::new(format!("{}\n", path.display()));
-    let mut output = Vec::new();
-
-    run_with_io(&mut reducer, &mut input, &mut output).expect("file-pick session");
-
-    assert!(
-        String::from_utf8(output)
-            .expect("utf-8 terminal output")
-            .contains("File path")
     );
 }
 

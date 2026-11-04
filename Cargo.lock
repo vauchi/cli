@@ -2957,8 +2957,19 @@ dependencies = [
  "tempfile",
  "tokio",
  "vauchi-app",
+ "vauchi-cli-display",
  "vauchi-core",
  "zeroize",
+]
+
+[[package]]
+name = "vauchi-cli-display"
+version = "0.1.0"
+dependencies = [
+ "console 0.15.11",
+ "serde",
+ "serde_json",
+ "vauchi-contract",
 ]
 
 [[package]]

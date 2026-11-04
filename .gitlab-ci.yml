@@ -266,7 +266,7 @@ check:design-drift:
   extends: .design-drift-job
   variables:
     DESIGN_DRIFT_MATCH_MODE: "grep"
-    DESIGN_DRIFT_GREP_FILE: "src/ui/presentation"
+    DESIGN_DRIFT_GREP_FILE: "cli-display/src/presentation"
     DESIGN_DRIFT_PROTOCOL: "presentation"
     CORE_PIN_FILE: "Cargo.toml"
     CORE_PIN_KIND: "cargo"
@@ -275,12 +275,12 @@ check:design-drift:
       changes:
         compare_to: refs/heads/$CI_DEFAULT_BRANCH
         paths:
-          - "src/ui/presentation/**"
+          - "cli-display/src/presentation/**"
           - ".gitlab-ci.yml"
     - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
       changes:
         paths:
-          - "src/ui/presentation/**"
+          - "cli-display/src/presentation/**"
           - ".gitlab-ci.yml"
 
 # Removed symbols: detect stale references to removed features

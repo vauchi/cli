@@ -1,0 +1,17 @@
+# SPDX-FileCopyrightText: 2026 Mattia Egloff <mattia.egloff@pm.me>
+# SPDX-License-Identifier: GPL-3.0-or-later
+
+[package]
+name = "vauchi-cli-display"
+version = "0.1.0"
+edition = "2024"
+license = "GPL-3.0-or-later"
+description = "Command-line display shell for the Vauchi presentation contract"
+
+[dependencies]
+vauchi-contract = { git = "https://gitlab.com/vauchi/contract.git", tag = "v0.97.2", version = "=0.97.2" }
+console = "0.15"
+
+[dev-dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"

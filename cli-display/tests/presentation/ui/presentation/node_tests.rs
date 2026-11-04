@@ -7,7 +7,7 @@
 use std::io::Cursor;
 
 use super::*;
-use vauchi_core::{
+use vauchi_contract::{
     AccessibilitySpec, ActionSpec, ActionTone, BindingId, ChoiceOption, Command, Event, InputValue,
     InteractionId, PresentationAxis, PresentationImageShape, PresentationInputKind,
     PresentationListStyle, PresentationNode, PresentationQrPurpose, PresentationRow,
@@ -480,8 +480,8 @@ fn an_overlay_attaches_only_to_the_current_surface_revision() {
     let overlay = |revision| Command::PresentOverlay {
         surface_id: surface_id("overlay"),
         revision,
-        overlay: vauchi_core::OverlaySpec {
-            kind: vauchi_core::OverlayKind::ActionMenu,
+        overlay: vauchi_contract::OverlaySpec {
+            kind: vauchi_contract::OverlayKind::ActionMenu,
             title: None,
             body: None,
             close_label: None,
@@ -490,10 +490,10 @@ fn an_overlay_attaches_only_to_the_current_surface_revision() {
     };
 
     state.apply(&[overlay(0)]);
-    assert!(state.overlay.is_none(), "a stale overlay is dropped");
+    assert!(state.overlay().is_none(), "a stale overlay is dropped");
     state.apply(&[overlay(1)]);
     assert!(
-        state.overlay.is_some(),
+        state.overlay().is_some(),
         "the current revision's overlay is kept"
     );
 }

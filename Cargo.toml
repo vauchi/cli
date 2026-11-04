@@ -2,6 +2,11 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 
+[workspace]
+members = ["cli-display"]
+default-members = [".", "cli-display"]
+resolver = "2"
+
 [package]
 name = "vauchi-cli"
 version = "0.1.0"
@@ -14,6 +19,7 @@ name = "vauchi"
 path = "src/main.rs"
 
 [dependencies]
+vauchi-cli-display = { path = "cli-display", version = "0.1.0" }
 # Core library - use git dependencies for CI; local overrides are injected into
 # this manifest by `just setup-path-overrides`.
 vauchi-core = { git = "https://gitlab.com/vauchi/core.git", tag = "v0.99.1", version = "=0.99.1" }

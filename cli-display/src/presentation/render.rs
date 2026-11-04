@@ -4,7 +4,7 @@
 use std::fmt::Write as _;
 
 use console::style;
-use vauchi_core::{
+use vauchi_contract::{
     PresentationInputKind, PresentationNode, PresentationQrPurpose, PresentationRow,
     PresentationTextStyle,
 };

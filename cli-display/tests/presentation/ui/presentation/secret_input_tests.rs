@@ -11,7 +11,7 @@
 use std::io::{self, Cursor};
 
 use super::*;
-use vauchi_core::{
+use vauchi_contract::{
     AccessibilitySpec, BindingId, Command, Event, InputValue, PresentationInputKind,
     PresentationNode, PresentationTokens, SurfaceId, SurfaceLayout, SurfaceSpec,
 };

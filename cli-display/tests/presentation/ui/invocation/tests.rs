@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026 Mattia Egloff <mattia.egloff@pm.me>
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-use vauchi_core::{
+use vauchi_contract::{
     AlertSpec, Command, DocumentSpec, InvocationOutcome, PresentationTokens, SurfaceId,
     SurfaceLayout, SurfaceSpec,
 };

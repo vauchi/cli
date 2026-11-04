@@ -3,7 +3,7 @@
 
 use std::io::{self, BufRead, Write};
 
-use vauchi_core::{
+use vauchi_contract::{
     BindingId, Event, InputValue, PresentationInputKind, PresentationNode, PresentationQrPurpose,
     StandardShortcut, SurfaceId,
 };
