@@ -21,7 +21,7 @@
 # Include shared templates
 include:
   - project: 'vauchi/scripts'
-    ref: ea3bfb1d139b56a6e2708f7f4757d48552aebd1d
+    ref: ci-templates-v2026.11.06
     file:
       - '/ci-templates/rust-base.yml'
       - '/ci-templates/allow-direct-guard.yml'
@@ -53,7 +53,7 @@ include:
     RUSTC_WRAPPER: ""
 
 variables:
-  VAUCHI_SCRIPTS_REF: "ea3bfb1d139b56a6e2708f7f4757d48552aebd1d"
+  VAUCHI_SCRIPTS_REF: "ci-templates-v2026.11.06"
   # cargo audit runs with --deny warnings; every entry here is an
   # advisory with no fix available to us, not one we chose to skip.
   #   RUSTSEC-2026-0173  proc-macro-error2 unmaintained, reached through
@@ -485,4 +485,4 @@ github-mirror:
 lint:domain-calls:
   extends: .domain-calls-job
   variables:
-    VAUCHI_SCRIPTS_REF: "ea3bfb1d139b56a6e2708f7f4757d48552aebd1d"
+    VAUCHI_SCRIPTS_REF: "ci-templates-v2026.11.06"
