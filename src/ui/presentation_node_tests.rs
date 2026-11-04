@@ -128,6 +128,7 @@ fn group(label: Option<&str>, children: Vec<PresentationNode>) -> PresentationNo
 
 fn list(controls: Vec<PresentationNode>) -> PresentationNode {
     PresentationNode::List {
+        search_placeholder: None,
         style: PresentationListStyle::Rows,
         id: binding("rows"),
         label: Some("Rows".into()),
@@ -154,6 +155,8 @@ fn list(controls: Vec<PresentationNode>) -> PresentationNode {
 
 fn qr(id: &str, purpose: PresentationQrPurpose, label: Option<&str>) -> PresentationNode {
     PresentationNode::Qr {
+        capture_placeholder: None,
+        capture_submit_label: None,
         id: binding(id),
         payloads: vec!["PAYLOAD".into()],
         purpose,
