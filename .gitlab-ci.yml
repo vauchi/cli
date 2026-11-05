@@ -153,6 +153,26 @@ test:unit:
       junit: target/nextest/ci/junit.xml
     expire_in: 1 week
 
+test:display:
+  extends: [.rust-runner, .timeout-cold-rebuild]
+  stage: test
+  needs: []
+  script:
+    - python3 ci/tests/display-boundary.test.py
+    - cargo metadata --locked --all-features --format-version 1 > display-metadata.json
+    - python3 ci/check-display-boundary.py display-metadata.json
+    - cargo nextest run --profile ci --locked --package vauchi-cli-display --all-targets
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+  artifacts:
+    when: always
+    paths:
+      - display-metadata.json
+    reports:
+      junit: target/nextest/ci/junit.xml
+    expire_in: 1 week
+
 # Main: full coverage with llvm-cov
 coverage:workspace:
   extends: [.coverage-job, .rust-runner, .timeout-cold-rebuild]
