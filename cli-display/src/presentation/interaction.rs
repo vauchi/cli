@@ -10,6 +10,9 @@ use vauchi_contract::{
 
 use super::PresentationState;
 
+mod line_prompt;
+pub use line_prompt::LinePrompt;
+
 /// Reads a password or PIN without echoing it (vauchi/private#630).
 pub trait SecretReader {
     fn read_secret(&mut self, label: &str) -> io::Result<String>;

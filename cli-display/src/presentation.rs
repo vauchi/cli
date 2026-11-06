@@ -10,7 +10,7 @@ use vauchi_contract::{
 };
 mod interaction;
 mod render;
-pub use interaction::{OfferedInputs, SecretReader, prompt_event, prompt_event_with};
+pub use interaction::{LinePrompt, OfferedInputs, SecretReader, prompt_event, prompt_event_with};
 pub use render::render_to_string;
 #[derive(Default)]
 pub struct PresentationState {
