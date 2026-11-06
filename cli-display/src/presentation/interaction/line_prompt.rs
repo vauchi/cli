@@ -28,6 +28,7 @@ enum Stage {
 }
 
 impl LinePrompt {
+    /// Prepare a snapshot without reading input. Fails if Core has not presented a surface.
     pub fn new(state: &PresentationState, offered: &mut OfferedInputs) -> io::Result<Self> {
         let surface = state
             .surface()
@@ -86,14 +87,17 @@ impl LinePrompt {
         })
     }
 
+    /// Print this again after an incomplete submission; it includes validation feedback.
     pub fn prompt(&self) -> &str {
         &self.prompt
     }
 
+    /// The host must disable input echo while this is true; the library never controls stdin.
     pub fn is_secret(&self) -> bool {
         matches!(&self.stage, Stage::Entry(Target::Text { secret: true, .. }))
     }
 
+    /// Repainting the same snapshot preserves input; changed presentation requires a new prompt.
     pub fn is_current(&self, state: &PresentationState) -> bool {
         state.surface() == Some(&self.surface)
             && state.context_bar() == self.context_bar.as_ref()
