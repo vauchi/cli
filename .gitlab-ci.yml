@@ -344,10 +344,10 @@ check:core-release-pin:
     - !reference [.self-hosted, before_script]
     - !reference [.verified-fetch-script, before_script]
   variables:
-    VAUCHI_SCRIPTS_REF: "4906b6edcfe8494cc87adcee82702c339c73e24e"
+    VAUCHI_SCRIPTS_REF: "f1270b2757366a07cf222c21f7ed71b5eec2d222"
     FETCH_SCRIPT_PATH: "scripts/core-pins.py"
     FETCH_SCRIPT_OUTPUT: ".core-release-pin-check.py"
-    FETCH_SCRIPT_SHA256: "bd8598f23cf95d1abf38dece12696e9169fe742e2f2f1f600104f7cdde36b4c2"
+    FETCH_SCRIPT_SHA256: "195602c75ae189bc499fafe168633ed2fe18fcd9e320c202b47e2e0cf09a1e20"
   script:
     - python3 .core-release-pin-check.py require-release --kind cargo Cargo.toml --lockfile Cargo.lock --verify-tag
   rules:
