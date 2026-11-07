@@ -23,6 +23,7 @@ pub mod init;
 pub mod labels;
 pub mod onboarding;
 pub mod recovery;
+mod storage_replacement;
 pub mod support;
 pub mod sync;
 pub mod tags;
