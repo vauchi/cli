@@ -334,6 +334,25 @@ check:core-freshness:
 check:branch-refs:
   extends: .check-git-branch-refs
 
+# Run after qualification: an early failure auto-cancels the other jobs.
+check:core-release-pin:
+  extends: [.linux-runner-nocache, .verified-fetch-script]
+  stage: .post
+  allow_failure: false
+  when: always
+  before_script:
+    - !reference [.self-hosted, before_script]
+    - !reference [.verified-fetch-script, before_script]
+  variables:
+    VAUCHI_SCRIPTS_REF: "4906b6edcfe8494cc87adcee82702c339c73e24e"
+    FETCH_SCRIPT_PATH: "scripts/core-pins.py"
+    FETCH_SCRIPT_OUTPUT: ".core-release-pin-check.py"
+    FETCH_SCRIPT_SHA256: "bd8598f23cf95d1abf38dece12696e9169fe742e2f2f1f600104f7cdde36b4c2"
+  script:
+    - python3 .core-release-pin-check.py require-release --kind cargo Cargo.toml --lockfile Cargo.lock --verify-tag
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+
 # Presentation drift: verify every canonical presentation node is rendered.
 check:design-drift:
   extends: .design-drift-job
