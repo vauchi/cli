@@ -124,6 +124,46 @@ check:release-provenance:
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
     - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
 
+# e2e's smoke suite on this merge request's CLI (vauchi/private#1118).
+# Core's gate runs the suite on e2e's in-process Core device and builds no
+# CLI, so a Core change the CLI must follow can merge first; the CLI meets
+# it here, at the pin bump. The CLI is built from this checkout with the
+# Core it pins; e2e's relays are built at their pins.
+test:e2e-smoke:
+  extends: [.linux-runner, .timeout-cold-rebuild]
+  stage: test
+  needs: []
+  variables:
+    E2E_DIR: ${CI_PROJECT_DIR}/../e2e-for-cli-${CI_JOB_ID}
+  script:
+    - git clone --depth=1 "https://gitlab-ci-token:${CI_JOB_TOKEN}@gitlab.com/vauchi/e2e.git" "$E2E_DIR"
+    - sh ci/e2e-smoke.sh "$E2E_DIR" "$CI_PROJECT_DIR"
+  after_script:
+    - rm -rf "${CI_PROJECT_DIR}/../e2e-for-cli-${CI_JOB_ID}"
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+      changes:
+        compare_to: refs/heads/$CI_DEFAULT_BRANCH
+        paths:
+          - src/**/*
+          - cli-display/**/*
+          - Cargo.toml
+          - Cargo.lock
+          - ci/e2e-smoke.sh
+          - .gitlab-ci.yml
+
+# The contract of test:e2e-smoke.
+check:e2e-smoke:
+  stage: lint
+  image: ${CI_DEPENDENCY_PROXY_GROUP_IMAGE_PREFIX}/alpine:3.21
+  tags: [docker]
+  needs: []
+  script:
+    - sh ci/tests/e2e-smoke.test.sh
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+
 # Duplicate dependency check (advisory)
 lint:duplicates:
   extends: [.rust-runner-nocache, .lint-duplicates-job, .timeout-quick]
