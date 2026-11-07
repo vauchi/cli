@@ -17,6 +17,8 @@ use crate::commands::common::open_vauchi;
 use crate::config::CliConfig;
 use crate::display;
 
+mod input;
+
 /// Pause between advances, so a deposit by the other side is seen within a
 /// few seconds.
 const POLL: Duration = Duration::from_secs(2);
@@ -24,7 +26,13 @@ const POLL: Duration = Duration::from_secs(2);
 /// Shares this device's link (`their_link` absent) or accepts the other
 /// side's after consent (`yes`, or a prompt at a terminal), then waits up to
 /// `wait` for the exchange to complete.
-pub fn link(config: &CliConfig, their_link: Option<&str>, wait: Duration, yes: bool) -> Result<()> {
+pub fn link(
+    config: &CliConfig,
+    their_link: Option<&str>,
+    wait: Duration,
+    yes: bool,
+    code_stdin: bool,
+) -> Result<()> {
     let their_link = their_link.map(str::trim);
     let parsed = match their_link {
         Some(link) => match parse_link_url(link) {
@@ -47,10 +55,16 @@ pub fn link(config: &CliConfig, their_link: Option<&str>, wait: Duration, yes: b
                 display::info("Exchange declined.");
                 return Ok(());
             }
-            vauchi.accept_link_exchange(link)?
+            let code = input::confirmation_code(code_stdin)?;
+            vauchi.accept_link_exchange_with_code(link, &code)?
         }
         _ => {
             let (url, exchange) = vauchi.start_link_exchange()?;
+            let code = exchange
+                .code()
+                .ok_or_else(|| anyhow::anyhow!("missing initiator code"))?;
+            println!("Confirmation code: {}", code.grouped());
+            display::info("Send this code another way than the link.");
             display::info("Send this link to the other person:");
             println!("{url}");
             exchange

@@ -88,12 +88,14 @@ pub(crate) async fn run(
                 their_link,
                 wait_secs,
                 yes,
+                code_stdin,
             } => {
                 commands::exchange_link::link(
                     config,
                     their_link.as_deref(),
                     std::time::Duration::from_secs(wait_secs),
                     yes,
+                    code_stdin,
                 )?;
             }
         },

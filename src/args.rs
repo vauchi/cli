@@ -422,6 +422,9 @@ pub(crate) enum ExchangeSubcommand {
         /// (unattended/scripted use)
         #[arg(long)]
         yes: bool,
+        /// Read the separately delivered six-digit code from standard input
+        #[arg(long, requires = "their_link")]
+        code_stdin: bool,
     },
 }
 

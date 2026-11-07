@@ -42,6 +42,31 @@ impl Cli {
             .unwrap_or_else(|| panic!("no share link in: {}", stdout(&out)))
             .to_string()
     }
+
+    fn run_with_code(&self, args: &[&str], code: &str) -> Output {
+        use std::io::Write;
+        use std::process::Stdio;
+        let mut child = Command::new(env!("CARGO_BIN_EXE_vauchi"))
+            .arg("--data-dir")
+            .arg(self.data_dir.path())
+            .arg("--relay")
+            .arg("ws://127.0.0.1:9")
+            .args(args)
+            .stdin(Stdio::piped())
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
+            .spawn()
+            .expect("spawn CLI");
+        if let Err(error) = child
+            .stdin
+            .take()
+            .expect("stdin")
+            .write_all(code.as_bytes())
+        {
+            assert_eq!(error.kind(), std::io::ErrorKind::BrokenPipe);
+        }
+        child.wait_with_output().expect("CLI output")
+    }
 }
 
 fn stdout(out: &Output) -> String {
@@ -85,7 +110,18 @@ fn exchange_link_accepts_another_users_link() {
     let bob = Cli::with_identity("Bob");
     let link = alice.share_link();
 
-    let out = bob.run(&["exchange", "link", &link, "--yes", "--wait-secs", "0"]);
+    let out = bob.run_with_code(
+        &[
+            "exchange",
+            "link",
+            &link,
+            "--yes",
+            "--code-stdin",
+            "--wait-secs",
+            "0",
+        ],
+        "123 456\n",
+    );
 
     let err = stderr(&out);
     assert!(
@@ -93,6 +129,72 @@ fn exchange_link_accepts_another_users_link() {
         "a real link is accepted: {err}"
     );
     assert!(err.contains("not completed"), "{err}");
+}
+
+// @scenario: link_exchange :: Opening a link without a code sends nothing
+#[test]
+fn accepting_a_link_without_a_code_fails_before_exchange() {
+    let alice = Cli::with_identity("Alice");
+    let bob = Cli::with_identity("Bob");
+    let link = alice.share_link();
+    let out = bob.run(&["exchange", "link", &link, "--yes", "--wait-secs", "0"]);
+    assert!(!out.status.success());
+    assert!(stderr(&out).contains("--code-stdin"), "{}", stderr(&out));
+    assert!(!stderr(&out).contains("not completed"));
+}
+
+// @internal
+#[test]
+fn sharing_a_link_prints_a_separate_six_digit_code() {
+    let alice = Cli::with_identity("Alice");
+    let out = alice.run(&["exchange", "link", "--wait-secs", "0"]);
+    let text = stdout(&out);
+    let code = text
+        .lines()
+        .find_map(|line| line.strip_prefix("Confirmation code: "))
+        .expect("separate confirmation code");
+    assert_eq!(code.len(), 7);
+    assert_eq!(code.as_bytes()[3], b' ');
+    assert_eq!(code.bytes().filter(u8::is_ascii_digit).count(), 6);
+    assert!(text.contains("another way than the link"));
+    assert!(!stderr(&out).contains(code));
+}
+
+// @internal
+#[test]
+fn invalid_stdin_codes_are_rejected_without_echoing_the_code() {
+    let alice = Cli::with_identity("Alice");
+    let bob = Cli::with_identity("Bob");
+    let link = alice.share_link();
+    for code in [
+        "".into(),
+        "12345".into(),
+        "1234567".into(),
+        "１２３４５６".into(),
+        "x".repeat(100_000),
+    ] {
+        let out = bob.run_with_code(
+            &[
+                "exchange",
+                "link",
+                &link,
+                "--yes",
+                "--code-stdin",
+                "--wait-secs",
+                "0",
+            ],
+            &code,
+        );
+        assert!(!out.status.success());
+        assert!(
+            stderr(&out).contains("expected a 6-digit code"),
+            "{}",
+            stderr(&out)
+        );
+        if !code.is_empty() {
+            assert!(!stderr(&out).contains(&code));
+        }
+    }
 }
 
 // CC-14: the link is untrusted input.
