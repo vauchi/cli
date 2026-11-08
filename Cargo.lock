@@ -2552,7 +2552,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "32497e9a4c7b38532efcdebeef879707aa9f794296a4f0244f6f69e9bc8574bd"
 dependencies = [
  "fastrand",
- "getrandom 0.3.4",
+ "getrandom 0.4.3",
  "once_cell",
  "rustix",
  "windows-sys 0.61.2",
@@ -2926,8 +2926,8 @@ dependencies = [
 
 [[package]]
 name = "vauchi-app"
-version = "0.100.2"
-source = "git+https://gitlab.com/vauchi/core.git?tag=v0.100.2-dev.6#57b0880ba8b9edc9073b9d97fbce966ef77eb5a5"
+version = "0.101.0"
+source = "git+https://gitlab.com/vauchi/core.git?tag=v0.101.0#d136749cec9a5f58d4b6d64bc960263fc9c19471"
 dependencies = [
  "base64",
  "flate2",
@@ -2997,8 +2997,8 @@ dependencies = [
 
 [[package]]
 name = "vauchi-core"
-version = "0.100.2"
-source = "git+https://gitlab.com/vauchi/core.git?tag=v0.100.2-dev.6#57b0880ba8b9edc9073b9d97fbce966ef77eb5a5"
+version = "0.101.0"
+source = "git+https://gitlab.com/vauchi/core.git?tag=v0.101.0#d136749cec9a5f58d4b6d64bc960263fc9c19471"
 dependencies = [
  "argon2",
  "base64",
@@ -3042,8 +3042,8 @@ dependencies = [
 
 [[package]]
 name = "vauchi-protocol"
-version = "0.100.2"
-source = "git+https://gitlab.com/vauchi/core.git?tag=v0.100.2-dev.6#57b0880ba8b9edc9073b9d97fbce966ef77eb5a5"
+version = "0.101.0"
+source = "git+https://gitlab.com/vauchi/core.git?tag=v0.101.0#d136749cec9a5f58d4b6d64bc960263fc9c19471"
 dependencies = [
  "serde",
  "serde_json",

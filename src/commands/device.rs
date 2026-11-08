@@ -13,13 +13,17 @@ use base64::{Engine as _, engine::general_purpose::STANDARD as BASE64};
 use dialoguer::{Confirm, Input};
 use vauchi_core::DeviceSyncOrchestrator;
 use vauchi_core::exchange::{
-    DeviceLinkQR, DeviceLinkResponder, DeviceLinkResponse, ProximityProof, compute_confirmation_mac,
+    DeviceLinkQR, DeviceLinkResponder, ProximityProof, compute_confirmation_mac,
 };
+use vauchi_core::storage::SecureStorage;
 use vauchi_core::sync::DeviceLinkIntent;
-use vauchi_core::{AuthMode, Vauchi, VauchiConfig};
+use vauchi_core::{AuthMode, Vauchi};
 
 use crate::commands::common::{identity_exists, open_vauchi, open_vauchi_authenticated};
-use crate::commands::device_link_persistence::persist_updated_registry;
+use crate::commands::device_link_persistence::{
+    PENDING_SIGNING_KEY, adopt_link_response, pending_device_keys, persist_updated_registry,
+    restore_device_responder,
+};
 use crate::config::CliConfig;
 use crate::display;
 
@@ -196,6 +200,16 @@ pub fn join(
 
     let encrypted_request = responder.create_request(crate::clock::shared().unix_seconds())?;
 
+    let link_key_path = config.data_dir.join(".pending_link_key");
+    let device_name_path = config.data_dir.join(".pending_device_name");
+    fs::create_dir_all(&config.data_dir)?;
+    crate::config::write_restricted(&link_key_path, qr_data)?;
+    crate::config::write_restricted(&device_name_path, &device_name)?;
+    pending_device_keys(config)?.save_key(
+        PENDING_SIGNING_KEY,
+        responder.device_signing_seed().as_slice(),
+    )?;
+
     let request_b64 = BASE64.encode(&encrypted_request);
 
     display::info("Send this request to the existing device:");
@@ -206,12 +220,6 @@ pub fn join(
     display::info("On the existing device, run:");
     println!("  vauchi device complete {}", request_b64);
     println!();
-
-    let link_key_path = config.data_dir.join(".pending_link_key");
-    let device_name_path = config.data_dir.join(".pending_device_name");
-    fs::create_dir_all(&config.data_dir)?;
-    crate::config::write_restricted(&link_key_path, qr_data)?;
-    crate::config::write_restricted(&device_name_path, &device_name)?;
 
     display::info("After the existing device responds, run:");
     println!("  vauchi device finish <response_data>");
@@ -355,23 +363,16 @@ pub fn finish(config: &CliConfig, response_data: &str) -> Result<()> {
 
     let encrypted_response = BASE64.decode(response_data)?;
 
-    let response = DeviceLinkResponse::decrypt(&encrypted_response, qr.link_key())?;
+    let pending_keys = pending_device_keys(config)?;
+    let responder = restore_device_responder(&pending_keys, qr, device_name.clone())?;
+    let response = responder.process_response(&encrypted_response)?;
 
-    // The user confirmed the replacement at `join` time. Core rejects
-    // adopting onto an initialized instance (`AlreadyInitialized`), so
-    // reset local state — only after the response has been decrypted
-    // successfully, never before.
-    if identity_exists(config)? {
-        crate::commands::common::reset_local_state(config)?;
+    adopt_link_response(config, &response, device_name)?;
+    if let Err(error) = pending_keys.secure_delete_key(PENDING_SIGNING_KEY) {
+        display::warning(&format!(
+            "Device linking completed, but pending signing key cleanup failed: {error}"
+        ));
     }
-
-    let wb_config = VauchiConfig::with_storage_path(config.storage_path())
-        .with_relay_url(&config.relay_url)
-        .with_storage_key(config.storage_key()?);
-    let mut wb = Vauchi::new(wb_config)?;
-    // Core adopts the linked identity into its encrypted storage; no
-    // frontend-side identity copy is needed.
-    wb.adopt_device_link_response(&response, device_name)?;
 
     display::success(&format!("Joined identity: {}", response.display_name()));
     display::info(&format!("Device index: {}", response.device_index()));
