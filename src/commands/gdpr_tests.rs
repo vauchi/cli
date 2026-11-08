@@ -223,6 +223,7 @@ fn the_summary_ends_with_the_verification_verdict() {
     let mut verification = ShredVerification {
         smk_absent: true,
         bootstrap_key_absent: true,
+        brk_absent: true,
         database_absent: true,
         data_dir_absent: true,
         pre_signed_absent: true,
