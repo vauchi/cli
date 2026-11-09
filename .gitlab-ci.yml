@@ -21,7 +21,7 @@
 # Include shared templates
 include:
   - project: 'vauchi/scripts'
-    ref: ci-templates-v2026.11.09
+    ref: ci-templates-v2026.11.10
     file:
       - '/ci-templates/rust-base.yml'
       - '/ci-templates/allow-git.yml'
@@ -46,6 +46,7 @@ include:
       - '/ci-templates/tool-install.yml'
       - '/ci-templates/cross-cutting-lint.yml'
       - '/ci-templates/domain-calls.yml'
+      - '/ci-templates/main-retest.yml'
 
 # Temporary containment for the allyson compiler stall (vauchi/private#198).
 # A tiny compile probe passed while real dependency compilation still hung.
@@ -54,7 +55,7 @@ include:
     RUSTC_WRAPPER: ""
 
 variables:
-  VAUCHI_SCRIPTS_REF: "ci-templates-v2026.11.09"
+  VAUCHI_SCRIPTS_REF: "ci-templates-v2026.11.10"
   # cargo audit runs with --deny warnings; every entry here is an
   # advisory with no fix available to us, not one we chose to skip.
   #   RUSTSEC-2026-0173  proc-macro-error2 unmaintained, reached through
@@ -86,6 +87,23 @@ auto-tag:version:
       when: never
     - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
 
+# Main re-runs only what the merged MR's pipeline did not prove on the
+# same tree (vauchi/private#1179, decision 8). A job whose rules start
+# with `!reference [.main-retest, rules]` is held back from main's push
+# pipeline; main:retest-plan picks the held-back jobs that did not pass
+# in the MR, and main:retest runs them as a child pipeline main waits
+# for. The CI variable MAIN_RETEST=off runs them in main, as before.
+# A job main runs only on some `changes:` is not held back: the child
+# would run it on every merge.
+main:retest-plan:
+  extends: [.main-retest-plan]
+
+# In lint, not the template's .pre: jobs ordered by stage after lint
+# waited for the held-back jobs before, and wait for the child now.
+main:retest:
+  extends: [.main-retest-trigger]
+  stage: lint
+
 # ============================================================
 # Lint Stage — Preflight Gate (runs on Rust code changes)
 # ============================================================
@@ -103,6 +121,7 @@ lint:clippy:
 lint:humble:
   extends: .cross-cutting-lint
   rules:
+    - !reference [.main-retest, rules]
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
     - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
 
@@ -122,6 +141,7 @@ check:release-provenance:
   script:
     - ci/tests/release-provenance.test.sh
   rules:
+    - !reference [.main-retest, rules]
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
     - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
 
@@ -162,6 +182,7 @@ check:e2e-smoke:
   script:
     - sh ci/tests/e2e-smoke.test.sh
   rules:
+    - !reference [.main-retest, rules]
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
     - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
 
@@ -282,6 +303,9 @@ security:deny:
 # policy/allowed-git-sources.txt (vauchi/private#1162).
 check:allow-git:
   extends: [.allow-git-drift-job]
+  rules:
+    - !reference [.main-retest, rules]
+    - !reference [.allow-git-drift-job, rules]
 
 # Supply chain verification (cargo-vet).
 #
@@ -384,6 +408,9 @@ check:design-drift:
 # Removed symbols: detect stale references to removed features
 check:removed-symbols:
   extends: .removed-symbols-job
+  rules:
+    - !reference [.main-retest, rules]
+    - !reference [.removed-symbols-job, rules]
 
 # ============================================================
 # Dev Tag Pipeline (lightweight — lint + test only)
@@ -584,5 +611,8 @@ github-mirror:
 # The template defaults VAUCHI_SCRIPTS_REF to main; pin it to the include.
 lint:domain-calls:
   extends: .domain-calls-job
+  rules:
+    - !reference [.main-retest, rules]
+    - !reference [.domain-calls-job, rules]
   variables:
     VAUCHI_SCRIPTS_REF: "ci-templates-v2026.11.06"
