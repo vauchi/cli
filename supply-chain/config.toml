@@ -360,11 +360,11 @@ version = "0.5.1"
 criteria = "safe-to-deploy"
 
 [[exemptions.hashbrown]]
-version = "0.14.2"
+version = "0.16.1"
 criteria = "safe-to-deploy"
 
 [[exemptions.hashlink]]
-version = "0.7.0"
+version = "0.12.2"
 criteria = "safe-to-deploy"
 
 [[exemptions.hkdf]]
@@ -476,7 +476,7 @@ version = "0.1.18"
 criteria = "safe-to-deploy"
 
 [[exemptions.libsqlite3-sys]]
-version = "0.30.1"
+version = "0.39.1"
 criteria = "safe-to-deploy"
 
 [[exemptions.linux-raw-sys]]
@@ -647,6 +647,10 @@ criteria = "safe-to-deploy"
 version = "0.11.0"
 criteria = "safe-to-deploy"
 
+[[exemptions.rsqlite-vfs]]
+version = "0.1.1"
+criteria = "safe-to-deploy"
+
 [[exemptions.rstest]]
 version = "0.26.1"
 criteria = "safe-to-run"
@@ -656,7 +660,7 @@ version = "0.26.1"
 criteria = "safe-to-run"
 
 [[exemptions.rusqlite]]
-version = "0.32.1"
+version = "0.41.1"
 criteria = "safe-to-deploy"
 
 [[exemptions.rustix]]
@@ -741,6 +745,10 @@ criteria = "safe-to-deploy"
 
 [[exemptions.spki]]
 version = "0.7.3"
+criteria = "safe-to-deploy"
+
+[[exemptions.sqlite-wasm-rs]]
+version = "0.5.5"
 criteria = "safe-to-deploy"
 
 [[exemptions.stable_deref_trait]]
