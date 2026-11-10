@@ -228,9 +228,11 @@ check:display-release:
   script:
     - python3 ci/tests/display-release-gate.test.py
     - python3 ci/tests/package-publication.test.py
-  rules: !reference [test:display, rules]
+  rules: !reference [contract:replay, rules]
 
-test:display:
+# ADR-078 D-11 looks for this job name in every shell repository: it replays
+# the contract fixtures through the display crate with no engine.
+contract:replay:
   extends: [.rust-runner, .timeout-cold-rebuild]
   stage: test
   needs: [check:display-release]
@@ -487,7 +489,7 @@ build:release:
   extends: [.linux-runner, .timeout-standard]
   stage: build
   needs:
-    - job: test:display
+    - job: contract:replay
     - job: test:unit
       optional: true
     - job: lint:format

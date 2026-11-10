@@ -49,11 +49,11 @@ class DisplayReleaseGateTest(unittest.TestCase):
         self.assertTrue(publishers, "no package publisher found")
         for publisher in publishers:
             with self.subTest(publisher=publisher):
-                self.assertIn("test:display", required_ancestors(publisher))
+                self.assertIn("contract:replay", required_ancestors(publisher))
 
     # @internal — A tag pipeline has no CI_COMMIT_BRANCH.
     def test_stable_tags_select_a_blocking_display_job(self):
-        job = JOBS["test:display"]
+        job = JOBS["contract:replay"]
         for tag in ["v0.1.0", "v12.34.56"]:
             with self.subTest(tag=tag):
                 variables = {"CI_PIPELINE_SOURCE": "push", "CI_COMMIT_BRANCH": "",
@@ -66,7 +66,7 @@ class DisplayReleaseGateTest(unittest.TestCase):
 
     # @internal — The gate's policy regression runs before its Rust work.
     def test_display_gate_requires_its_release_policy_check(self):
-        self.assertIn("check:display-release", required_ancestors("test:display"))
+        self.assertIn("check:display-release", required_ancestors("contract:replay"))
 
 
 if __name__ == "__main__":
