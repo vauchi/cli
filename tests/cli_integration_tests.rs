@@ -15,6 +15,8 @@ use rstest::rstest;
 use std::process::{Command, Output};
 use tempfile::TempDir;
 
+mod common;
+
 #[path = "cli_integration/backup_default.rs"]
 mod backup_default;
 #[cfg(unix)]
@@ -790,15 +792,12 @@ mod contacts_management {
     fn test_contacts_list_archived_requires_the_app_password() {
         let ctx = CliTestContext::new();
         ctx.init("Alice Smith");
-        ctx.run_success_with_stdin(
-            &["duress", "setup"],
-            "app-password-123\napp-password-123\n\n1\n135790\n\n135790\n\napp-password-123\n\n\n\n",
-        );
+        ctx.run_success_with_stdin(&["duress", "setup"], common::DURESS_SETUP_ANSWERS);
 
         let refused = ctx.run(&["contacts", "list", "--archived"]);
         let allowed = ctx.run_env(
             &["contacts", "list", "--archived"],
-            &[("VAUCHI_PIN", "app-password-123")],
+            &[("VAUCHI_PIN", common::APP_PASSWORD)],
         );
 
         assert_eq!(refused.status.code(), Some(1));
@@ -1201,13 +1200,10 @@ mod device_management {
     fn test_device_link_requires_the_app_password() {
         let ctx = CliTestContext::new();
         ctx.init("Alice Smith");
-        ctx.run_success_with_stdin(
-            &["duress", "setup"],
-            "app-password-123\napp-password-123\n\n1\n135790\n\n135790\n\napp-password-123\n\n\n\n",
-        );
+        ctx.run_success_with_stdin(&["duress", "setup"], common::DURESS_SETUP_ANSWERS);
 
         let refused = ctx.run(&["device", "link"]);
-        let allowed = ctx.run_env(&["device", "link"], &[("VAUCHI_PIN", "app-password-123")]);
+        let allowed = ctx.run_env(&["device", "link"], &[("VAUCHI_PIN", common::APP_PASSWORD)]);
 
         assert_eq!(refused.status.code(), Some(1));
         assert!(
@@ -1230,19 +1226,19 @@ mod device_management {
     fn test_device_link_with_the_duress_pin_fails_like_any_failed_link() {
         let ctx = CliTestContext::new();
         ctx.init("Alice Smith");
-        ctx.run_success_with_stdin(
-            &["duress", "setup"],
-            "app-password-123\napp-password-123\n\n1\n135790\n\n135790\n\napp-password-123\n\n\n\n",
-        );
+        ctx.run_success_with_stdin(&["duress", "setup"], common::DURESS_SETUP_ANSWERS);
 
-        let link = ctx.run_env(&["device", "link"], &[("VAUCHI_PIN", "135790")]);
+        let link = ctx.run_env(
+            &["device", "link"],
+            &[("VAUCHI_PIN", common::DURESS_PASSWORD)],
+        );
         let complete = ctx.run_env(
             &["device", "complete", "request", "--yes"],
-            &[("VAUCHI_PIN", "135790")],
+            &[("VAUCHI_PIN", common::DURESS_PASSWORD)],
         );
         let revoke = ctx.run_env(
             &["device", "revoke", "ab", "--yes"],
-            &[("VAUCHI_PIN", "135790")],
+            &[("VAUCHI_PIN", common::DURESS_PASSWORD)],
         );
 
         assert_eq!(link.status.code(), Some(1));
@@ -1818,15 +1814,15 @@ mod duress {
         ctx.init("Alice Smith");
 
         // Core drives the step order; a blank line takes the primary action.
-        // password, confirm, submit, configure, PIN, continue, confirm PIN,
-        // continue, app password at the step before the change, confirm.
-        ctx.run_success_with_stdin(
-            &["duress", "setup"],
-            "app-password-123\napp-password-123\n\n1\n135790\n\n135790\n\napp-password-123\n\n\n\n",
-        );
+        // Without biometrics it is the password branch: app password,
+        // confirm, save, set up, the app password again, the duress
+        // password, its confirmation.
+        ctx.run_success_with_stdin(&["duress", "setup"], common::DURESS_SETUP_ANSWERS);
 
-        let output =
-            ctx.run_success_env(&["duress", "status"], &[("VAUCHI_PIN", "app-password-123")]);
+        let output = ctx.run_success_env(
+            &["duress", "status"],
+            &[("VAUCHI_PIN", common::APP_PASSWORD)],
+        );
         assert!(
             output.contains("Duress PIN:    ENABLED"),
             "duress setup must persist through the Core reducer, got: {}",
@@ -1847,17 +1843,14 @@ mod duress {
     fn test_duress_disable_turns_it_off_through_core_after_the_password() {
         let ctx = CliTestContext::new();
         ctx.init("Alice Smith");
-        ctx.run_success_with_stdin(
-            &["duress", "setup"],
-            "app-password-123\napp-password-123\n\n1\n135790\n\n135790\n\napp-password-123\n\n",
-        );
-        let pin = [("VAUCHI_PIN", "app-password-123")];
+        ctx.run_success_with_stdin(&["duress", "setup"], common::DURESS_SETUP_ANSWERS);
+        let pin = [("VAUCHI_PIN", common::APP_PASSWORD)];
 
         let disable = ctx.run_success_env_with_stdin(
             &["duress", "disable"],
             &pin,
             // Turn off, Disable, the app password at the step, confirm.
-            "4\n5\napp-password-123\n\n",
+            &format!("4\n5\n{}\n\n", common::APP_PASSWORD),
         );
 
         assert!(

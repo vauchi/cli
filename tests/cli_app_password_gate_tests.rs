@@ -8,18 +8,10 @@
 
 mod common;
 
-use common::{Cli, exchange_data};
-
-const PASSWORD: &str = "app-password-123";
-const DURESS_PIN: &str = "135790";
-
-/// Answers `duress setup`: the app password twice, a duress PIN twice, then
-/// the app password again for the session PIN step (#777).
-const SETUP_ANSWERS: &str =
-    "app-password-123\napp-password-123\n\n1\n135790\n\n135790\n\napp-password-123\n\n\n\n";
+use common::{APP_PASSWORD, Cli, DURESS_PASSWORD, DURESS_SETUP_ANSWERS, exchange_data};
 
 fn protect(cli: &Cli) {
-    let output = cli.run_with_stdin(&["duress", "setup"], SETUP_ANSWERS);
+    let output = cli.run_with_stdin(&["duress", "setup"], DURESS_SETUP_ANSWERS);
     assert!(
         output.status.success(),
         "duress setup failed: {}",
@@ -68,7 +60,7 @@ fn test_every_data_command_runs_with_the_app_password() {
     protect(&cli);
 
     for args in GATED {
-        let output = cli.run_with_env(args, &[("VAUCHI_PIN", PASSWORD)]);
+        let output = cli.run_with_env(args, &[("VAUCHI_PIN", APP_PASSWORD)]);
         assert!(
             output.status.success(),
             "{args:?} failed with the app password: {}",
@@ -105,14 +97,14 @@ fn alice_protected_with_bob_as_contact() -> Cli {
     alice.stdout(&["init", "Alice Smith"]);
     protect(&alice);
     let alice_data =
-        exchange_data(&alice.stdout_env(&["exchange", "start"], &[("VAUCHI_PIN", PASSWORD)]));
+        exchange_data(&alice.stdout_env(&["exchange", "start"], &[("VAUCHI_PIN", APP_PASSWORD)]));
     let bob = Cli::new();
     bob.stdout(&["init", "Bob Jones"]);
     let bob_data = exchange_data(&bob.stdout(&["exchange", "start"]));
     bob.stdout(&["exchange", "complete", &alice_data]);
     alice.stdout_env(
         &["exchange", "complete", &bob_data],
-        &[("VAUCHI_PIN", PASSWORD)],
+        &[("VAUCHI_PIN", APP_PASSWORD)],
     );
     alice
 }
@@ -125,7 +117,10 @@ fn test_gdpr_export_under_the_duress_pin_holds_no_real_contact() {
     let path = alice.data_dir().join("export.json");
     let path_arg = path.to_str().expect("utf-8 path");
 
-    alice.stdout_env(&["gdpr", "export", path_arg], &[("VAUCHI_PIN", DURESS_PIN)]);
+    alice.stdout_env(
+        &["gdpr", "export", path_arg],
+        &[("VAUCHI_PIN", DURESS_PASSWORD)],
+    );
 
     let export = std::fs::read_to_string(&path).expect("export written");
     assert!(
@@ -145,7 +140,7 @@ fn test_encrypted_gdpr_export_under_the_duress_pin_holds_no_real_contact() {
     alice.stdout_env(
         &["gdpr", "export", path_arg],
         &[
-            ("VAUCHI_PIN", DURESS_PIN),
+            ("VAUCHI_PIN", DURESS_PASSWORD),
             ("VAUCHI_EXPORT_PASSWORD", "export-password"),
         ],
     );

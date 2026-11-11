@@ -93,6 +93,21 @@ impl Cli {
     }
 }
 
+/// The CLI has no biometric unlock, so Core sets duress up under the
+/// password branch: the app password and the duress password must both
+/// pass the backup password rule (ADR-032 amendment 2026-11-10).
+pub const APP_PASSWORD: &str = "correct-horse-battery-staple-app";
+pub const DURESS_PASSWORD: &str = "plum-violin-orbit-meadow-duress";
+
+/// Answers `duress setup` on a fresh install: the app password twice and
+/// save, open the duress setup, the app password again, then the duress
+/// password and its confirmation, each step taking its primary action.
+pub const DURESS_SETUP_ANSWERS: &str = "correct-horse-battery-staple-app\n\
+     correct-horse-battery-staple-app\n\n1\n\
+     correct-horse-battery-staple-app\n\n\
+     plum-violin-orbit-meadow-duress\n\n\
+     plum-violin-orbit-meadow-duress\n\n";
+
 /// The QR data line `exchange start` prints.
 pub fn exchange_data(output: &str) -> String {
     output
