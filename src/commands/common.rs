@@ -407,7 +407,7 @@ mod tests {
         let mut wb = open_vauchi(config).unwrap();
         wb.setup_app_password(password).unwrap();
         if let Some(pin) = duress_pin {
-            wb.setup_duress_password(pin).unwrap();
+            wb.setup_duress_pin_with_biometric_unlock(pin).unwrap();
         }
     }
 
