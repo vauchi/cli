@@ -22,8 +22,8 @@ path = "src/main.rs"
 vauchi-cli-display = { path = "cli-display", version = "0.2.0" }
 # Core library - use git dependencies for CI; local overrides are injected into
 # this manifest by `just setup-path-overrides`.
-vauchi-core = { git = "https://gitlab.com/vauchi/core.git", tag = "v0.103.0", version = "=0.103.0" }
-vauchi-app = { git = "https://gitlab.com/vauchi/core.git", tag = "v0.103.0", version = "=0.103.0", features = ["network-native-tls"] }
+vauchi-core = { git = "https://gitlab.com/vauchi/core.git", tag = "v0.104.0", version = "=0.104.0" }
+vauchi-app = { git = "https://gitlab.com/vauchi/core.git", tag = "v0.104.0", version = "=0.104.0", features = ["network-native-tls"] }
 
 # CLI framework
 clap = { version = "4", features = ["derive", "env"] }
