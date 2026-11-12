@@ -21,7 +21,7 @@
 # Include shared templates
 include:
   - project: 'vauchi/scripts'
-    ref: ci-templates-v2026.11.13
+    ref: ci-templates-v2026.11.17
     file:
       - '/ci-templates/rust-base.yml'
       - '/ci-templates/allow-git.yml'
@@ -55,7 +55,7 @@ include:
     RUSTC_WRAPPER: ""
 
 variables:
-  VAUCHI_SCRIPTS_REF: "ci-templates-v2026.11.13"
+  VAUCHI_SCRIPTS_REF: "ci-templates-v2026.11.17"
   # Shared-template checks (quality:*, file-size:*, allow-direct:check) are
   # held back on main too, like the checks marked below (vauchi/private#1179).
   MAIN_RETEST_TEMPLATES: "on"
@@ -620,4 +620,4 @@ lint:domain-calls:
     - !reference [.main-retest, rules]
     - !reference [.domain-calls-job, rules]
   variables:
-    VAUCHI_SCRIPTS_REF: "ci-templates-v2026.11.06"
+    VAUCHI_SCRIPTS_REF: "ci-templates-v2026.11.17"
