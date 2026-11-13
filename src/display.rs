@@ -8,7 +8,7 @@
 
 use console::{Style, style};
 use tabled::{
-    Table, Tabled,
+    builder::Builder,
     settings::{Alignment, Modify, Style as TableStyle, object::Columns},
 };
 use vauchi_app::notification_types::ActivityLogEntry as AppActivityEntry;
@@ -241,44 +241,30 @@ pub fn display_social_networks(query: Option<&str>, locale: &str) {
     println!();
 }
 
-/// Row structure for contact table display.
-#[derive(Tabled)]
-struct ContactRow {
-    #[tabled(rename = "#")]
-    index: usize,
-    #[tabled(rename = "Name")]
-    name: String,
-    #[tabled(rename = "ID")]
-    id: String,
-    #[tabled(rename = "Status")]
-    status: String,
-    #[tabled(rename = "Recovery")]
-    recovery: String,
-}
-
 /// Displays a list of contacts as a formatted table.
 pub fn display_contacts_table(contacts: &[Contact]) {
-    let rows: Vec<ContactRow> = contacts
-        .iter()
-        .enumerate()
-        .map(|(i, c)| ContactRow {
-            index: i + 1,
-            name: c.display_name().to_string(),
-            id: format!("{}...", &c.id()[..8.min(c.id().len())]),
-            status: if c.is_fingerprint_verified() {
+    let mut builder = Builder::default();
+    builder.push_record(["#", "Name", "ID", "Status", "Recovery"]);
+    for (i, c) in contacts.iter().enumerate() {
+        builder.push_record([
+            (i + 1).to_string(),
+            c.display_name().to_string(),
+            format!("{}...", &c.id()[..8.min(c.id().len())]),
+            if c.is_fingerprint_verified() {
                 "✓ verified".to_string()
             } else {
                 "not verified".to_string()
             },
-            recovery: if c.is_recovery_trusted() {
+            if c.is_recovery_trusted() {
                 "★".to_string()
             } else {
                 String::new()
             },
-        })
-        .collect();
+        ]);
+    }
 
-    let table = Table::new(rows)
+    let table = builder
+        .build()
         .with(TableStyle::rounded())
         .with(Modify::new(Columns::first()).with(Alignment::right()))
         .to_string();

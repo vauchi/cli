@@ -45,7 +45,7 @@ console = "0.15"
 indicatif = "0.18"
 
 # Table output
-tabled = "0.21"
+tabled = { version = "0.21", default-features = false, features = ["std"] }
 
 # Platform directories
 dirs = "5"

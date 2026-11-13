@@ -185,6 +185,15 @@ fn hidden_contacts_are_listed_as_a_numbered_table() {
 
     let table = alice.stdout(&["contacts", "list-hidden"]);
 
+    let header = table
+        .lines()
+        .find(|line| line.contains("Name") && line.contains("Recovery"))
+        .unwrap_or_else(|| panic!("{table}"));
+    assert_eq!(
+        header.split('│').map(str::trim).collect::<Vec<_>>(),
+        ["", "#", "Name", "ID", "Status", "Recovery", ""]
+    );
+
     let row = table
         .lines()
         .find(|line| line.contains("Bob Jones"))
