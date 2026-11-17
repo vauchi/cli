@@ -96,7 +96,7 @@ fn test_usb_responder_reaches_bind_error_with_generated_installation_secret() {
     let alice = Cli::new();
     alice.stdout(&["init", "Alice"]);
     set_installation_secret(&alice);
-    let occupied = TcpListener::bind(("127.0.0.1", 0)).unwrap();
+    let occupied = TcpListener::bind(("0.0.0.0", 0)).unwrap();
     let port = occupied.local_addr().unwrap().port().to_string();
 
     let output = alice.run(&["exchange", "usb-listen", "--port", &port]);
