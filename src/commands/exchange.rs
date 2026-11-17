@@ -66,6 +66,17 @@ fn load_pending_qr(config: &CliConfig) -> Result<(Zeroizing<[u8; 32]>, ExchangeQ
     Ok((secret, qr))
 }
 
+/// Copies the identity for an exchange session without a password: the
+/// installation secret is random, not a human backup password, so the backup
+/// strength rule must not apply to it (private#1247).
+fn owned_identity(identity: &Identity) -> Result<Identity> {
+    Identity::from_storage_bytes(
+        &identity.to_storage_bytes(),
+        crate::clock::shared().unix_seconds(),
+    )
+    .context("Failed to copy identity")
+}
+
 /// Starts a contact exchange by generating a QR code.
 ///
 /// Uses ExchangeSession state machine with ManualConfirmationVerifier
@@ -85,13 +96,7 @@ pub fn start(config: &CliConfig, locale: &str) -> Result<()> {
 
     let verifier = ManualConfirmationVerifier::new();
 
-    let backup_password = config.backup_password()?;
-    let backup = identity.export_backup(&backup_password)?;
-    let identity_owned = Identity::import_backup(
-        &backup,
-        &backup_password,
-        crate::clock::shared().unix_seconds(),
-    )?;
+    let identity_owned = owned_identity(identity)?;
 
     let mut session =
         ExchangeSession::new_qr(identity_owned, our_card, verifier, crate::clock::shared());
@@ -160,13 +165,7 @@ pub fn complete(config: &CliConfig, data: &str, _locale: &str) -> Result<()> {
 
     let verifier = ManualConfirmationVerifier::new();
 
-    let backup_password = config.backup_password()?;
-    let backup = identity.export_backup(&backup_password)?;
-    let identity_owned = Identity::import_backup(
-        &backup,
-        &backup_password,
-        crate::clock::shared().unix_seconds(),
-    )?;
+    let identity_owned = owned_identity(identity)?;
 
     let (resume_secret, our_qr) = load_pending_qr(config)?;
     let mut session = ExchangeSession::resume_qr(
@@ -274,13 +273,7 @@ pub fn usb_exchange(config: &CliConfig, address: &str) -> Result<()> {
 
     let verifier = ManualConfirmationVerifier::new();
 
-    let backup_password = config.backup_password()?;
-    let backup = identity.export_backup(&backup_password)?;
-    let identity_owned = Identity::import_backup(
-        &backup,
-        &backup_password,
-        crate::clock::shared().unix_seconds(),
-    )?;
+    let identity_owned = owned_identity(identity)?;
 
     let mut session = ExchangeSession::new_usb(
         identity_owned,
@@ -394,13 +387,7 @@ pub fn usb_listen(config: &CliConfig, port: u16) -> Result<()> {
 
     let verifier = ManualConfirmationVerifier::new();
 
-    let backup_password = config.backup_password()?;
-    let backup = identity.export_backup(&backup_password)?;
-    let identity_owned = Identity::import_backup(
-        &backup,
-        &backup_password,
-        crate::clock::shared().unix_seconds(),
-    )?;
+    let identity_owned = owned_identity(identity)?;
 
     let mut session = ExchangeSession::new_usb(
         identity_owned,
