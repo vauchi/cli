@@ -87,6 +87,7 @@ mod tests {
             ohttp_delayed: false,
             delayed_wait: crate::config::DelayedWait::default(),
             relay_anchor: None,
+            offline: false,
             raw: false,
         };
         let key = config.storage_key().unwrap();

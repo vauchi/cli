@@ -25,6 +25,13 @@ fn ohttp_relay_flag_parses_when_provided() {
     );
 }
 
+// @scenario: sync_updates :: Offline mode blocks every relay path
+#[test]
+fn offline_flag_parses_and_defaults_off() {
+    assert!(Cli::parse_from(["vauchi", "--offline", "sync"]).offline);
+    assert!(!Cli::parse_from(["vauchi", "sync"]).offline);
+}
+
 const ANCHOR_HEX: &str = "5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a";
 
 /// A custom relay's OHTTP anchor travels with its URL (#288, decision 0.9).

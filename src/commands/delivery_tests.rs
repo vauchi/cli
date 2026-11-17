@@ -41,6 +41,7 @@ fn config_with_records() -> (TempDir, CliConfig) {
         ohttp_delayed: false,
         delayed_wait: crate::config::DelayedWait::default(),
         relay_anchor: None,
+        offline: false,
         raw: false,
     };
     crate::commands::init::run("Alice", false, &config, "en").unwrap();

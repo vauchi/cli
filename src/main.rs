@@ -94,6 +94,7 @@ async fn main() -> ExitCode {
         ohttp_relay_url: cli.ohttp_relay,
         relay_anchor: cli.relay_anchor,
         ohttp_delayed: cli.ohttp_delayed,
+        offline: cli.offline,
         delayed_wait: config::DelayedWait {
             poll: std::time::Duration::from_secs(cli.ohttp_delayed_poll_secs),
             max_wait: std::time::Duration::from_secs(cli.ohttp_delayed_wait_secs),

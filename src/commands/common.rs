@@ -19,6 +19,7 @@ fn base_wb_config(config: &CliConfig) -> Result<VauchiConfig> {
         None => wb_config.with_relay_url(&config.relay_url),
     };
     wb_config.relay.ohttp_delayed = config.ohttp_delayed;
+    wb_config.offline = config.offline;
     Ok(wb_config.with_storage_key(config.storage_key()?))
 }
 
@@ -312,6 +313,7 @@ mod tests {
             ohttp_delayed: false,
             delayed_wait: crate::config::DelayedWait::default(),
             relay_anchor,
+            offline: false,
             raw: false,
         }
     }
@@ -395,6 +397,7 @@ mod tests {
             ohttp_delayed: false,
             delayed_wait: crate::config::DelayedWait::default(),
             relay_anchor: None,
+            offline: false,
             raw: false,
         };
         let identity = Identity::create("Test User", crate::clock::shared().unix_seconds());
@@ -421,6 +424,7 @@ mod tests {
             ohttp_delayed: false,
             delayed_wait: crate::config::DelayedWait::default(),
             relay_anchor: None,
+            offline: false,
             raw: false,
         };
 
@@ -446,6 +450,7 @@ mod tests {
             ohttp_delayed: false,
             delayed_wait: crate::config::DelayedWait::default(),
             relay_anchor: None,
+            offline: false,
             raw: false,
         };
 
@@ -473,6 +478,7 @@ mod tests {
             ohttp_delayed: false,
             delayed_wait: crate::config::DelayedWait::default(),
             relay_anchor: None,
+            offline: false,
             raw: false,
         };
 
@@ -506,6 +512,7 @@ mod tests {
             ohttp_delayed: false,
             delayed_wait: crate::config::DelayedWait::default(),
             relay_anchor: None,
+            offline: false,
             raw: false,
         };
 
@@ -630,6 +637,7 @@ mod reset_tests {
             ohttp_delayed: false,
             delayed_wait: crate::config::DelayedWait::default(),
             relay_anchor: None,
+            offline: false,
             raw: false,
         }
     }

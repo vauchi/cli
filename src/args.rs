@@ -56,6 +56,10 @@ pub(crate) struct Cli {
     )]
     pub ohttp_delayed: bool,
 
+    /// Permit only in-person operation and block every relay request.
+    #[arg(long, global = true, env = "VAUCHI_OFFLINE")]
+    pub offline: bool,
+
     /// Seconds between collects while `sync` waits for its own delayed
     /// answers (forced, or once the outer relay advertises a window).
     #[arg(

@@ -111,6 +111,8 @@ pub struct CliConfig {
     /// Fetch and acknowledge through the delayed path even when the outer
     /// relay advertises no window (#628).
     pub ohttp_delayed: bool,
+    /// Permit only in-person operation and block every relay request.
+    pub offline: bool,
     /// How long `sync` waits for its delayed answers whenever fetches take
     /// the delayed path, forced or advertised (#628).
     pub delayed_wait: DelayedWait,
@@ -361,6 +363,7 @@ mod tests {
             ohttp_delayed: false,
             delayed_wait: crate::config::DelayedWait::default(),
             relay_anchor: None,
+            offline: false,
             raw: false,
         };
         let fallback = load_or_generate_fallback_key(&config.data_dir).unwrap();
@@ -383,6 +386,7 @@ mod tests {
             ohttp_delayed: false,
             delayed_wait: crate::config::DelayedWait::default(),
             relay_anchor: None,
+            offline: false,
             raw: false,
         };
 
@@ -405,6 +409,7 @@ mod tests {
             ohttp_delayed: false,
             delayed_wait: crate::config::DelayedWait::default(),
             relay_anchor: None,
+            offline: false,
             raw: false,
         };
 
@@ -466,6 +471,7 @@ mod tests {
             ohttp_delayed: false,
             delayed_wait: crate::config::DelayedWait::default(),
             relay_anchor: None,
+            offline: false,
             raw: false,
         };
 
@@ -484,6 +490,7 @@ mod tests {
             ohttp_delayed: false,
             delayed_wait: crate::config::DelayedWait::default(),
             relay_anchor: None,
+            offline: false,
             raw: false,
         };
 
@@ -503,6 +510,7 @@ mod tests {
             ohttp_delayed: false,
             delayed_wait: crate::config::DelayedWait::default(),
             relay_anchor: None,
+            offline: false,
             raw: false,
         };
         let config2 = CliConfig {
@@ -512,6 +520,7 @@ mod tests {
             ohttp_delayed: false,
             delayed_wait: crate::config::DelayedWait::default(),
             relay_anchor: None,
+            offline: false,
             raw: false,
         };
 
@@ -568,6 +577,7 @@ mod tests {
             ohttp_delayed: false,
             delayed_wait: crate::config::DelayedWait::default(),
             relay_anchor: None,
+            offline: false,
             raw: false,
         };
 
@@ -601,6 +611,7 @@ mod tests {
             ohttp_delayed: false,
             delayed_wait: crate::config::DelayedWait::default(),
             relay_anchor: None,
+            offline: false,
             raw: false,
         };
 
@@ -624,6 +635,7 @@ mod tests {
             ohttp_delayed: false,
             delayed_wait: crate::config::DelayedWait::default(),
             relay_anchor: None,
+            offline: false,
             raw: false,
         };
         let key1 = config1.storage_key().expect("should create key");
@@ -635,6 +647,7 @@ mod tests {
             ohttp_delayed: false,
             delayed_wait: crate::config::DelayedWait::default(),
             relay_anchor: None,
+            offline: false,
             raw: false,
         };
         let key2 = config2.storage_key().expect("should load key");
