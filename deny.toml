@@ -22,6 +22,13 @@ ignore = [
     # tabled -> tabled_derive. Build-time proc-macro only, no runtime risk.
     # Remove once tabled upgrades away from it (tracked: RUSTSEC-2026-0173).
     "RUSTSEC-2026-0173",
+    # chrono and chrono-tz are unmaintained (advisories, not vulnerabilities)
+    # — reached only through rxing, vauchi-core's QR decoder, which needs
+    # them for calendar-result parsing and Aztec; our QR-only decode calls
+    # neither.
+    # Remove together with core's entries (private#1274).
+    "RUSTSEC-2026-0543",
+    "RUSTSEC-2026-0555",
 ]
 
 [licenses]

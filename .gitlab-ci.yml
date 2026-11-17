@@ -63,7 +63,9 @@ variables:
   # advisory with no fix available to us, not one we chose to skip.
   #   RUSTSEC-2026-0173  proc-macro-error2 unmaintained, reached through
   #                      tabled_derive -> tabled (already at latest).
-  AUDIT_IGNORES: "--ignore RUSTSEC-2026-0173"
+  #   RUSTSEC-2026-0543  chrono and chrono-tz unmaintained, only via
+  #   RUSTSEC-2026-0555  rxing (QR decode); mirrors deny.toml (private#1274).
+  AUDIT_IGNORES: "--ignore RUSTSEC-2026-0173 --ignore RUSTSEC-2026-0543 --ignore RUSTSEC-2026-0555"
 
 stages:
   - auto-tag
