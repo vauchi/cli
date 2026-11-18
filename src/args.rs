@@ -80,7 +80,7 @@ pub(crate) struct Cli {
     )]
     pub ohttp_delayed_wait_secs: u64,
 
-    /// Locale for output messages (en, de, fr, es)
+    /// Locale for output messages (en, de, fr, es, it)
     #[arg(long, global = true, env = "VAUCHI_LOCALE", default_value = "en")]
     pub locale: String,
 

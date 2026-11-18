@@ -25,6 +25,15 @@ use vauchi_app::i18n::init as init_i18n;
 use args::Cli;
 use config::CliConfig;
 
+/// A non-empty `NO_COLOR` turns colour off, and wins over `CLICOLOR_FORCE`
+/// (<https://no-color.org>); `console` reads only the `CLICOLOR` pair.
+fn honour_no_color() {
+    if std::env::var_os("NO_COLOR").is_some_and(|value| !value.is_empty()) {
+        console::set_colors_enabled(false);
+        console::set_colors_enabled_stderr(false);
+    }
+}
+
 /// Try to load runtime locale files so user-visible strings can be translated.
 /// Errors are non-fatal: the bundled English fallback is used when no locale
 /// directory is found.
@@ -76,6 +85,7 @@ fn install_locales_dir(exe: &Path) -> Option<PathBuf> {
 #[tokio::main]
 async fn main() -> ExitCode {
     env_logger::init();
+    honour_no_color();
     try_init_i18n();
 
     let cli = Cli::parse();

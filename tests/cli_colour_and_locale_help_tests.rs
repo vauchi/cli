@@ -41,7 +41,10 @@ fn no_color_turns_colour_off_even_when_forced() {
         !output.contains(ESCAPE),
         "escape codes under NO_COLOR: {output:?}"
     );
-    assert!(output.contains("Recent Activity"), "{output:?}");
+    assert!(
+        output.contains("No activity in the last 60 minutes."),
+        "{output:?}"
+    );
 }
 
 // @internal
